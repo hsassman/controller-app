@@ -1,0 +1,14 @@
+client/node_modules/
+client/dist/
+host/src-tauri/target/
+
+# Build output
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Tauri generated
+host/src-tauri/gen/

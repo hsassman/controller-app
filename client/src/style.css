@@ -1,0 +1,2573 @@
+:root {
+  color-scheme: dark;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  --bg: #0d0f14;
+  --fg: #f0f1f4;
+  --fg-muted: #9aa1ae;
+  --panel-bg: #1a1d24;
+  --panel-bg-raised: #21252e;
+  --border: #5b6070;
+  --accent: #4c8bff;
+  --accent-fg: #04122b;
+  --accent-active: #7aabff;
+  --danger: #ff5c5c;
+  --ok: #35d187;
+  --warn: #ffc94a;
+  --control-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
+  --control-border: rgba(255, 255, 255, 0.45);
+  --control-active-bg: linear-gradient(180deg, rgba(76, 139, 255, 0.75), rgba(76, 139, 255, 0.55));
+  --focus-ring: #7aabff;
+
+  --accent-rgb: 76, 139, 255;
+  --ok-rgb: 53, 209, 135;
+  --danger-rgb: 255, 92, 92;
+  --warn-rgb: 255, 201, 74;
+
+  /* Injection-moulded shell used by buttons / triggers / d-pad arms. */
+  --shell: linear-gradient(177deg, #3a4152 0%, #262b37 42%, #1a1e27 78%, #14171e 100%);
+  --shell-gloss: radial-gradient(115% 85% at 50% 4%, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.06) 46%, rgba(255, 255, 255, 0) 68%);
+  --shell-inner: radial-gradient(120% 120% at 50% 130%, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 60%);
+
+  /* Cast shadow beneath a raised part + the seat ring it sits in. */
+  --raise:
+    0 1px 1px rgba(0, 0, 0, 0.5),
+    0 3px 5px -1px rgba(0, 0, 0, 0.55),
+    0 9px 18px -6px rgba(0, 0, 0, 0.72);
+  /* Rim light along the top edge + occlusion along the bottom edge. */
+  --rim:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -4px 9px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+  /* Collapsed shadow stack for the depressed state. */
+  --press:
+    inset 0 4px 9px rgba(0, 0, 0, 0.7),
+    inset 0 -1.5px 0 rgba(255, 255, 255, 0.18),
+    0 1px 1px rgba(0, 0, 0, 0.5);
+
+  --label-emboss: 0 1px 0 rgba(0, 0, 0, 0.65);
+  /* The d-pad is clipped to a cross, so its cast shadow + top rim have to
+     come from drop-shadow (box-shadow would be clipped off). */
+  --dpad-cast: drop-shadow(0 5px 7px rgba(0, 0, 0, 0.6)) drop-shadow(0 -1px 0 rgba(255, 255, 255, 0.22));
+  --dpad-shell: linear-gradient(177deg, #414859 0%, #333949 46%, #262b37 100%);
+  --panel-shadow: 0 24px 60px -18px rgba(0, 0, 0, 0.85), 0 2px 0 rgba(255, 255, 255, 0.04) inset;
+  --chip-bg: linear-gradient(180deg, #2b3140, #1e222c);
+  --page-glow:
+    radial-gradient(1100px 520px at 50% -14%, rgba(76, 139, 255, 0.13), transparent 68%),
+    radial-gradient(760px 420px at 6% 108%, rgba(122, 171, 255, 0.07), transparent 62%),
+    radial-gradient(760px 420px at 94% 108%, rgba(122, 171, 255, 0.07), transparent 62%);
+  --surface-vignette:
+    radial-gradient(150% 110% at 50% 50%, rgba(255, 255, 255, 0.028), rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.32) 100%);
+}
+
+:root.high-contrast .control {
+  border-width: 3px;
+}
+
+:root.high-contrast .button-control.active,
+:root.high-contrast .stick-control,
+:root.high-contrast .trigger-fill {
+  color: #000;
+}
+
+:root.high-contrast .control,
+:root.high-contrast button {
+  box-shadow: none !important;
+}
+
+/* Pseudo-elements and control children aren't matched by the rule above, so
+   they get their own flattening pass. */
+:root.high-contrast .button-control::before,
+:root.high-contrast .trigger-control::after,
+:root.high-contrast .stick-control::before {
+  display: none;
+}
+
+:root.high-contrast .dpad-control::before,
+:root.high-contrast .dpad-control::after,
+:root.high-contrast .dpad-indicator,
+:root.high-contrast .stick-knob,
+:root.high-contrast .trigger-fill {
+  box-shadow: none;
+  text-shadow: none;
+}
+
+/* The clipped cross has no border, so in high contrast the d-pad reverts to
+   two explicitly outlined bars -- a solid white outline beats a subtle one. */
+:root.high-contrast .dpad-control::before,
+:root.high-contrast .dpad-control::after {
+  clip-path: none;
+  background: #000;
+  border: 3px solid #fff;
+}
+
+:root.high-contrast .dpad-control::before {
+  inset: 33% 0;
+}
+
+:root.high-contrast .dpad-control::after {
+  inset: 0 33%;
+}
+
+:root.high-contrast .stick-knob,
+:root.high-contrast .dpad-indicator {
+  background: var(--accent);
+  border: 3px solid #000;
+}
+
+:root.high-contrast .dpad-indicator {
+  background: #000;
+  border-color: #fff;
+}
+
+:root.high-contrast .dpad-control[data-direction]:not([data-direction=""]) .dpad-indicator {
+  background: var(--accent);
+}
+
+/* Direction still has to be readable without the soft glow: fill the pressed
+   arm solid with hard-stop gradients. */
+:root.high-contrast .dpad-control[data-direction*="up"]::after {
+  background: linear-gradient(180deg, var(--accent) 0 34%, #000 34%);
+}
+:root.high-contrast .dpad-control[data-direction*="down"]::after {
+  background: linear-gradient(0deg, var(--accent) 0 34%, #000 34%);
+}
+:root.high-contrast .dpad-control[data-direction*="left"]::before {
+  background: linear-gradient(270deg, var(--accent) 0 34%, #000 34%);
+}
+:root.high-contrast .dpad-control[data-direction*="right"]::before {
+  background: linear-gradient(90deg, var(--accent) 0 34%, #000 34%);
+}
+
+:root.high-contrast .stick-control {
+  background: #000;
+}
+
+:root.high-contrast .trigger-fill {
+  background: var(--accent);
+}
+
+/* The fill sits behind the label; a solid black plate guarantees the label
+   stays readable once the fill travels up past it. */
+:root.high-contrast .trigger-label {
+  color: #fff;
+  background: #000;
+  border-radius: 0.2rem;
+  padding: 0 0.25rem;
+}
+
+/* Face-button tint rings would be sub-contrast greys here. */
+:root.high-contrast .button-control[data-control-id^="face-"] {
+  border-color: #fff;
+  color: #fff;
+}
+
+:root.high-contrast .button-control.active,
+:root.high-contrast .button-control[data-control-id^="face-"].active {
+  background: var(--control-active-bg);
+  border-color: #fff;
+  color: #000;
+}
+
+:root.high-contrast .topbar,
+:root.high-contrast .connect-screen,
+:root.high-contrast .panel,
+:root.high-contrast .edit-toolbar button,
+:root.high-contrast .file-label,
+:root.high-contrast .topbar-actions button,
+:root.high-contrast .status {
+  background: #000;
+}
+
+:root.high-contrast input[type="text"] {
+  background: #000;
+  box-shadow: none;
+}
+
+:root.high-contrast input[type="text"]::placeholder {
+  color: var(--fg-muted);
+}
+
+:root.high-contrast #disconnect-btn,
+:root.high-contrast .edit-toolbar button[data-add] {
+  color: #fff;
+}
+
+:root.high-contrast .edit-toolbar #done-editing,
+:root.high-contrast #connect-btn,
+:root.high-contrast .panel button.primary-action {
+  background: var(--accent);
+  color: #000;
+  border: 2px solid #fff;
+}
+
+:root.high-contrast .control,
+:root.high-contrast .button-control,
+:root.high-contrast .trigger-control,
+:root.high-contrast .trigger-label,
+:root.high-contrast .status,
+:root.high-contrast .panel,
+:root.high-contrast h1 {
+  text-shadow: none;
+}
+
+:root.high-contrast body,
+:root.high-contrast .controls-surface::before,
+:root.high-contrast .connect-screen::before {
+  background: var(--bg);
+}
+
+:root.high-contrast .controls-surface::before,
+:root.high-contrast .connect-screen::before,
+:root.high-contrast .topbar::after {
+  display: none;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background-color: var(--bg);
+  background-image: var(--page-glow);
+  background-repeat: no-repeat;
+  color: var(--fg);
+  overscroll-behavior: none;
+  touch-action: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* The controls are round; a rounded ring reads far better than a square one
+   and keeps the ring clearly visible against the dark shell. */
+.control:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+#app {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- Connect screen ---- */
+
+/* A column of sections, not a card: the card chrome moved to
+   .connect-card so the brand block and the troubleshooting disclosure can
+   sit outside it. */
+.connect-screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(26rem, calc(100vw - 2rem));
+  margin: auto;
+  padding: 1.4rem 0;
+}
+
+h1 {
+  font-size: 1.45rem;
+  font-weight: 750;
+  letter-spacing: -0.022em;
+  line-height: 1.15;
+  margin: 0 0 0.4rem;
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+  line-height: 1.5;
+  margin: 0 0 1.4rem;
+}
+
+label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  margin: 0.75rem 0 0.45rem;
+}
+
+input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.8rem 0.9rem;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  border-radius: 0.7rem;
+  border: 1px solid var(--border);
+  background: var(--panel-bg-raised);
+  color: var(--fg);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.4);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+input[type="text"]::placeholder {
+  color: color-mix(in srgb, var(--fg-muted) 65%, transparent);
+}
+
+input[type="text"]:focus-visible {
+  border-color: var(--accent);
+  outline-offset: 1px;
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.4),
+    0 0 0 3px rgba(var(--accent-rgb), 0.22);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+#connect-btn,
+.panel button.primary-action {
+  position: relative;
+  width: 100%;
+  padding: 0.85rem;
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  border-radius: 0.7rem;
+  border: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0) 55%),
+    linear-gradient(180deg, var(--accent-active), var(--accent));
+  color: var(--accent-fg);
+  cursor: pointer;
+  transition:
+    transform 0.08s,
+    filter 0.15s,
+    box-shadow 0.15s;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.35) inset,
+    0 -2px 6px rgba(0, 0, 0, 0.25) inset,
+    0 6px 16px -4px rgba(var(--accent-rgb), 0.55),
+    0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+#connect-btn:hover,
+.panel button.primary-action:hover {
+  filter: brightness(1.07);
+}
+
+#connect-btn:active,
+.panel button.primary-action:active {
+  transform: translateY(1px) scale(0.985);
+  box-shadow:
+    inset 0 3px 7px rgba(0, 0, 0, 0.35),
+    0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+button:disabled {
+  background: var(--border);
+  color: var(--fg-muted);
+  cursor: not-allowed;
+  box-shadow: none;
+  filter: none;
+  transform: none;
+}
+
+.status {
+  margin-top: 1.4rem;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 999px;
+  background: var(--chip-bg);
+  /* A touch brighter than --border: this pill sits on the darker top bar,
+     where the shared token measured 2.8:1 against its surroundings. */
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 3px rgba(0, 0, 0, 0.4);
+  transition:
+    border-color 0.2s,
+    color 0.2s;
+}
+
+#status-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--fg-muted);
+  flex-shrink: 0;
+  transition:
+    background 0.2s,
+    box-shadow 0.2s;
+}
+
+.status[data-state="connected"] {
+  border-color: rgba(var(--ok-rgb), 0.75);
+}
+
+.status[data-state="connected"] #status-dot {
+  background: var(--ok);
+  box-shadow:
+    0 0 0 3px rgba(var(--ok-rgb), 0.18),
+    0 0 8px rgba(var(--ok-rgb), 0.9);
+}
+
+.status[data-state="error"],
+.status[data-state="lost"] {
+  border-color: rgba(var(--danger-rgb), 0.8);
+}
+
+.status[data-state="error"] #status-dot,
+.status[data-state="lost"] #status-dot {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px rgba(var(--danger-rgb), 0.18);
+}
+
+.status[data-state="connecting"] {
+  border-color: rgba(var(--warn-rgb), 0.75);
+}
+
+.status[data-state="connecting"] #status-dot {
+  background: var(--warn);
+  box-shadow: 0 0 0 3px rgba(var(--warn-rgb), 0.18);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status[data-state="connecting"] #status-dot {
+    animation: none;
+  }
+}
+
+/* ---- Controller screen ---- */
+
+.controller-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.topbar {
+  position: relative;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.7rem;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0));
+}
+
+/* Hairline separator under the bar, brightest in the middle. */
+.topbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.16) 25%, rgba(255, 255, 255, 0.16) 75%, transparent);
+  pointer-events: none;
+}
+
+.topbar .status {
+  margin-top: 0;
+  font-size: 0.78rem;
+  padding: 0.32rem 0.7rem;
+  gap: 0.45rem;
+}
+
+.edit-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1 1 100%;
+  order: 3;
+  padding-top: 0.15rem;
+}
+
+.edit-toolbar button,
+.file-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.36rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--chip-bg);
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 550;
+  line-height: 1.2;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 1px 2px rgba(0, 0, 0, 0.35);
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    transform 0.08s;
+}
+
+.edit-toolbar button:hover,
+.file-label:hover {
+  background: var(--panel-bg-raised);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.edit-toolbar button:active,
+.file-label:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+.edit-toolbar button[data-add] {
+  color: var(--accent-active);
+}
+
+.edit-toolbar #done-editing {
+  background: linear-gradient(180deg, var(--accent-active), var(--accent));
+  border-color: transparent;
+  color: var(--accent-fg);
+  font-weight: 700;
+  box-shadow: 0 3px 10px -3px rgba(var(--accent-rgb), 0.7);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.topbar-actions button {
+  padding: 0.42rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--chip-bg);
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 550;
+  line-height: 1.2;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 1px 2px rgba(0, 0, 0, 0.35);
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    transform 0.08s;
+}
+
+.topbar-actions button:hover {
+  background: var(--panel-bg-raised);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.topbar-actions button:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+#settings-btn {
+  width: 2.05rem;
+  padding: 0.42rem 0;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+#disconnect-btn {
+  color: color-mix(in srgb, var(--danger) 78%, var(--fg));
+}
+
+#disconnect-btn:hover {
+  border-color: color-mix(in srgb, var(--danger) 55%, var(--border));
+}
+
+.controls-surface {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+  box-sizing: border-box;
+}
+
+/* Static vignette so the play surface reads as a moulded controller face
+   rather than a flat page. Painted once; never re-rendered on input. */
+.controls-surface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--surface-vignette);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.control {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  z-index: 1;
+  transition:
+    box-shadow 0.08s ease-out,
+    border-color 0.08s ease-out,
+    background 0.08s ease-out,
+    transform 0.08s ease-out;
+}
+
+/* ---- Face / shoulder buttons ---- */
+
+.button-control {
+  border-radius: 50%;
+  background: var(--shell-inner), var(--shell), var(--control-bg);
+  border: 1px solid var(--control-border);
+  box-shadow:
+    var(--rim),
+    var(--raise);
+  font-size: 0.85rem;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  color: var(--fg);
+  text-shadow: var(--label-emboss);
+  overflow: hidden;
+}
+
+/* Specular gloss cap -- the single highlight that makes the dome read as
+   convex. Fades on press so the button looks to sink away from the light. */
+.button-control::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--shell-gloss);
+  pointer-events: none;
+  transition: opacity 0.08s ease-out;
+}
+
+/* Per-button tint ring, in the colour language of a real gamepad. */
+.button-control[data-control-id="face-a"] {
+  --tint: var(--ok-rgb);
+}
+.button-control[data-control-id="face-b"] {
+  --tint: var(--danger-rgb);
+}
+.button-control[data-control-id="face-x"] {
+  --tint: var(--accent-rgb);
+}
+.button-control[data-control-id="face-y"] {
+  --tint: var(--warn-rgb);
+}
+
+.button-control[data-control-id^="face-"] {
+  border-color: rgba(var(--tint), 0.5);
+  color: color-mix(in srgb, rgb(var(--tint)) 55%, var(--fg));
+}
+
+/* Shoulder bumpers are rounded bars, not discs -- reads as LB/RB at a glance. */
+.button-control[data-control-id="lb"],
+.button-control[data-control-id="rb"] {
+  border-radius: 0.85rem;
+}
+
+.button-pill {
+  border-radius: 999px;
+  font-size: 0.72rem;
+  letter-spacing: 0.01em;
+  font-weight: 700;
+}
+
+.button-control.active {
+  background: var(--control-active-bg);
+  border-color: var(--accent-active);
+  box-shadow:
+    var(--press),
+    0 0 0 4px rgba(var(--tint, var(--accent-rgb)), 0.16),
+    0 0 22px -4px rgba(var(--tint, var(--accent-rgb)), 0.7);
+  color: var(--fg);
+  transform: translate(-50%, -50%) scale(0.94);
+}
+
+.button-control.active::before {
+  opacity: 0.15;
+}
+
+.button-control[data-control-id^="face-"].active {
+  background:
+    linear-gradient(180deg, rgba(var(--tint), 0.85), rgba(var(--tint), 0.5)),
+    var(--control-active-bg);
+  border-color: rgb(var(--tint));
+}
+
+/* ---- D-pad: one moulded cross ---- */
+
+.dpad-control {
+  --plus: polygon(
+    33% 0,
+    67% 0,
+    67% 33%,
+    100% 33%,
+    100% 67%,
+    67% 67%,
+    67% 100%,
+    33% 100%,
+    33% 67%,
+    0 67%,
+    0 33%,
+    33% 33%
+  );
+  background: transparent;
+  /* box-shadow would be clipped away by clip-path, so the cast shadow of the
+     cross comes from a drop-shadow on the (small, rarely repainted) host. */
+  filter: var(--dpad-cast);
+}
+
+.dpad-control::before,
+.dpad-control::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  clip-path: var(--plus);
+}
+
+/* The moulded plastic. Uses a shallower falloff than the buttons: the cross
+   is tall, and the full button gradient left the lower arm nearly black. */
+.dpad-control::before {
+  background: var(--shell-gloss), var(--dpad-shell), var(--control-bg);
+}
+
+/* Rim light along the top edge, occlusion toward the base. */
+.dpad-control::after {
+  background: var(
+    --dpad-light,
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.2),
+      rgba(255, 255, 255, 0) 14%,
+      rgba(0, 0, 0, 0) 58%,
+      rgba(0, 0, 0, 0.42)
+    )
+  );
+}
+
+/* Centre hub: positioned so it paints above both arms and hides the seam
+   where they cross, giving a single continuous moulded cross. */
+.dpad-indicator {
+  position: relative;
+  z-index: 2;
+  width: 36%;
+  height: 36%;
+  border-radius: 32%;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 62%),
+    linear-gradient(180deg, #333a4a, #1d212b);
+  border: 1px solid var(--control-border);
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.55),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.16),
+    0 1px 2px rgba(0, 0, 0, 0.5);
+  transition:
+    background 0.05s,
+    box-shadow 0.08s;
+}
+
+/* Directional lighting: only the pressed arm lights up (each gradient fades
+   out before it reaches the hub), and the whole cross tilts on that axis, so
+   a press reads as a physical rocker rather than a colour swap. */
+/* Each glow is a background *layer* sized and positioned to exactly one arm,
+   so a diagonal lights two arms and never spills across the hub. */
+.dpad-control[data-direction*="up"] {
+  --lit-up: linear-gradient(180deg, rgba(var(--accent-rgb), 0.95), rgba(var(--accent-rgb), 0.16) 72%, rgba(var(--accent-rgb), 0))
+    50% 0% / 34% 34% no-repeat;
+}
+.dpad-control[data-direction*="down"] {
+  --lit-down: linear-gradient(0deg, rgba(var(--accent-rgb), 0.95), rgba(var(--accent-rgb), 0.16) 72%, rgba(var(--accent-rgb), 0))
+    50% 100% / 34% 34% no-repeat;
+}
+.dpad-control[data-direction*="left"] {
+  --lit-left: linear-gradient(270deg, rgba(var(--accent-rgb), 0.95), rgba(var(--accent-rgb), 0.16) 72%, rgba(var(--accent-rgb), 0))
+    0% 50% / 34% 34% no-repeat;
+}
+.dpad-control[data-direction*="right"] {
+  --lit-right: linear-gradient(90deg, rgba(var(--accent-rgb), 0.95), rgba(var(--accent-rgb), 0.16) 72%, rgba(var(--accent-rgb), 0))
+    100% 50% / 34% 34% no-repeat;
+}
+
+.dpad-control[data-direction]:not([data-direction=""]) {
+  --dpad-light:
+    var(--lit-up, linear-gradient(rgba(0, 0, 0, 0) 0 0)),
+    var(--lit-down, linear-gradient(rgba(0, 0, 0, 0) 0 0)),
+    var(--lit-left, linear-gradient(rgba(0, 0, 0, 0) 0 0)),
+    var(--lit-right, linear-gradient(rgba(0, 0, 0, 0) 0 0)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 14%, rgba(0, 0, 0, 0) 58%, rgba(0, 0, 0, 0.42));
+}
+
+.dpad-control[data-direction*="up"] {
+  transform: translate(-50%, -50%) perspective(360px) rotateX(9deg);
+}
+.dpad-control[data-direction*="down"] {
+  transform: translate(-50%, -50%) perspective(360px) rotateX(-9deg);
+}
+.dpad-control[data-direction*="left"] {
+  transform: translate(-50%, -50%) perspective(360px) rotateY(-9deg);
+}
+.dpad-control[data-direction*="right"] {
+  transform: translate(-50%, -50%) perspective(360px) rotateY(9deg);
+}
+.dpad-control[data-direction="up-left"] {
+  transform: translate(-50%, -50%) perspective(360px) rotateX(7deg) rotateY(-7deg);
+}
+.dpad-control[data-direction="up-right"] {
+  transform: translate(-50%, -50%) perspective(360px) rotateX(7deg) rotateY(7deg);
+}
+.dpad-control[data-direction="down-left"] {
+  transform: translate(-50%, -50%) perspective(360px) rotateX(-7deg) rotateY(-7deg);
+}
+.dpad-control[data-direction="down-right"] {
+  transform: translate(-50%, -50%) perspective(360px) rotateX(-7deg) rotateY(7deg);
+}
+
+.dpad-control[data-direction]:not([data-direction=""]) .dpad-indicator {
+  background: var(--control-active-bg);
+  border-color: var(--accent-active);
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.45),
+    0 0 0 3px rgba(var(--accent-rgb), 0.18),
+    0 0 16px -2px rgba(var(--accent-rgb), 0.7);
+}
+
+/* ---- Analog sticks: concave dish + domed knob ---- */
+
+.stick-control {
+  border-radius: 50%;
+  /* Deep dish: darkest at the top (where the light doesn't reach the far
+     wall) with a lit lower lip -- the inverse of the convex buttons. */
+  background:
+    radial-gradient(circle at 50% 118%, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 52%),
+    radial-gradient(circle at 50% 22%, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.18) 58%, rgba(255, 255, 255, 0.05) 100%),
+    linear-gradient(180deg, #1c202a, #12151c);
+  border: 1px solid var(--control-border);
+  box-shadow:
+    inset 0 10px 16px rgba(0, 0, 0, 0.7),
+    inset 0 -5px 10px rgba(255, 255, 255, 0.07),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.5),
+    0 1px 0 rgba(255, 255, 255, 0.09),
+    0 6px 14px -6px rgba(0, 0, 0, 0.7);
+}
+
+/* Raised outer collar around the well. */
+.stick-control::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 3px 8px -3px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+
+.stick-knob {
+  width: 44%;
+  height: 44%;
+  border-radius: 50%;
+  /* Dome: tight specular near the top, warm bounce light from the dish. */
+  background:
+    radial-gradient(circle at 50% 24%, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.06) 42%, rgba(255, 255, 255, 0) 58%),
+    radial-gradient(circle at 50% 128%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 55%),
+    linear-gradient(172deg, var(--accent-active) 0%, var(--accent) 52%, #2a55b0 100%);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -7px 12px rgba(0, 0, 0, 0.4),
+    0 2px 3px rgba(0, 0, 0, 0.55),
+    0 7px 14px -4px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  /* Own compositor layer: the JS writes transform here every frame. */
+  will-change: transform;
+  transition: transform 0.03s linear;
+}
+
+/* ---- Triggers: analog paddles ---- */
+
+.trigger-control {
+  border-radius: 0.55rem 0.55rem 0.9rem 0.9rem;
+  background: var(--shell-inner), var(--shell), var(--control-bg);
+  border: 1px solid var(--control-border);
+  box-shadow:
+    var(--rim),
+    var(--raise);
+  overflow: hidden;
+  flex-direction: column-reverse;
+  isolation: isolate;
+}
+
+/* Glass gloss over the whole paddle, above the travelling fill. */
+.trigger-control::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.02) 42%, rgba(0, 0, 0, 0.22));
+  pointer-events: none;
+  z-index: 2;
+}
+
+.trigger-fill {
+  width: 100%;
+  height: 0%;
+  /* Bright lit edge at the top of the travel, deepening toward the base. */
+  background: linear-gradient(180deg, var(--accent-active), var(--accent) 45%, #2c58b4);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.75),
+    inset 0 0 12px rgba(var(--accent-rgb), 0.55);
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  z-index: 0;
+  transition: height 0.03s linear;
+}
+
+.trigger-label {
+  position: relative;
+  z-index: 3;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding-bottom: 0.3rem;
+  /* Has to stay legible both against the shell and against the fill that
+     travels up over it. */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+/* ---- Layout editor ---- */
+
+.edit-control {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(var(--accent-rgb), 0.1) 0 8px,
+      rgba(var(--accent-rgb), 0.03) 8px 16px
+    );
+  border: 2px dashed var(--accent);
+  border-radius: 0.6rem;
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--accent-rgb), 0.18),
+    0 4px 14px -6px rgba(0, 0, 0, 0.8);
+  cursor: grab;
+  touch-action: none;
+}
+
+/* Label over mapping, stacked. */
+.edit-control {
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.edit-control:active {
+  cursor: grabbing;
+  border-style: solid;
+  background: rgba(var(--accent-rgb), 0.2);
+}
+
+.edit-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  text-align: center;
+  padding: 0 0.2rem;
+  text-shadow: var(--label-emboss);
+}
+
+.edit-remove {
+  position: absolute;
+  top: -0.6rem;
+  right: -0.6rem;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  /* 1.4rem measured 22.4px, under the 24px floor this project commits to
+     in docs/07-ACCESSIBILITY.md. */
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  border: none;
+  background: var(--danger);
+  color: #2b0505;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 6px -1px rgba(0, 0, 0, 0.7);
+  transition: transform 0.1s;
+}
+
+.edit-remove:hover {
+  transform: scale(1.12);
+}
+
+/* The resize handle stays on every control: unlike delete it is the only
+   pointer affordance for resizing, and hiding it behind selection would
+   make resizing a two-step gesture. */
+.edit-resize {
+  position: absolute;
+  bottom: -0.35rem;
+  right: -0.35rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--fg);
+  box-shadow: 0 2px 5px -1px rgba(0, 0, 0, 0.7);
+  cursor: nwse-resize;
+}
+
+/* ---- Settings overlay ---- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 5, 10, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 10;
+  touch-action: auto;
+}
+
+.panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.012)), var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1.05rem 1.25rem 1.25rem;
+  width: min(24rem, 90vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: var(--panel-shadow);
+  accent-color: var(--accent);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.7rem;
+  margin-bottom: 0.35rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel h2 {
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+#close-settings {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--fg-muted);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+#close-settings:hover {
+  background: var(--panel-bg-raised);
+  border-color: var(--border);
+  color: var(--fg);
+}
+
+.panel .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0;
+  padding: 0.6rem 0;
+  font-size: 0.88rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+}
+
+.panel .row:last-child {
+  border-bottom: none;
+}
+
+/* .row is a <label>; the uppercase global label styling would shout here. */
+.panel label.row {
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.panel .row input[type="range"] {
+  flex: 1;
+  max-width: 55%;
+  height: 1.5rem;
+  cursor: pointer;
+}
+
+.panel .row input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.panel fieldset {
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  margin-top: 1.1rem;
+  padding: 0.2rem 0.9rem 0.6rem;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.panel legend {
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--fg-muted);
+  padding: 0 0.4rem;
+}
+
+.rotate-block {
+  display: none;
+}
+
+@media (orientation: portrait) {
+  .controls-surface,
+  .edit-toolbar,
+  #edit-btn,
+  #settings-btn {
+    display: none !important;
+  }
+
+  .controller-screen {
+    position: relative;
+  }
+
+  .controller-screen::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 5;
+  }
+
+  .rotate-block {
+    position: fixed;
+    inset: 0;
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    text-align: center;
+    padding: 2rem;
+  }
+
+  .rotate-icon {
+    font-size: 2.75rem;
+    animation: rotate-hint 1.8s ease-in-out infinite;
+  }
+
+  .rotate-block h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    margin: 0;
+  }
+
+  .rotate-block p {
+    margin: 0;
+    color: var(--fg-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    max-width: 20rem;
+  }
+}
+
+@keyframes rotate-hint {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-90deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rotate-icon {
+    animation: none;
+  }
+
+  /* No motion anywhere -- state changes still apply, they just apply
+     instantly rather than easing. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+:root[data-theme="carbon"] {
+  --bg: #0a0a0b;
+  --panel-bg: #17171a;
+  --panel-bg-raised: #1f1f23;
+  --border: #5d5d66;
+  --fg-muted: #9c9ca6;
+  --shell: linear-gradient(177deg, #3c3c42 0%, #2a2a2f 42%, #1c1c20 78%, #151517 100%);
+  --dpad-shell: linear-gradient(177deg, #45454c 0%, #35353b 46%, #26262b 100%);
+  --chip-bg: linear-gradient(180deg, #2c2c31, #1e1e22);
+}
+
+:root[data-theme="nebula"] {
+  --bg: #100c19;
+  --panel-bg: #1c1630;
+  --panel-bg-raised: #241d3c;
+  --border: #665a91;
+  --fg-muted: #a79dc4;
+  --shell: linear-gradient(177deg, #453a63 0%, #322a4b 42%, #241e37 78%, #1b1729 100%);
+  --dpad-shell: linear-gradient(177deg, #4d4170 0%, #3b3257 46%, #2b2440 100%);
+  --chip-bg: linear-gradient(180deg, #2f2749, #201a34);
+}
+
+:root[data-theme="sunset"] {
+  --bg: #160e0b;
+  --panel-bg: #241813;
+  --panel-bg-raised: #2e1f18;
+  --border: #86604c;
+  --fg-muted: #c4a596;
+  --shell: linear-gradient(177deg, #5a4235 0%, #422f26 42%, #2f221b 78%, #241a15 100%);
+  --dpad-shell: linear-gradient(177deg, #63483a 0%, #4b372c 46%, #382820 100%);
+  --chip-bg: linear-gradient(180deg, #3a281f, #261a14);
+}
+
+:root[data-theme="mint"] {
+  --bg: #07130f;
+  --panel-bg: #10231c;
+  --panel-bg-raised: #162e25;
+  --border: #457f68;
+  --fg-muted: #93bfae;
+  --shell: linear-gradient(177deg, #2f5748 0%, #234036 42%, #192e27 78%, #13241e 100%);
+  --dpad-shell: linear-gradient(177deg, #366252 0%, #2a4c3f 46%, #1f3830 100%);
+  --chip-bg: linear-gradient(180deg, #1d3d32, #142a22);
+}
+
+/* ---- Runtime display switches (settings.ts) ---- */
+
+/* The user's own reduce-motion preference, independent of the OS setting
+   -- someone may want the OS animating normally and this app still. */
+:root.reduce-motion *,
+:root.reduce-motion *::before,
+:root.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+:root.no-surface-glow body {
+  background-image: none;
+}
+
+:root.no-surface-glow .controls-surface::before {
+  opacity: 0;
+}
+
+/* Opacity applies to the play controls only. Editor controls stay fully
+   opaque: editing a layout you deliberately made 40% transparent is a
+   needless struggle, and nothing is being played over at that moment. */
+.controls-surface .control:not(.edit-control) {
+  opacity: var(--control-opacity, 1);
+}
+
+.controls-surface.hide-labels .button-control {
+  color: transparent;
+}
+
+.controls-surface.hide-labels .trigger-label {
+  opacity: 0;
+}
+
+/* ---- Per-control tint ---- */
+
+.control.tinted {
+  border-color: rgba(var(--tint-rgb), 0.55);
+  box-shadow:
+    var(--raise),
+    var(--rim),
+    0 0 0 1px rgba(var(--tint-rgb), 0.3);
+}
+
+.button-control.tinted.active {
+  background-image: linear-gradient(180deg, rgba(var(--tint-rgb), 0.8), rgba(var(--tint-rgb), 0.56));
+  border-color: var(--tint);
+}
+
+.stick-control.tinted .stick-knob,
+.dpad-control.tinted .dpad-indicator {
+  background-image: linear-gradient(180deg, rgba(var(--tint-rgb), 0.4), rgba(var(--tint-rgb), 0.14));
+}
+
+.trigger-control.tinted .trigger-fill {
+  background-image: linear-gradient(180deg, rgba(var(--tint-rgb), 0.85), rgba(var(--tint-rgb), 0.5));
+}
+
+/* ---- Shapes ---- */
+
+.button-square {
+  border-radius: 0.9rem;
+}
+
+.button-square::before {
+  border-radius: 0.75rem 0.75rem 50% 50%;
+}
+
+/* ---- Stick return animation ---- */
+
+.stick-knob.snap-back {
+  transition: transform 0.16s cubic-bezier(0.22, 1.2, 0.4, 1);
+}
+
+/* ---- Trigger actuation point ---- */
+
+.trigger-control.actuated {
+  border-color: rgba(var(--accent-rgb), 0.7);
+}
+
+.trigger-control.actuated .trigger-label {
+  color: var(--fg);
+}
+
+/* ============================================================
+   TOPBAR ADDITIONS
+   ============================================================ */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.profile-picker {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  min-width: 0;
+}
+
+.profile-picker select {
+  appearance: none;
+  background: var(--chip-bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.3rem 1.6rem 0.3rem 0.7rem;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  max-width: 8.5rem;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  /* The chevron is drawn rather than relying on the native one, which the
+     appearance reset removes and which no two mobile browsers agree on. */
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--fg-muted) 50%),
+    linear-gradient(135deg, var(--fg-muted) 50%, transparent 50%),
+    var(--chip-bg);
+  background-position:
+    right 0.72rem center,
+    right 0.42rem center,
+    0 0;
+  background-size:
+    5px 5px,
+    5px 5px,
+    auto;
+  background-repeat: no-repeat;
+}
+
+.profile-picker select:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.topbar-actions button.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ============================================================
+   EDIT TOOLBAR
+   ============================================================ */
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding-right: 0.45rem;
+  /* A hairline between groups reads faster than spacing alone once the bar
+     holds a dozen small buttons. */
+  border-right: 1px solid var(--border);
+}
+
+.toolbar-group:last-of-type {
+  border-right: none;
+}
+
+.edit-toolbar button.on {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.14);
+}
+
+.edit-toolbar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.edit-toolbar #done-editing,
+.edit-toolbar button.primary {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: transparent;
+  font-weight: 700;
+}
+
+#undo-edit,
+#redo-edit {
+  font-size: 1rem;
+  line-height: 1;
+  min-width: 2rem;
+}
+
+/* Lives on the body layer, positioned from the button's rect in JS -- see
+   the comment in editor.ts. `fixed` so it is not clipped by any scrolling
+   or masked ancestor. */
+.preset-menu {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.35rem;
+  width: min(20rem, 82vw);
+  max-height: 60vh;
+  overflow-y: auto;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  box-shadow: var(--panel-shadow);
+}
+
+.preset-menu button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.55rem;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.preset-menu button strong {
+  font-size: 0.82rem;
+}
+
+.preset-menu button span {
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: var(--fg-muted);
+}
+
+.preset-menu button:hover,
+.preset-menu button:focus-visible {
+  background: var(--panel-bg-raised);
+  border-color: var(--border);
+}
+
+/* The toolbar is the positioning context for the popover, and on a short
+   landscape screen it must be able to scroll horizontally rather than wrap
+   into a second row that eats the play surface. */
+.edit-toolbar {
+  position: relative;
+}
+
+/* ============================================================
+   EDITOR SURFACE
+   ============================================================ */
+
+.grid-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(var(--accent-rgb), 0.16) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(var(--accent-rgb), 0.16) 1px, transparent 1px);
+  background-size: var(--grid-step, 2%) var(--grid-step, 2%);
+}
+
+.edit-control.selected .edit-remove,
+.edit-control:focus-within .edit-remove {
+  display: flex;
+}
+
+.edit-control.selected {
+  border-style: solid;
+  border-color: var(--tint, var(--accent));
+  background: rgba(var(--accent-rgb), 0.22);
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--accent-rgb), 0.4),
+    0 0 0 3px rgba(var(--accent-rgb), 0.28),
+    0 6px 18px -6px rgba(0, 0, 0, 0.85);
+  z-index: 3;
+}
+
+.edit-meta {
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--fg-muted);
+  pointer-events: none;
+  text-align: center;
+  padding: 0 0.2rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edit-control[data-compact="true"] .edit-meta {
+  display: none;
+}
+
+/* The inspector is positioned against this, not against the whole screen:
+   anchored to the screen it overlapped the toolbar, making the editor's own
+   buttons unclickable behind an invisible-looking panel edge. */
+.surface-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.inspector {
+  position: absolute;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  width: min(15.5rem, 44vw);
+  display: flex;
+  flex-direction: column;
+  /* Slightly translucent: whatever the panel covers stays perceptible, so
+     it reads as a panel laid over the layout rather than as controls
+     having disappeared. */
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.012)),
+    color-mix(in srgb, var(--panel-bg) 93%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  box-shadow: var(--panel-shadow);
+  z-index: 15;
+  overflow: hidden;
+  accent-color: var(--accent);
+}
+
+/* `display: flex` above beats the [hidden] attribute's UA `display: none`,
+   which left the closed panel laid out and swallowing every tap along that
+   edge of the edit surface -- invisible, but blocking. */
+/* [hidden] loses to the display rule above without this. */
+.inspector[hidden] {
+  display: none;
+}
+
+.inspector[data-side="right"] {
+  right: 0.5rem;
+}
+
+.inspector[data-side="left"] {
+  left: 0.5rem;
+}
+
+.inspector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-bg-raised);
+}
+
+.inspector-header h3 {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspector-close {
+  flex: none;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 0.45rem;
+  border: 1px solid var(--border);
+  background: var(--chip-bg);
+  color: var(--fg);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.inspector-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.inspector-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.3rem 0.5rem;
+}
+
+.inspector-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--fg-muted);
+}
+
+.inspector-value {
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+.inspector-row input[type="range"] {
+  grid-column: 1 / -1;
+  width: 100%;
+  /* A 44px-tall hit area on a 4px-tall track: the visual weight of a
+     hairline slider with a target size that a thumb can actually land on
+     (docs/07-ACCESSIBILITY.md). */
+  height: 1.6rem;
+}
+
+.inspector-input {
+  grid-column: 1 / -1;
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--fg);
+  background: var(--panel-bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  min-height: 2rem;
+}
+
+.inspector-input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.segmented {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--panel-bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+.segmented button {
+  flex: 1;
+  padding: 0.35rem 0.2rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--fg-muted);
+  background: transparent;
+  border: none;
+  border-radius: 0.38rem;
+  cursor: pointer;
+  min-height: 1.9rem;
+}
+
+.segmented button.on {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.swatches {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.swatch {
+  width: 1.65rem;
+  height: 1.65rem;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
+
+.swatch.on {
+  border-color: var(--fg);
+  transform: scale(1.08);
+}
+
+.swatch:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* "No tint" reads as a diagonal slash rather than an empty circle, which
+   would otherwise look like a missing colour instead of a choice. */
+.swatch-default {
+  background:
+    linear-gradient(135deg, transparent 44%, var(--fg-muted) 44% 56%, transparent 56%),
+    var(--panel-bg-raised);
+}
+
+.swatch-custom {
+  border: 2px solid var(--border);
+  background: var(--panel-bg-raised);
+}
+
+.nudge-pad {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.25rem;
+}
+
+.nudge-pad button {
+  min-height: 2rem;
+  font-size: 0.85rem;
+  line-height: 1;
+  color: var(--fg);
+  background: var(--chip-bg);
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  cursor: pointer;
+}
+
+.nudge-pad button:active {
+  background: rgba(var(--accent-rgb), 0.22);
+}
+
+.inspector-actions {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.55rem 0.7rem;
+  border-top: 1px solid var(--border);
+  background: var(--panel-bg-raised);
+}
+
+.inspector-actions button {
+  flex: 1;
+  min-height: 2.1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--fg);
+  background: var(--chip-bg);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+button.danger {
+  color: var(--danger);
+  border-color: rgba(var(--danger-rgb), 0.5);
+}
+
+button.danger:hover:not(:disabled) {
+  background: rgba(var(--danger-rgb), 0.14);
+}
+
+/* ============================================================
+   SETTINGS PANEL
+   ============================================================ */
+
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(26rem, 92vw);
+  max-height: 90vh;
+  padding: 0.9rem 0 0;
+  overflow: hidden;
+}
+
+.settings-panel .panel-header {
+  padding: 0 1.1rem 0.65rem;
+}
+
+.tab-list {
+  display: flex;
+  gap: 2px;
+  margin: 0 1.1rem;
+  padding: 2px;
+  background: var(--panel-bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+}
+
+.tab-list button {
+  flex: 1;
+  min-height: 2.1rem;
+  padding: 0.3rem 0.2rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--fg-muted);
+  background: transparent;
+  border: none;
+  border-radius: 0.45rem;
+  cursor: pointer;
+}
+
+.tab-list button.on {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.tab-list button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.7rem 1.1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding-top: 0.2rem;
+}
+
+.settings-section h3 {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.panel-body .hint {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--fg-muted);
+}
+
+.switch-row,
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.42rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.slider-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
+}
+
+.switch-row span:first-child {
+  flex: 1;
+}
+
+.slider-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.slider-value {
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.slider-row input[type="range"] {
+  width: 100%;
+  height: 1.7rem;
+}
+
+/* A real checkbox styled as a switch: native keyboard behaviour and
+   announced state, with a target comfortably over 24px. */
+input[type="checkbox"].switch {
+  appearance: none;
+  flex: none;
+  position: relative;
+  width: 2.6rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: var(--panel-bg-raised);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+input[type="checkbox"].switch::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0.16rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: var(--fg-muted);
+  transform: translateY(-50%);
+  transition: transform 0.15s, background 0.15s;
+}
+
+input[type="checkbox"].switch:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+input[type="checkbox"].switch:checked::after {
+  background: var(--accent-fg);
+  transform: translate(1.06rem, -50%);
+}
+
+input[type="checkbox"].switch:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.4rem, 1fr));
+  gap: 0.4rem;
+}
+
+.theme-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.45rem 0.3rem;
+  background: var(--panel-bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.theme-card.on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.28);
+}
+
+.theme-swatch {
+  width: 100%;
+  height: 1.9rem;
+  border-radius: 0.4rem;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+
+.theme-name {
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.profile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.profile-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.5rem 0.6rem;
+  background: var(--panel-bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+}
+
+.profile-item.on {
+  border-color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.profile-use {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--fg);
+  text-align: left;
+  cursor: pointer;
+  min-height: 2.2rem;
+}
+
+.profile-use strong {
+  font-size: 0.82rem;
+}
+
+.profile-use span {
+  font-size: 0.68rem;
+  color: var(--fg-muted);
+}
+
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+button.small {
+  padding: 0.32rem 0.55rem;
+  min-height: 1.95rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--fg);
+  background: var(--chip-bg);
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  cursor: pointer;
+}
+
+button.small:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+button.full-width {
+  width: 100%;
+  min-height: 2.4rem;
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 0.6rem;
+  cursor: pointer;
+}
+
+button.full-width:hover {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+/* ---- High contrast: flatten the new surfaces too ---- */
+
+:root.high-contrast .inspector,
+:root.high-contrast .preset-menu,
+:root.high-contrast .settings-panel,
+:root.high-contrast .tab-list,
+:root.high-contrast .segmented,
+:root.high-contrast .profile-item,
+:root.high-contrast .theme-card,
+:root.high-contrast .inspector-header,
+:root.high-contrast .inspector-actions,
+:root.high-contrast .profile-picker select {
+  background: #000;
+  background-image: none;
+  border-color: #fff;
+  color: #fff;
+}
+
+:root.high-contrast .tab-list button.on,
+:root.high-contrast .segmented button.on,
+:root.high-contrast input[type="checkbox"].switch:checked {
+  background: var(--accent);
+  color: #000;
+}
+
+:root.high-contrast .edit-resize {
+  background: #fff;
+  color: #000;
+  border-color: #000;
+}
+
+:root.high-contrast .inspector-label,
+:root.high-contrast .inspector-value,
+:root.high-contrast .slider-value,
+:root.high-contrast .panel-body .hint,
+:root.high-contrast .profile-use span,
+:root.high-contrast .edit-meta {
+  color: #fff;
+}
+
+/* ---- Short landscape screens: the panels must stay usable ---- */
+
+@media (max-height: 380px) {
+  .settings-panel {
+    max-height: 96vh;
+    padding-top: 0.6rem;
+  }
+
+  .panel-body {
+    padding: 0.5rem 0.9rem 0.9rem;
+  }
+
+  .inspector {
+    top: 0.35rem;
+    bottom: 0.35rem;
+    width: min(14rem, 50vw);
+  }
+
+  .theme-grid {
+    grid-template-columns: repeat(auto-fill, minmax(4.4rem, 1fr));
+  }
+
+  .theme-swatch {
+    height: 1.5rem;
+  }
+}
+
+/* ============================================================
+   CONNECT SCREEN
+   ============================================================ */
+
+.connect-screen {
+  gap: 0.85rem;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  letter-spacing: -0.01em;
+}
+
+.brand .hint {
+  margin: 0.15rem 0 0;
+}
+
+/* A drawn mark rather than an image file: one less asset to cache, and it
+   recolours with the accent for free. */
+.brand-mark {
+  flex: none;
+  position: relative;
+  width: 2.9rem;
+  height: 2.9rem;
+  border-radius: 0.9rem;
+  background: var(--shell), var(--panel-bg);
+  border: 1px solid var(--border);
+  box-shadow: var(--raise);
+}
+
+.brand-mark::before,
+.brand-mark::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+}
+
+.brand-mark::before {
+  top: 0.95rem;
+  left: 0.6rem;
+  width: 0.62rem;
+  height: 0.62rem;
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.75);
+}
+
+.brand-mark::after {
+  top: 1.25rem;
+  right: 0.62rem;
+  width: 0.48rem;
+  height: 0.48rem;
+  background: var(--fg-muted);
+  box-shadow:
+    0 -0.52rem 0 var(--fg-muted),
+    -0.52rem 0 0 var(--fg-muted);
+}
+
+.connect-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.95rem 1rem 1rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.01)), var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  box-shadow: var(--panel-shadow);
+}
+
+.connect-card label {
+  margin: 0;
+}
+
+.input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.input-row input[type="text"] {
+  /* `width: 100%` from the base input rule plus a flexible button made the
+     field collapse to its minimum; the field takes the leftover space and
+     the button takes only what its label needs. */
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.input-row #connect-btn {
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0;
+  padding: 0.8rem 1.2rem;
+}
+
+.connect-card .hint {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.recent-hosts {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding-top: 0.2rem;
+}
+
+.recent-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.recent-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.host-chip {
+  padding: 0.32rem 0.62rem;
+  min-height: 2rem;
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+  background: var(--chip-bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.host-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.troubleshoot {
+  font-size: 0.78rem;
+  color: var(--fg-muted);
+}
+
+.troubleshoot summary {
+  cursor: pointer;
+  padding: 0.5rem 0.2rem;
+  font-weight: 600;
+  color: var(--fg);
+  /* The default marker is tiny and easy to miss on a phone. */
+  list-style: none;
+}
+
+.troubleshoot summary::before {
+  content: "▸ ";
+  color: var(--accent);
+}
+
+.troubleshoot[open] summary::before {
+  content: "▾ ";
+}
+
+.troubleshoot summary::-webkit-details-marker {
+  display: none;
+}
+
+.troubleshoot ul {
+  margin: 0.2rem 0 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  line-height: 1.5;
+}
+
+:root.high-contrast .connect-card,
+:root.high-contrast .host-chip,
+:root.high-contrast .brand-mark {
+  background: #000;
+  background-image: none;
+  border-color: #fff;
+}
+
+:root.high-contrast .troubleshoot,
+:root.high-contrast .recent-label {
+  color: #fff;
+}
+
+.edit-toolbar {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-top: 0;
+  padding-bottom: 0.1rem;
+  /* Native scrollbars would sit on top of the buttons in a 40px-tall
+     strip; the row is finger-scrollable and the group dividers make the
+     overflow legible. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  flex: 1 1 0;
+  min-width: 0;
+  order: 0;
+}
+
+.edit-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Fades the trailing edge so a clipped button reads as "there is more"
+   rather than as a rendering glitch. */
+.edit-toolbar {
+  mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 1.5rem), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 1.5rem), transparent 100%);
+}
+
+.edit-toolbar button,
+.edit-toolbar .file-label,
+.toolbar-group {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* In edit mode the status chip is the least useful thing on the bar and
+   the most expensive in width -- the connection state has its own colour
+   on the dot, which stays visible. */
+@media (max-width: 720px) {
+  .controller-screen:has(.edit-toolbar:not([hidden])) .topbar #status-text {
+    display: none;
+  }
+}
+
+/* `.small` is declared after `.danger` and both have the same specificity,
+   so a small danger button silently lost its red. Combining the classes
+   raises specificity above both rather than relying on source order. */
+button.small.danger {
+  color: var(--danger);
+  border-color: rgba(var(--danger-rgb), 0.5);
+}
+
+button.small:disabled,
+button.small.danger:disabled {
+  opacity: 0.4;
+  color: var(--fg-muted);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
+@media (max-height: 430px) {
+  .preset-menu {
+    width: min(13.5rem, 62vw);
+    /* Sized to hold all seven names without scrolling on a 320px-tall
+       screen -- a list that ends mid-word invites a scroll the user
+       should not need for seven short items. */
+    max-height: min(17rem, 84vh);
+  }
+
+  .preset-menu button {
+    padding: 0.34rem 0.6rem;
+  }
+
+  .preset-menu button strong {
+    font-size: 0.78rem;
+  }
+
+  .preset-menu button span {
+    display: none;
+  }
+}
+
+/* The connect screen is a flex column with its own gap now, so the status
+   pill's legacy 1.4rem top margin stacked on top of it and left a visible
+   dead band under the card. */
+.connect-screen .status {
+  margin-top: 0.15rem;
+}
+
+/* Sliders are a 4px track but must be a >=24px target (WCAG 2.5.8). */
+input[type="range"] {
+  min-height: 1.6rem;
+}
+
+/* Heartbeat round-trip time, shown next to the connection state. Colour is
+   a coarse quality band rather than a precise scale -- the useful question
+   is "is the network the problem?", not "is it 34ms or 38ms". */
+.status-latency {
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  padding-left: 0.5rem;
+  margin-left: 0.1rem;
+  border-left: 1px solid var(--border);
+  color: var(--fg-muted);
+}
+
+.status-latency[data-quality="good"] {
+  color: var(--ok);
+}
+
+.status-latency[data-quality="poor"] {
+  color: var(--warn);
+}
+
+:root.high-contrast .status-latency {
+  color: #fff;
+}
+
+/* Must stay after the [data-theme] blocks: same specificity, order wins. */
+:root.high-contrast {
+  --bg: #000;
+  --fg: #fff;
+  --fg-muted: #ddd;
+  --panel-bg: #000;
+  --panel-bg-raised: #111;
+  --border: #fff;
+  --accent: #ffdd00;
+  --accent-active: #ffee66;
+  --control-bg: #000;
+  --control-border: #fff;
+  --control-active-bg: #ffdd00;
+  --focus-ring: #ffdd00;
+
+  /* Flatten every decorative layer: high contrast must stay high contrast. */
+  --accent-rgb: 255, 221, 0;
+  --ok-rgb: 255, 255, 255;
+  --danger-rgb: 255, 255, 255;
+  --warn-rgb: 255, 255, 255;
+  /* `none` keeps these valid as background-image layers while painting
+     nothing, so every decorated surface falls back to flat black. */
+  --shell: none;
+  --shell-gloss: none;
+  --shell-inner: none;
+  --dpad-cast: none;
+  --dpad-shell: none;
+  --raise: none;
+  --rim: none;
+  --press: none;
+  --label-emboss: none;
+  --panel-shadow: none;
+  --chip-bg: #000;
+  --page-glow: none;
+  --surface-vignette: none;
+}

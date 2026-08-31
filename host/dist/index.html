@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Controller Host</title>
+    <style>
+      :root {
+        --bg: #111;
+        --panel: #1a1a1c;
+        --line: #2c2c30;
+        --text: #eee;
+        --muted: #8b8b92;
+        --accent: #4ade80;
+        --warn: #f4b942;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        padding: 1.5rem 1rem;
+      }
+      main {
+        width: 100%;
+        max-width: 620px;
+      }
+      h1 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0;
+      }
+      h2 {
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 0 0 0.6rem;
+      }
+      header {
+        text-align: center;
+      }
+      /* The phone URL is the one thing a user needs from this window, so
+         it gets the size and the copy button; the raw WebSocket address is
+         demoted to a fallback line for manual entry. */
+      #web-address {
+        font-size: 1.55rem;
+        font-family: ui-monospace, monospace;
+        margin-top: 0.5rem;
+        color: var(--fg);
+        user-select: all;
+        word-break: break-all;
+      }
+      #copy-url {
+        margin-top: 0.6rem;
+        padding: 0.35rem 0.85rem;
+        font: inherit;
+        font-size: 0.8rem;
+        color: var(--fg);
+        background: #23262e;
+        border: 1px solid #3a3e48;
+        border-radius: 999px;
+        cursor: pointer;
+      }
+      #copy-url:hover {
+        border-color: var(--accent);
+      }
+      #manual {
+        margin-top: 0.7rem;
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+      #address {
+        font-family: ui-monospace, monospace;
+        user-select: all;
+      }
+      #hint {
+        margin-top: 0.4rem;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      #status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        margin-top: 0.9rem;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      #status-dot {
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 50%;
+        background: #55555c;
+        transition: background 0.15s;
+      }
+      #status.connected #status-dot {
+        background: var(--accent);
+      }
+      #status.connected {
+        color: var(--accent);
+      }
+      #startup-error {
+        display: none;
+        margin-top: 0.9rem;
+        padding: 0.6rem 0.8rem;
+        border-radius: 0.5rem;
+        border: 1px solid #7a3a3a;
+        background: #2a1414;
+        color: #ffb4b4;
+        font-size: 0.8rem;
+        line-height: 1.45;
+        text-align: left;
+      }
+      #vigembus-warning {
+        display: none;
+        margin: 1rem auto 0;
+        padding: 0.6rem 0.8rem;
+        border: 1px solid var(--warn);
+        border-radius: 6px;
+        font-size: 0.85rem;
+        color: var(--warn);
+        text-align: left;
+      }
+      #vigembus-warning a {
+        color: var(--warn);
+      }
+      section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0.9rem 1rem;
+        margin-top: 1.1rem;
+      }
+      .buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+      }
+      .btn {
+        min-width: 3.1rem;
+        text-align: center;
+        padding: 0.35rem 0.55rem;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        font-size: 0.8rem;
+        font-family: ui-monospace, monospace;
+        color: #6f6f77;
+        background: #151517;
+        transition:
+          background 0.06s,
+          color 0.06s,
+          border-color 0.06s;
+      }
+      .btn.on {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #06210f;
+        font-weight: 700;
+      }
+      .analog {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: flex-start;
+      }
+      .stick {
+        text-align: center;
+        font-size: 0.72rem;
+        color: var(--muted);
+        font-family: ui-monospace, monospace;
+      }
+      .pad {
+        position: relative;
+        width: 104px;
+        height: 104px;
+        border: 1px solid var(--line);
+        border-radius: 50%;
+        background: #151517;
+        margin-bottom: 0.35rem;
+      }
+      .pad::before,
+      .pad::after {
+        content: "";
+        position: absolute;
+        background: var(--line);
+      }
+      .pad::before {
+        left: 0;
+        right: 0;
+        top: 50%;
+        height: 1px;
+      }
+      .pad::after {
+        top: 0;
+        bottom: 0;
+        left: 50%;
+        width: 1px;
+      }
+      .dot {
+        position: absolute;
+        width: 14px;
+        height: 14px;
+        margin: -7px 0 0 -7px;
+        border-radius: 50%;
+        background: var(--accent);
+        left: 50%;
+        top: 50%;
+      }
+      .triggers {
+        flex: 1 1 180px;
+        min-width: 170px;
+      }
+      .trigger-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.75rem;
+        font-family: ui-monospace, monospace;
+        color: var(--muted);
+        margin-bottom: 0.55rem;
+      }
+      .trigger-row .label {
+        width: 1.6rem;
+      }
+      .bar {
+        flex: 1;
+        height: 10px;
+        background: #151517;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        overflow: hidden;
+      }
+      .bar > i {
+        display: block;
+        height: 100%;
+        width: 0%;
+        background: var(--accent);
+      }
+      .trigger-row .val {
+        width: 2.2rem;
+        text-align: right;
+      }
+      #note {
+        margin-top: 1.1rem;
+        font-size: 0.78rem;
+        line-height: 1.5;
+        color: var(--muted);
+        border-left: 2px solid var(--line);
+        padding-left: 0.75rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Controller Host</h1>
+        <div id="web-address">starting…</div>
+        <div id="hint">Open this address in your phone's browser — it connects itself.</div>
+        <button id="copy-url" type="button">Copy address</button>
+        <div id="manual">
+          Typing it in by hand instead? Use <span id="address">…</span> on the connect screen.
+        </div>
+        <div id="status"><span id="status-dot"></span><span id="status-text">Waiting for a phone to connect…</span></div>
+        <div id="startup-error"></div>
+        <div id="vigembus-warning">
+          ViGEmBus driver not detected. Install it from
+          <a href="https://github.com/ViGEm/ViGEmBus/releases" target="_blank" rel="noopener"
+            >github.com/ViGEm/ViGEmBus/releases</a
+          >, then restart this app.
+        </div>
+      </header>
+
+      <section>
+        <h2>Live input</h2>
+        <div class="buttons" id="buttons"></div>
+      </section>
+
+      <section>
+        <h2>Sticks &amp; triggers</h2>
+        <div class="analog">
+          <div class="stick">
+            <div class="pad"><div class="dot" id="dot-l"></div></div>
+            <div id="ls-val">L 0, 0</div>
+          </div>
+          <div class="stick">
+            <div class="pad"><div class="dot" id="dot-r"></div></div>
+            <div id="rs-val">R 0, 0</div>
+          </div>
+          <div class="triggers">
+            <div class="trigger-row">
+              <span class="label">LT</span>
+              <span class="bar"><i id="lt-bar"></i></span>
+              <span class="val" id="lt-val">0</span>
+            </div>
+            <div class="trigger-row">
+              <span class="label">RT</span>
+              <span class="bar"><i id="rt-bar"></i></span>
+              <span class="val" id="rt-val">0</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div id="note">
+        Windows' “Game Controllers” (joy.cpl) test page will show this pad in its list but
+        will <strong>not</strong> show its buttons or axes moving. That page reads the old
+        DirectInput API, which Xbox-type controllers — real ones included — don't report
+        through. It's expected, and nothing is wrong. This monitor and your games both read
+        the same XInput state the pad actually publishes.
+      </div>
+    </main>
+
+    <script type="module">
+      const { listen } = window.__TAURI__.event;
+      const { invoke } = window.__TAURI__.core;
+
+      // Button bit positions — must match protocol/FRAME_LAYOUT.md and the
+      // host's gamepad.rs wire_bit module.
+      const BUTTONS = [
+        ["A", 0],
+        ["B", 1],
+        ["X", 2],
+        ["Y", 3],
+        ["LB", 8],
+        ["RB", 9],
+        ["L3", 10],
+        ["R3", 11],
+        ["Start", 12],
+        ["Select", 13],
+        ["Up", 4],
+        ["Down", 5],
+        ["Left", 6],
+        ["Right", 7],
+      ];
+
+      const cells = new Map();
+      const buttonsEl = document.getElementById("buttons");
+      for (const [name, bit] of BUTTONS) {
+        const el = document.createElement("div");
+        el.className = "btn";
+        el.textContent = name;
+        buttonsEl.appendChild(el);
+        cells.set(bit, el);
+      }
+
+      const el = (id) => document.getElementById(id);
+      // Half the pad's inner travel, in px, for the stick dots.
+      const TRAVEL = 44;
+
+      function place(dot, x, y) {
+        // Wire axes are i16 with +Y up; CSS top grows downward, so negate y.
+        const px = (Math.max(-32767, x) / 32767) * TRAVEL;
+        const py = (-Math.max(-32767, y) / 32767) * TRAVEL;
+        dot.style.transform = `translate(${px.toFixed(1)}px, ${py.toFixed(1)}px)`;
+      }
+
+      function render(s) {
+        for (const [bit, cell] of cells) {
+          cell.classList.toggle("on", (s.buttons & (1 << bit)) !== 0);
+        }
+        place(el("dot-l"), s.left_stick_x, s.left_stick_y);
+        place(el("dot-r"), s.right_stick_x, s.right_stick_y);
+        el("ls-val").textContent = `L ${s.left_stick_x}, ${s.left_stick_y}`;
+        el("rs-val").textContent = `R ${s.right_stick_x}, ${s.right_stick_y}`;
+        el("lt-bar").style.width = `${(s.left_trigger / 255) * 100}%`;
+        el("rt-bar").style.width = `${(s.right_trigger / 255) * 100}%`;
+        el("lt-val").textContent = s.left_trigger;
+        el("rt-val").textContent = s.right_trigger;
+      }
+
+      listen("server-address", (event) => {
+        el("address").textContent = event.payload;
+      });
+      listen("web-address", (event) => {
+        // An empty payload means the client bundle was not found, so the
+        // page cannot be served -- say that plainly instead of showing a
+        // URL that would 404.
+        if (!event.payload) {
+          el("web-address").textContent = "phone page unavailable";
+          el("hint").textContent =
+            "Run `npm run build` in the client folder, then restart this app.";
+          el("copy-url").style.display = "none";
+          return;
+        }
+        el("web-address").textContent = event.payload;
+      });
+
+      function showStartupError(message) {
+        const box = el("startup-error");
+        box.style.display = "block";
+        box.textContent = message;
+      }
+
+      function applyStatus(s) {
+        if (s.wsAddress) el("address").textContent = s.wsAddress;
+        if (s.webUrl) {
+          el("web-address").textContent = s.webUrl;
+        } else {
+          el("web-address").textContent = "phone page unavailable";
+          el("copy-url").style.display = "none";
+        }
+        if (s.vigembusMissing) el("vigembus-warning").style.display = "block";
+        if (!s.lanIpKnown) {
+          el("hint").textContent =
+            "This PC's network address could not be determined — check its Wi-Fi or Ethernet connection.";
+        }
+        for (const message of s.errors || []) showStartupError(message);
+      }
+
+      // Pull the startup snapshot. Everything below this is decided before
+      // this script runs, so the events announcing it have already been
+      // sent to nobody — this is the only way the window learns about a
+      // missing driver or a port that would not bind.
+      invoke("get_status").then(applyStatus).catch(() => {});
+
+      listen("startup-error", (event) => showStartupError(event.payload));
+
+      el("copy-url").addEventListener("click", async () => {
+        const url = el("web-address").textContent.trim();
+        try {
+          await navigator.clipboard.writeText(url);
+          el("copy-url").textContent = "Copied";
+        } catch {
+          // Clipboard can be blocked; the address is selectable either way.
+          el("copy-url").textContent = "Select it above";
+        }
+        setTimeout(() => (el("copy-url").textContent = "Copy address"), 1600);
+      });
+      listen("vigembus-missing", () => {
+        el("vigembus-warning").style.display = "block";
+      });
+      listen("client-state", (event) => {
+        const { connected, clients } = event.payload;
+        const status = el("status");
+        status.classList.toggle("connected", connected);
+        el("status-text").textContent = connected
+          ? clients > 1
+            ? `${clients} clients connected`
+            : "Client connected"
+          : "Waiting for a phone to connect…";
+      });
+      listen("input-state", (event) => render(event.payload));
+    </script>
+  </body>
+</html>

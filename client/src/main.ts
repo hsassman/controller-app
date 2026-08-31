@@ -1,0 +1,33 @@
+import "./style.css";
+import { renderConnectScreen } from "./screens/connect.ts";
+import { renderControllerScreen } from "./screens/controller.ts";
+import { loadSettings, applyHighContrast } from "./settings.ts";
+import { applyAppearance } from "./theme.ts";
+import { configureHaptics } from "./haptics.ts";
+import { suppressZoomGestures } from "./zoom.ts";
+
+// Appearance is applied before the first screen renders, not after: doing
+// it later means the connect screen paints once in the default theme and
+// then visibly repaints in the user's, on every single launch.
+const bootSettings = loadSettings();
+suppressZoomGestures();
+applyHighContrast(bootSettings.highContrast);
+applyAppearance(bootSettings);
+configureHaptics(bootSettings.haptics, bootSettings.hapticStrength);
+
+const app = document.querySelector<HTMLDivElement>("#app")!;
+
+/// `autoConnect` is true only for the very first render. Returning here
+/// after Disconnect means the user asked to stop, so the connect screen
+/// waits for them instead of immediately reconnecting.
+function showConnectScreen(autoConnect: boolean): void {
+  renderConnectScreen(
+    app,
+    (connection) => {
+      renderControllerScreen(app, connection, () => showConnectScreen(false));
+    },
+    { autoConnect },
+  );
+}
+
+showConnectScreen(true);

@@ -1,0 +1,27 @@
+[package]
+name = "controller-host"
+version = "0.1.0"
+description = "Host companion app: WebSocket server + virtual gamepad injector"
+edition = "2021"
+
+[lib]
+name = "controller_host_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tokio = { version = "1", features = ["rt-multi-thread", "net", "macros", "sync", "time", "fs", "io-util"] }
+tokio-tungstenite = "0.24"
+futures-util = "0.3"
+serde = { version = "1", features = ["derive"] }
+
+# Windows-only: virtual Xbox 360 controller via the ViGEmBus kernel driver.
+# Gated to the Windows target per docs/03-TECH-STACK.md ("Windows virtual
+# gamepad: ViGEmBus + vigem-client crate") -- this project is Windows-first
+# for Phase 1, Linux uinput support is Phase 5 (see docs/08-ROADMAP.md), so
+# non-Windows builds simply compile without gamepad injection for now.
+[target.'cfg(windows)'.dependencies]
+vigem-client = "0.1"
