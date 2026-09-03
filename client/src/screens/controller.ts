@@ -8,7 +8,7 @@ import { configureHaptics, haptic } from "../haptics.ts";
 import { fullscreenSupported, isFullscreen, toggleFullscreen, keepAwakeWhileVisible, releaseWakeLock } from "../session.ts";
 import { renderSettingsPanel } from "./settings-panel.ts";
 import { loadLayout, listProfiles, setActiveProfile, activeProfileId } from "../profile.ts";
-import { renderEditor } from "./editor.ts";
+import { renderEditor, type EditorHandle } from "./editor.ts";
 
 const SEND_RATE_HZ = 100;
 
@@ -33,12 +33,17 @@ export function renderControllerScreen(
         <div class="topbar-actions">
           <button id="fullscreen-btn" type="button" aria-label="Enter fullscreen" title="Fullscreen">⛶</button>
           <button id="edit-btn" type="button">Edit layout</button>
+          <button id="done-editing" class="primary" type="button" hidden>Done</button>
           <button id="settings-btn" type="button" aria-label="Settings" title="Settings">⚙</button>
           <button id="disconnect-btn" type="button">Disconnect</button>
         </div>
       </div>
       <div class="surface-wrap">
         <div id="controls-surface" class="controls-surface" role="group" aria-label="Game controller"></div>
+        <div id="empty-layout" class="empty-layout" hidden>
+          <h2>This layout has no controls</h2>
+          <p>Tap <strong>Edit layout</strong>, then <strong>Presets</strong> to start from a standard pad.</p>
+        </div>
       </div>
       <div class="rotate-block" role="status">
         <span class="rotate-icon" aria-hidden="true">📱</span>
@@ -53,6 +58,7 @@ export function renderControllerScreen(
   const statusText = container.querySelector<HTMLSpanElement>("#status-text")!;
   const statusLatency = container.querySelector<HTMLSpanElement>("#status-latency")!;
   const editBtn = container.querySelector<HTMLButtonElement>("#edit-btn")!;
+  const doneBtn = container.querySelector<HTMLButtonElement>("#done-editing")!;
   const editToolbar = container.querySelector<HTMLDivElement>("#edit-toolbar")!;
   const settingsBtn = container.querySelector<HTMLButtonElement>("#settings-btn")!;
   const disconnectBtn = container.querySelector<HTMLButtonElement>("#disconnect-btn")!;
@@ -80,10 +86,12 @@ export function renderControllerScreen(
   // (play controls or the editor) may own it at a time -- see the comment
   // on renderControls for the duplication bug this prevents.
   let teardownSurface: (() => void) | null = null;
+  let editorHandle: EditorHandle | null = null;
 
   const releaseSurface = () => {
     teardownSurface?.();
     teardownSurface = null;
+    editorHandle = null;
   };
 
   /// Sends the current input state immediately rather than waiting for the
@@ -119,7 +127,9 @@ export function renderControllerScreen(
     fullscreenBtn.hidden = !fullscreenSupported();
     profilePicker.hidden = listProfiles().length < 2;
     editBtn.textContent = "Edit layout";
+    doneBtn.hidden = true;
     syncProfiles();
+    container.querySelector<HTMLElement>("#empty-layout")!.hidden = layout.controls.length > 0;
     teardownSurface = renderControls(surface, layout, () => settings, flushNeutralFrame);
   };
 
@@ -136,16 +146,26 @@ export function renderControllerScreen(
     disconnectBtn.hidden = true;
     fullscreenBtn.hidden = true;
     profilePicker.hidden = true;
-    editBtn.textContent = "Cancel";
-    teardownSurface = renderEditor(surface, editToolbar, layout, {
+    editBtn.textContent = "Discard";
+    doneBtn.hidden = false;
+    container.querySelector<HTMLElement>("#empty-layout")!.hidden = true;
+    const handle = renderEditor(surface, editToolbar, layout, {
       getSettings: () => settings,
+      onSettingsChanged: () => saveSettings(settings),
       onDone: (updated) => {
         layout = updated;
-        saveSettings(settings); // the grid toggle lives in settings
         showPlayMode();
       },
-      onCancel: () => showPlayMode(),
+      onCancel: () => leaveEditor(),
     });
+    editorHandle = handle;
+    teardownSurface = handle.teardown;
+  };
+
+  /// Leaves the editor, asking first if it would throw work away.
+  const leaveEditor = () => {
+    if (editorHandle?.isDirty() && !confirm("Discard your changes to this layout?")) return;
+    showPlayMode();
   };
 
   showPlayMode();
@@ -196,6 +216,7 @@ export function renderControllerScreen(
 
   const cleanup = () => {
     window.clearInterval(sendTimer);
+    window.removeEventListener("beforeunload", onBeforeUnload);
     document.removeEventListener("fullscreenchange", syncFullscreenBtn);
     releaseWakeLock();
     releaseSurface();
@@ -218,6 +239,7 @@ export function renderControllerScreen(
   });
 
   disconnectBtn.addEventListener("click", () => {
+    if (!confirm("Disconnect from your PC?")) return;
     // Release inputs and flush one neutral frame before closing, so the
     // host's still-plugged-in pad doesn't retain a held button.
     resetAll();
@@ -228,9 +250,20 @@ export function renderControllerScreen(
   });
 
   editBtn.addEventListener("click", () => {
-    if (editing) showPlayMode();
+    if (editing) leaveEditor();
     else showEditMode();
   });
+
+  doneBtn.addEventListener("click", () => editorHandle?.save());
+
+  // A reload or a backgrounded tab being reclaimed would otherwise discard
+  // an in-progress layout with no prompt.
+  const onBeforeUnload = (e: BeforeUnloadEvent) => {
+    if (!editorHandle?.isDirty()) return;
+    e.preventDefault();
+    e.returnValue = "";
+  };
+  window.addEventListener("beforeunload", onBeforeUnload);
 
   settingsBtn.addEventListener("click", () => {
     resetAll();

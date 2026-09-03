@@ -28,21 +28,32 @@ export interface EditorOptions {
   getSettings: () => Settings;
   onDone: (layout: Layout) => void;
   onCancel: () => void;
+  /// Called when the editor changes a persisted setting (the grid toggle).
+  onSettingsChanged?: () => void;
 }
 
 /// Renders the editor and returns a teardown function. Teardown is not
 /// optional bookkeeping: the editor owns a floating properties panel and a
 /// window-level key handler that both outlive `surface.innerHTML = ""`.
+export interface EditorHandle {
+  teardown: () => void;
+  /// True when there are edits that Done would save and Cancel would lose.
+  isDirty: () => boolean;
+  save: () => void;
+}
+
 export function renderEditor(
   surface: HTMLElement,
   toolbar: HTMLElement,
   layout: Layout,
   options: EditorOptions,
-): () => void {
+): EditorHandle {
   let working: Layout = structuredClone(layout);
   const undoStack: Layout[] = [];
   const redoStack: Layout[] = [];
   let selectedId: string | null = null;
+  /// Whether any edit has been made since the editor opened.
+  let dirty = false;
 
   // The properties panel lives beside the surface, not inside it, so
   // re-rendering the controls never destroys a field the user is typing in.
@@ -63,6 +74,7 @@ export function renderEditor(
   let historyKey: string | null = null;
 
   const pushSnapshot = (): void => {
+    dirty = true;
     undoStack.push(structuredClone(working));
     if (undoStack.length > MAX_HISTORY) undoStack.shift();
     redoStack.length = 0;
@@ -215,7 +227,6 @@ export function renderEditor(
       <button id="import-btn" type="button">Import</button>
       <input id="import-layout" type="file" accept="application/json" class="visually-hidden" />
     </div>
-    <button id="done-editing" class="primary" type="button">Done</button>
   `;
 
   const undoBtn = toolbar.querySelector<HTMLButtonElement>("#undo-edit")!;
@@ -400,10 +411,10 @@ export function renderEditor(
     }
   });
 
-  toolbar.querySelector<HTMLButtonElement>("#done-editing")!.addEventListener("click", () => {
+  const save = () => {
     saveLayout(working);
     options.onDone(working);
-  });
+  };
 
   syncHistoryButtons();
 
@@ -660,12 +671,16 @@ export function renderEditor(
   const observer = new ResizeObserver(() => rerenderSurface());
   observer.observe(surface);
 
-  return () => {
-    observer.disconnect();
-    window.removeEventListener("keydown", onKey);
-    surface.removeEventListener("pointerdown", onSurfacePointerDown);
-    closePresets();
-    panel.remove();
+  return {
+    teardown: () => {
+      observer.disconnect();
+      window.removeEventListener("keydown", onKey);
+      surface.removeEventListener("pointerdown", onSurfacePointerDown);
+      closePresets();
+      panel.remove();
+    },
+    isDirty: () => dirty,
+    save,
   };
 }
 
@@ -690,6 +705,11 @@ function metaFor(cfg: ControlConfig): string {
 
 function newControl(layout: Layout, type: ControlConfig["type"]): ControlConfig {
   const id = nextId(layout, type);
+  // Cascade, so tapping "+ Button" repeatedly does not stack every control
+  // on the same pixel with only the top one draggable.
+  const step = layout.controls.length % 6;
+  const x = 42 + step * 4;
+  const y = 38 + step * 5;
   switch (type) {
     case "button":
       return {
@@ -697,8 +717,8 @@ function newControl(layout: Layout, type: ControlConfig["type"]): ControlConfig 
         type,
         label: "New",
         bit: ButtonBit.A,
-        x: 50,
-        y: 50,
+        x,
+        y,
         size: 56,
         shape: "circle",
         toggle: false,
@@ -707,11 +727,11 @@ function newControl(layout: Layout, type: ControlConfig["type"]): ControlConfig 
       // New sticks default to the right stick only because the left one is
       // present in every stock layout; it is editable either way and, unlike
       // before, is stored explicitly rather than guessed from the id.
-      return { id, type, label: "Stick", x: 50, y: 50, size: 110, clickBit: ButtonBit.R3, stick: "right" };
+      return { id, type, label: "Stick", x, y, size: 110, clickBit: ButtonBit.R3, stick: "right" };
     case "dpad":
-      return { id, type, x: 50, y: 50, size: 120 };
+      return { id, type, x, y, size: 120 };
     case "trigger":
-      return { id, type, label: "Trig", x: 50, y: 50, width: 56, height: 90, trigger: "right" };
+      return { id, type, label: "Trig", x, y, width: 56, height: 90, trigger: "right" };
   }
 }
 

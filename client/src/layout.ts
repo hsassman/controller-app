@@ -82,10 +82,10 @@ export function defaultLayout(): Layout {
       { id: "dpad", type: "dpad", x: 15, y: 68, size: 108 },
       { id: "left-stick", type: "stick", label: "Left stick", x: 33, y: 68, size: 98, clickBit: ButtonBit.L3, stick: "left" },
       { id: "right-stick", type: "stick", label: "Right stick", x: 64, y: 68, size: 90, clickBit: ButtonBit.R3, stick: "right" },
-      { id: "face-x", type: "button", label: "X", bit: ButtonBit.X, x: 83, y: 64, size: 42, toggle: false },
-      { id: "face-y", type: "button", label: "Y", bit: ButtonBit.Y, x: 90, y: 49, size: 42, toggle: false },
-      { id: "face-b", type: "button", label: "B", bit: ButtonBit.B, x: 96, y: 64, size: 42, toggle: false },
-      { id: "face-a", type: "button", label: "A", bit: ButtonBit.A, x: 90, y: 79, size: 42, toggle: false },
+      { id: "face-x", type: "button", label: "X", bit: ButtonBit.X, x: 80, y: 64, size: 42, toggle: false },
+      { id: "face-y", type: "button", label: "Y", bit: ButtonBit.Y, x: 87, y: 49, size: 42, toggle: false },
+      { id: "face-b", type: "button", label: "B", bit: ButtonBit.B, x: 93, y: 64, size: 42, toggle: false },
+      { id: "face-a", type: "button", label: "A", bit: ButtonBit.A, x: 87, y: 79, size: 42, toggle: false },
     ],
   };
 }

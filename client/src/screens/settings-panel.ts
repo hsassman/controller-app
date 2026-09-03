@@ -404,7 +404,7 @@ function hint(parent: HTMLElement, text: string): void {
 
 function switchRow(parent: HTMLElement, labelText: string, value: boolean, onChange: (v: boolean) => void): void {
   const label = document.createElement("label");
-  label.className = "row switch-row";
+  label.className = "switch-row";
   const span = document.createElement("span");
   span.textContent = labelText;
   const input = document.createElement("input");
@@ -430,7 +430,7 @@ function sliderRow(
   onInput: (v: number) => void,
 ): void {
   const label = document.createElement("label");
-  label.className = "row slider-row";
+  label.className = "slider-row";
   const head = document.createElement("span");
   head.className = "slider-head";
   const text = document.createElement("span");

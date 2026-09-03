@@ -1,4 +1,6 @@
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::time::Duration;
 
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -17,6 +19,14 @@ const MAX_HEAD_BYTES: usize = 8 * 1024;
 /// that in the web directory is not something this server should be
 /// streaming into memory in one piece.
 const MAX_FILE_BYTES: u64 = 16 * 1024 * 1024;
+
+/// How long one request gets to send its head. Without this a peer writing
+/// a byte every 30 seconds holds a task forever and never trips the size
+/// cap -- 8 KB at that rate would take 68 hours.
+const HEAD_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Upper bound on simultaneous HTTP connections.
+const MAX_CONNECTIONS: usize = 64;
 
 pub fn find_web_root() -> Option<PathBuf> {
     let mut candidates: Vec<PathBuf> = Vec::new();
@@ -48,9 +58,11 @@ pub async fn run_http_server(
     let root = match find_web_root() {
         Some(root) => root,
         None => {
-            eprintln!(
-                "client bundle not found -- the phone page will not be served. \
-                 Build it with `npm run build` in /client, then restart this app."
+            crate::status::report_error(
+                &app_handle,
+                "Phone page unavailable: the client bundle was not found. \
+                 Run `npm run build` in the client folder, then restart this app."
+                    .to_string(),
             );
             let _ = app_handle.emit("web-address", String::new());
             return Ok(());
@@ -66,11 +78,29 @@ pub async fn run_http_server(
     }
     let _ = app_handle.emit("web-address", url);
 
+    let connection_slots = Arc::new(tokio::sync::Semaphore::new(MAX_CONNECTIONS));
+
     loop {
-        let (stream, _peer) = listener.accept().await?;
+        // Log and continue: an aborted connection (a phone dropping off
+        // Wi-Fi mid-load) must not take the page server down for the rest
+        // of the session.
+        let (stream, _peer) = match listener.accept().await {
+            Ok(accepted) => accepted,
+            Err(err) => {
+                eprintln!("http accept failed, continuing: {err}");
+                tokio::time::sleep(Duration::from_millis(50)).await;
+                continue;
+            }
+        };
+        let Ok(permit) = Arc::clone(&connection_slots).try_acquire_owned() else {
+            eprintln!("refusing http connection: {MAX_CONNECTIONS} already open");
+            drop(stream);
+            continue;
+        };
         let root = root.clone();
         let lan_ip = lan_ip.clone();
         tokio::spawn(async move {
+            let _permit = permit;
             // A failed request is logged, never fatal: one malformed
             // request must not take the page server down for the session.
             if let Err(err) = serve_one(stream, &root, &lan_ip, ws_port).await {
@@ -86,9 +116,12 @@ async fn serve_one(
     lan_ip: &str,
     ws_port: u16,
 ) -> std::io::Result<()> {
-    let head = match read_head(&mut stream).await? {
-        Some(head) => head,
-        None => return Ok(()),
+    let head = match tokio::time::timeout(HEAD_TIMEOUT, read_head(&mut stream)).await {
+        Ok(result) => match result? {
+            Some(head) => head,
+            None => return Ok(()),
+        },
+        Err(_) => return Ok(()), // peer stalled mid-request; drop it
     };
 
     let mut parts = head.lines().next().unwrap_or("").split_whitespace();
@@ -239,12 +272,16 @@ async fn read_head(stream: &mut TcpStream) -> std::io::Result<Option<String>> {
         if read == 0 {
             return Ok(None); // peer closed before sending a full request
         }
+        let scan_from = buffer.len().saturating_sub(3);
         buffer.extend_from_slice(&chunk[..read]);
-        if buffer.windows(4).any(|w| w == b"\r\n\r\n") {
-            break;
-        }
         if buffer.len() > MAX_HEAD_BYTES {
             return Ok(None);
+        }
+        // Only the newly arrived bytes need scanning. Rescanning the whole
+        // buffer each time is quadratic, which a peer can trigger cheaply
+        // by sending one byte at a time.
+        if buffer[scan_from..].windows(4).any(|w| w == b"\r\n\r\n") {
+            break;
         }
     }
     Ok(Some(String::from_utf8_lossy(&buffer).into_owned()))

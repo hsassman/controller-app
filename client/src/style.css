@@ -177,7 +177,6 @@
 :root.high-contrast .connect-screen,
 :root.high-contrast .panel,
 :root.high-contrast .edit-toolbar button,
-:root.high-contrast .file-label,
 :root.high-contrast .topbar-actions button,
 :root.high-contrast .status {
   background: #000;
@@ -198,8 +197,7 @@
 }
 
 :root.high-contrast .edit-toolbar #done-editing,
-:root.high-contrast #connect-btn,
-:root.high-contrast .panel button.primary-action {
+:root.high-contrast #connect-btn {
   background: var(--accent);
   color: #000;
   border: 2px solid #fff;
@@ -349,8 +347,7 @@ button {
   color: inherit;
 }
 
-#connect-btn,
-.panel button.primary-action {
+#connect-btn {
   position: relative;
   width: 100%;
   padding: 0.85rem;
@@ -375,13 +372,11 @@ button {
     0 2px 4px rgba(0, 0, 0, 0.4);
 }
 
-#connect-btn:hover,
-.panel button.primary-action:hover {
+#connect-btn:hover {
   filter: brightness(1.07);
 }
 
-#connect-btn:active,
-.panel button.primary-action:active {
+#connect-btn:active {
   transform: translateY(1px) scale(0.985);
   box-shadow:
     inset 0 3px 7px rgba(0, 0, 0, 0.35),
@@ -517,18 +512,16 @@ button:disabled {
   gap: 0.45rem;
 }
 
+/* display/align-items/gap are the only things this block still contributes;
+   flex-wrap/flex-basis/order/padding-top are overridden later by the
+   scrolling-row rules and belong there, not here. */
 .edit-toolbar {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem;
-  flex: 1 1 100%;
-  order: 3;
-  padding-top: 0.15rem;
 }
 
-.edit-toolbar button,
-.file-label {
+.edit-toolbar button {
   display: inline-flex;
   align-items: center;
   padding: 0.36rem 0.7rem;
@@ -549,14 +542,12 @@ button:disabled {
     transform 0.08s;
 }
 
-.edit-toolbar button:hover,
-.file-label:hover {
+.edit-toolbar button:hover {
   background: var(--panel-bg-raised);
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
 }
 
-.edit-toolbar button:active,
-.file-label:active {
+.edit-toolbar button:active {
   transform: translateY(1px) scale(0.97);
 }
 
@@ -606,6 +597,14 @@ button:disabled {
   transform: translateY(1px) scale(0.97);
 }
 
+#done-editing {
+  background: linear-gradient(180deg, var(--accent-active), var(--accent));
+  border-color: transparent;
+  color: var(--accent-fg);
+  font-weight: 700;
+  box-shadow: 0 3px 10px -3px rgba(var(--accent-rgb), 0.7);
+}
+
 #settings-btn {
   width: 2.05rem;
   padding: 0.42rem 0;
@@ -619,6 +618,32 @@ button:disabled {
 
 #disconnect-btn:hover {
   border-color: color-mix(in srgb, var(--danger) 55%, var(--border));
+}
+
+.empty-layout {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 1rem;
+  text-align: center;
+  color: var(--fg-muted);
+  pointer-events: none;
+}
+
+.empty-layout h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--fg);
+}
+
+.empty-layout p {
+  margin: 0;
+  font-size: 0.82rem;
+  max-width: 26rem;
 }
 
 .controls-surface {
@@ -1134,59 +1159,6 @@ button:disabled {
   color: var(--fg);
 }
 
-.panel .row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin: 0;
-  padding: 0.6rem 0;
-  font-size: 0.88rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
-}
-
-.panel .row:last-child {
-  border-bottom: none;
-}
-
-/* .row is a <label>; the uppercase global label styling would shout here. */
-.panel label.row {
-  text-transform: none;
-  letter-spacing: normal;
-  font-weight: 500;
-  color: var(--fg);
-}
-
-.panel .row input[type="range"] {
-  flex: 1;
-  max-width: 55%;
-  height: 1.5rem;
-  cursor: pointer;
-}
-
-.panel .row input[type="checkbox"] {
-  width: 1.1rem;
-  height: 1.1rem;
-  flex-shrink: 0;
-  cursor: pointer;
-}
-
-.panel fieldset {
-  border: 1px solid var(--border);
-  border-radius: 0.7rem;
-  margin-top: 1.1rem;
-  padding: 0.2rem 0.9rem 0.6rem;
-  background: rgba(255, 255, 255, 0.018);
-}
-
-.panel legend {
-  font-size: 0.72rem;
-  font-weight: 600;
-  line-height: 1.35;
-  color: var(--fg-muted);
-  padding: 0 0.4rem;
-}
-
 .rotate-block {
   display: none;
 }
@@ -1352,7 +1324,7 @@ button:disabled {
 
 /* ---- Per-control tint ---- */
 
-.control.tinted {
+.control.tinted:not(.dpad-control) {
   border-color: rgba(var(--tint-rgb), 0.55);
   box-shadow:
     var(--raise),
@@ -1360,9 +1332,21 @@ button:disabled {
     0 0 0 1px rgba(var(--tint-rgb), 0.3);
 }
 
+/* Dead-pad tint ring, unlike the others, would draw a square around the
+   cross shape (the clip-path only applies to its pseudo-elements). */
+.dpad-control.tinted {
+  border-color: rgba(var(--tint-rgb), 0.55);
+  box-shadow: var(--raise), var(--rim);
+}
+
 .button-control.tinted.active {
   background-image: linear-gradient(180deg, rgba(var(--tint-rgb), 0.8), rgba(var(--tint-rgb), 0.56));
-  border-color: var(--tint);
+  /* --tint holds an rgb triple, not a colour -- wrap it. */
+  border-color: rgb(var(--tint-rgb));
+  box-shadow:
+    var(--press),
+    0 0 0 4px rgba(var(--tint-rgb), 0.16),
+    0 0 22px -4px rgba(var(--tint-rgb), 0.7);
 }
 
 .stick-control.tinted .stick-knob,
@@ -1370,8 +1354,18 @@ button:disabled {
   background-image: linear-gradient(180deg, rgba(var(--tint-rgb), 0.4), rgba(var(--tint-rgb), 0.14));
 }
 
+/* Beats the pressed-direction background shorthand, which otherwise wins
+   on specificity and reverts a tinted d-pad to accent blue while held. */
+.dpad-control.tinted[data-direction]:not([data-direction=""]) .dpad-indicator {
+  background-image: linear-gradient(180deg, rgba(var(--tint-rgb), 0.85), rgba(var(--tint-rgb), 0.6));
+}
+
 .trigger-control.tinted .trigger-fill {
   background-image: linear-gradient(180deg, rgba(var(--tint-rgb), 0.85), rgba(var(--tint-rgb), 0.5));
+}
+
+.trigger-control.tinted.actuated {
+  border-color: rgba(var(--tint-rgb), 0.7);
 }
 
 /* ---- Shapes ---- */
@@ -1648,11 +1642,6 @@ button:disabled {
 /* `display: flex` above beats the [hidden] attribute's UA `display: none`,
    which left the closed panel laid out and swallowing every tap along that
    edge of the edit surface -- invisible, but blocking. */
-/* [hidden] loses to the display rule above without this. */
-.inspector[hidden] {
-  display: none;
-}
-
 .inspector[data-side="right"] {
   right: 0.5rem;
 }
@@ -1731,7 +1720,8 @@ button:disabled {
   height: 1.6rem;
 }
 
-.inspector-input {
+input.inspector-input,
+select.inspector-input {
   grid-column: 1 / -1;
   width: 100%;
   padding: 0.4rem 0.5rem;
@@ -1744,7 +1734,8 @@ button:disabled {
   min-height: 2rem;
 }
 
-.inspector-input:focus-visible {
+input.inspector-input:focus-visible,
+select.inspector-input:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
@@ -1953,6 +1944,11 @@ button.danger:hover:not(:disabled) {
 
 .switch-row,
 .slider-row {
+  /* Opt out of the global uppercase <label> caption style. */
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 500;
+  color: var(--fg);
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -1971,6 +1967,11 @@ button.danger:hover:not(:disabled) {
 
 .switch-row span:first-child {
   flex: 1;
+  line-height: 1.35;
+}
+
+.switch-row:hover input[type="checkbox"].switch:not(:checked) {
+  border-color: color-mix(in srgb, var(--border) 60%, var(--fg));
 }
 
 .slider-head {
@@ -1996,38 +1997,51 @@ button.danger:hover:not(:disabled) {
    announced state, with a target comfortably over 24px. */
 input[type="checkbox"].switch {
   appearance: none;
+  -webkit-appearance: none;
   flex: none;
   position: relative;
-  width: 2.6rem;
-  height: 1.5rem;
+  width: 2.9rem;
+  height: 1.65rem;
   border-radius: 999px;
   background: var(--panel-bg-raised);
   border: 1px solid var(--border);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 input[type="checkbox"].switch::after {
   content: "";
   position: absolute;
   top: 50%;
-  left: 0.16rem;
-  width: 1.1rem;
-  height: 1.1rem;
+  left: 0.17rem;
+  width: 1.2rem;
+  height: 1.2rem;
   border-radius: 50%;
-  background: var(--fg-muted);
+  background: linear-gradient(180deg, #fdfdfd, #cfd3dc);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(0, 0, 0, 0.25);
   transform: translateY(-50%);
-  transition: transform 0.15s, background 0.15s;
+  transition:
+    transform 0.18s cubic-bezier(0.3, 1.4, 0.5, 1),
+    background 0.18s ease;
 }
 
 input[type="checkbox"].switch:checked {
-  background: var(--accent);
+  background: linear-gradient(180deg, var(--accent-active), var(--accent));
   border-color: var(--accent);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.25),
+    0 0 0 3px rgba(var(--accent-rgb), 0.18);
 }
 
 input[type="checkbox"].switch:checked::after {
-  background: var(--accent-fg);
-  transform: translate(1.06rem, -50%);
+  transform: translate(1.22rem, -50%);
+  background: linear-gradient(180deg, #ffffff, #eef1f6);
 }
 
 input[type="checkbox"].switch:focus-visible {
@@ -2446,8 +2460,7 @@ button.full-width:hover {
 }
 
 .edit-toolbar button,
-.edit-toolbar .file-label,
-.toolbar-group {
+.edit-toolbar .toolbar-group {
   flex: none;
   white-space: nowrap;
 }

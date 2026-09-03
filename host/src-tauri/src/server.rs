@@ -3,13 +3,34 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
-use futures_util::{SinkExt, StreamExt};
+use futures_util::{FutureExt, SinkExt, StreamExt};
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::net::TcpListener;
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use tokio_tungstenite::tungstenite::Message;
 
 const MAX_MESSAGE_BYTES: usize = 4096;
+
+/// How long a client gets to complete the WebSocket handshake.
+///
+/// Without a deadline, a peer that opens a TCP connection and then says
+/// nothing parks a task, a socket handle and a handshake buffer forever.
+/// That is not only an attack: LAN scanners, Windows network discovery and
+/// endpoint-security agents all connect-and-say-nothing, so a long session
+/// slowly leaks handles to entirely routine traffic.
+const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Upper bound on simultaneous connections. Far above what this app needs
+/// (a handful of phones) and far below anything that could exhaust handles.
+const MAX_CONNECTIONS: usize = 32;
+
+/// Smallest gap between pongs. The real client pings every 2s; nothing on
+/// the wire enforces that, and answering an unbounded ping flood costs a
+/// syscall each time on the same task that applies input.
+const MIN_PONG_INTERVAL: Duration = Duration::from_millis(50);
+
+/// Cap on how many malformed messages one connection may log.
+const MAX_MALFORMED_LOGS: u32 = 5;
 
 use crate::frame::{pong_for, InputFrame, FRAME_TYPE_INPUT};
 
@@ -179,6 +200,8 @@ pub async fn run_server(
     }
     let _ = app_handle.emit("server-address", address);
 
+    let connection_slots = Arc::new(tokio::sync::Semaphore::new(MAX_CONNECTIONS));
+
     loop {
         let (stream, peer_addr) = match listener.accept().await {
             Ok(accepted) => accepted,
@@ -188,12 +211,20 @@ pub async fn run_server(
                 continue;
             }
         };
+        // The permit moves into the task, so it is returned on every exit
+        // path including a panic -- the same discipline as ClientLease.
+        let Ok(permit) = Arc::clone(&connection_slots).try_acquire_owned() else {
+            eprintln!("refusing connection from {peer_addr}: {MAX_CONNECTIONS} already open");
+            drop(stream);
+            continue;
+        };
         let conn_pad = Arc::clone(&pad);
         // One handle per connection, cloned like the pad: the connection task
         // owns it for its whole life and uses it to push the live input
         // readout (and connect/disconnect state) to the host window.
         let conn_app = app_handle.clone();
         tokio::spawn(async move {
+            let _permit = permit;
             if let Err(err) = handle_connection(stream, peer_addr, conn_pad, conn_app).await {
                 eprintln!("connection from {peer_addr} ended: {err}");
             }
@@ -201,6 +232,9 @@ pub async fn run_server(
     }
 }
 
+// tungstenite's Error is 136 bytes. This runs once per connection and
+// returns at most once, so boxing it would buy nothing.
+#[allow(clippy::result_large_err)]
 async fn handle_connection(
     stream: tokio::net::TcpStream,
     peer_addr: std::net::SocketAddr,
@@ -212,12 +246,25 @@ async fn handle_connection(
         max_frame_size: Some(MAX_MESSAGE_BYTES),
         ..Default::default()
     };
-    let ws_stream = tokio_tungstenite::accept_async_with_config(stream, Some(config)).await?;
+    let ws_stream = match tokio::time::timeout(
+        HANDSHAKE_TIMEOUT,
+        tokio_tungstenite::accept_async_with_config(stream, Some(config)),
+    )
+    .await
+    {
+        Ok(result) => result?,
+        Err(_) => {
+            eprintln!("handshake from {peer_addr} timed out");
+            return Ok(());
+        }
+    };
     let mut lease = ClientLease::acquire(&pad, peer_addr, app_handle.clone());
     let (mut write, mut read) = ws_stream.split();
     let mut throttle = EmitThrottle::new();
 
     let mut ended_with: Result<(), tokio_tungstenite::tungstenite::Error> = Ok(());
+    let mut last_pong_at: Option<Instant> = None;
+    let mut malformed_logged: u32 = 0;
 
     while let Some(msg) = read.next().await {
         let msg = match msg {
@@ -233,16 +280,54 @@ async fn handle_connection(
                 // delayed behind input handling, since its whole purpose is
                 // to measure how long a round trip actually takes.
                 if let Some(pong) = pong_for(&bytes) {
-                    if let Err(err) = write.send(Message::Binary(pong.to_vec())).await {
-                        // The peer is gone; stop rather than spin on a dead
-                        // sink. Cleanup still runs via the lease's Drop.
-                        ended_with = Err(err);
-                        break;
+                    // Rate-limited on purpose. A client flooding pings would
+                    // otherwise spend this task's time in send() syscalls
+                    // instead of applying input, and a dropped pong is
+                    // indistinguishable to the client from a slow link --
+                    // which its own timeout logic already handles.
+                    let now = Instant::now();
+                    if last_pong_at.is_none_or(|at| now.duration_since(at) >= MIN_PONG_INTERVAL) {
+                        last_pong_at = Some(now);
+                        if let Err(err) = write.send(Message::Binary(pong.to_vec())).await {
+                            // The peer is gone; stop rather than spin on a
+                            // dead sink. Cleanup still runs via lease Drop.
+                            ended_with = Err(err);
+                            break;
+                        }
                     }
                     continue;
                 }
 
-                if let Some(frame) = parse_frame(&bytes) {
+                if let Some(mut frame) = parse_frame(&bytes) {
+                    // Apply only the NEWEST input frame that has already
+                    // arrived. After a Wi-Fi stall the phone's backlog lands
+                    // in one burst; replaying it in order would inject a
+                    // second of stale motion -- the stick physically
+                    // returned to centre, but the pad would still be acting
+                    // on where it used to be. Coalescing keeps the pad on
+                    // the player's actual current input.
+                    let mut deferred: Option<Message> = None;
+                    let mut backlog_pong: Option<[u8; 3]> = None;
+                    while deferred.is_none() {
+                        match read.next().now_or_never() {
+                            Some(Some(Ok(Message::Binary(next)))) => {
+                                if let Some(newer) = parse_frame(&next) {
+                                    frame = newer;
+                                } else if let Some(pong) = pong_for(&next) {
+                                    // Answered below, after the pad is up to
+                                    // date. Only the newest is kept: a stale
+                                    // pong tells the client nothing useful.
+                                    backlog_pong = Some(pong);
+                                } else {
+                                    deferred = Some(Message::Binary(next));
+                                }
+                            }
+                            Some(Some(Ok(other))) => deferred = Some(other),
+                            // Nothing buffered, or the stream ended/errored:
+                            // let the outer loop deal with it next pass.
+                            _ => break,
+                        }
+                    }
                     // Lock, apply, unlock -- the guard is never held across
                     // an await, which keeps this future Send for tokio::spawn.
                     #[cfg(windows)]
@@ -278,6 +363,33 @@ async fn handle_connection(
                     if throttle.should_emit(state) {
                         let _ = app_handle.emit("input-state", state);
                     }
+
+                    if let Some(pong) = backlog_pong {
+                        let now = Instant::now();
+                        if last_pong_at.is_none_or(|at| now.duration_since(at) >= MIN_PONG_INTERVAL)
+                        {
+                            last_pong_at = Some(now);
+                            if let Err(err) = write.send(Message::Binary(pong.to_vec())).await {
+                                ended_with = Err(err);
+                                break;
+                            }
+                        }
+                    }
+
+                    // A non-input message pulled out of the backlog above.
+                    if let Some(Message::Close(_)) = deferred {
+                        let _ = write.close().await;
+                        break;
+                    }
+                } else if malformed_logged < MAX_MALFORMED_LOGS {
+                    // Capped: a client with a version-skew bug sends these
+                    // at 100Hz, and println! takes a process-wide lock that
+                    // every other connection contends on.
+                    malformed_logged += 1;
+                    eprintln!(
+                        "ignoring unrecognised {}-byte message from {peer_addr}",
+                        bytes.len()
+                    );
                 }
             }
             Message::Close(_) => {
@@ -371,30 +483,10 @@ impl Drop for ClientLease {
     }
 }
 
-/// Caps how many bytes of an unexpected/malformed payload get formatted
-/// into a log line -- a buggy or hostile client shouldn't be able to blow
-/// up log size (or the cost of formatting) just by sending a large message.
-fn truncated(bytes: &[u8]) -> &[u8] {
-    &bytes[..bytes.len().min(32)]
-}
-
 fn parse_frame(bytes: &[u8]) -> Option<InputFrame> {
     match bytes.first() {
-        Some(&FRAME_TYPE_INPUT) => match InputFrame::parse(bytes) {
-            Ok(frame) => Some(frame),
-            Err(_) => {
-                println!(
-                    "malformed INPUT frame ({} bytes): {:?}",
-                    bytes.len(),
-                    truncated(bytes)
-                );
-                None
-            }
-        },
-        _ => {
-            println!("received {} bytes: {:?}", bytes.len(), truncated(bytes));
-            None
-        }
+        Some(&FRAME_TYPE_INPUT) => InputFrame::parse(bytes).ok(),
+        _ => None,
     }
 }
 

@@ -162,7 +162,8 @@ export function renderInspector(
 
   // ---- Size ----
   const { w, h } = dimsOf(cfg);
-  const independent = cfg.type === "trigger" || (cfg.type === "button" && cfg.shape !== "circle");
+  const independent =
+    cfg.type === "trigger" || (cfg.type === "button" && (cfg.shape ?? "circle") !== "circle");
 
   if (independent) {
     body.appendChild(
