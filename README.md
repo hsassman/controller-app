@@ -23,7 +23,7 @@ Every phone-as-gamepad tool asks you to install an app on the phone, sign in, or
 The app ships as a **portable build**: one `.exe` and a folder of static files. No Node.js, no Rust, no build step, on the PC you're actually going to play on.
 
 1. Install [ViGEmBus](https://github.com/ViGEm/ViGEmBus/releases) (the driver that creates the virtual controller — this is the only thing that has to be installed, and only once per PC).
-2. Build `PhoneController-Portable.zip` (30 seconds, see below) and copy that one file to the PC you want to play on — a USB stick, cloud drive, or a chat app all work fine, it's under 10 MB.
+2. Download `PhoneController-Portable.zip` from the [latest release](../../releases/latest) and copy it to the PC you want to play on.
 3. Unzip it anywhere, double-click **`controller-host.exe`**.
    - Windows will likely show a **"Windows protected your PC"** SmartScreen prompt the first time, because the exe isn't code-signed. Click **More info → Run anyway**. That's expected for an app shared this way, not a sign anything is wrong.
 4. A window opens showing an address. Open it in your phone's browser.
