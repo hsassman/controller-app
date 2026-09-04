@@ -12,3 +12,7 @@ Thumbs.db
 
 # Tauri generated
 host/src-tauri/gen/
+
+# Portable release output (produced by Package-Release.ps1)
+PhoneController-Portable/
+PhoneController-Portable.zip

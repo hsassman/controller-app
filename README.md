@@ -18,9 +18,15 @@ Every phone-as-gamepad tool asks you to install an app on the phone, sign in, or
 
 ## Getting started
 
-1. Install [ViGEmBus](https://github.com/ViGEm/ViGEmBus/releases) on the PC (the driver that creates the virtual controller).
-2. Double-click **`Start-Controller.bat`**.
-3. A window opens showing an address. Open it in your phone's browser.
+### Just want to play? (recommended — works on any Windows PC, nothing to install but one driver)
+
+The app ships as a **portable build**: one `.exe` and a folder of static files. No Node.js, no Rust, no build step, on the PC you're actually going to play on.
+
+1. Install [ViGEmBus](https://github.com/ViGEm/ViGEmBus/releases) (the driver that creates the virtual controller — this is the only thing that has to be installed, and only once per PC).
+2. Build `PhoneController-Portable.zip` (30 seconds, see below) and copy that one file to the PC you want to play on — a USB stick, cloud drive, or a chat app all work fine, it's under 10 MB.
+3. Unzip it anywhere, double-click **`controller-host.exe`**.
+   - Windows will likely show a **"Windows protected your PC"** SmartScreen prompt the first time, because the exe isn't code-signed. Click **More info → Run anyway**. That's expected for an app shared this way, not a sign anything is wrong.
+4. A window opens showing an address. Open it in your phone's browser.
 
 That's it. The page connects itself — there's nothing to type.
 
@@ -32,6 +38,23 @@ That's it. The page connects itself — there's nothing to type.
 > To type the address manually instead, the host window shows that too.
 
 **Add it to your home screen** from your browser's menu and it opens fullscreen like a native app, remembering your layouts and settings.
+
+**Building the portable zip yourself** (needs Node.js + Rust on the *building* machine only — not on the machine you'll play on):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Package-Release.ps1
+```
+
+This produces `PhoneController-Portable.zip` in the repo root. Copy that one file to any Windows PC, and steps 2–4 above are all that PC ever needs.
+
+### Building from source and running directly (for developers)
+
+If you have Node.js and Rust installed and want to build-and-run in place rather than produce a portable zip:
+
+1. Install [ViGEmBus](https://github.com/ViGEm/ViGEmBus/releases).
+2. Double-click **`Start-Controller.bat`**.
+
+The first run builds the client and the host (a few minutes); every run after that just launches. If this reports Node.js or Rust as "not found" right after you installed them, see [Troubleshooting](#troubleshooting) below — it's almost always a stale PATH, not a bad install.
 
 ---
 
@@ -115,8 +138,31 @@ The host window has a live input monitor — press something on the phone and th
 
 ## Requirements
 
-- **Windows** with [ViGEmBus](https://github.com/ViGEm/ViGEmBus/releases) installed.
-- [Node.js](https://nodejs.org) and [Rust](https://rustup.rs) — for the first build only. The launcher builds automatically and skips it on every later run.
+**To play** (the portable build): Windows with [ViGEmBus](https://github.com/ViGEm/ViGEmBus/releases) installed. Nothing else.
+
+**To build** (either the portable zip or running from source): [Node.js](https://nodejs.org) and [Rust](https://rustup.rs), only on the machine doing the building. Never on the machine you're playing on.
+
+---
+
+## Troubleshooting
+
+### "Node.js/Rust was not found" right after installing it
+
+This is almost always a **stale PATH**, not a broken install. Installing Node.js or Rust updates an environment variable, but every program that was already running — including File Explorer, and therefore every window it opens when you double-click a `.bat` file — keeps the PATH it started with. Windows doesn't push the update into running programs.
+
+`Start-Controller.bat` already re-reads the current PATH before checking anything, so a stale Explorer session usually isn't a problem. If it still reports a tool missing:
+
+1. Close the window and **open a brand new Command Prompt**, then run the `.bat` from there.
+2. If that still fails, **restart your PC once** — this always picks up a PATH change, no exceptions.
+3. Confirm the install actually landed: open a new Command Prompt and run `where node` / `where cargo`. If neither prints a path, the install itself didn't complete — reinstall from [nodejs.org](https://nodejs.org) / [rustup.rs](https://rustup.rs).
+
+### Rust fails to build with a linker error
+
+Rust on Windows needs the **Desktop development with C++** workload from the Visual Studio Build Tools to link native code. `rustup` normally prompts to install this the first time you build; if that was skipped, get it from [visualstudio.microsoft.com/visual-cpp-build-tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
+
+### None of this should matter for the person actually playing
+
+If you're setting this up for someone else, don't make them deal with any of the above — build `PhoneController-Portable.zip` yourself (see [Getting started](#getting-started)) and just send them that. It needs nothing but ViGEmBus.
 
 ---
 
@@ -142,9 +188,11 @@ The host also serves the phone page itself over HTTP on `:8788`, which is what r
 ### Repository layout
 
 ```
-client/     phone PWA — Vite + TypeScript, no UI framework
-host/       Windows host — Tauri + Rust: gamepad injection and page server
-protocol/   the binary frame layout both sides implement
+client/                phone PWA — Vite + TypeScript, no UI framework
+host/                  Windows host — Tauri + Rust: gamepad injection and page server
+protocol/              the binary frame layout both sides implement
+Start-Controller.bat    build-and-run from source (developers)
+Package-Release.ps1     build the portable zip (see Getting started)
 ```
 
 ### Developing
