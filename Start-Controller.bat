@@ -76,51 +76,53 @@ if errorlevel 1 (
   exit /b 1
 )
 
-if not exist "client\dist\index.html" (
-  echo Building the phone app ^(first run only^)...
-  if not exist "client\node_modules" (
-    pushd client && call npm install
-    if errorlevel 1 (
-      popd
-      echo.
-      echo npm install failed. Scroll up for the actual error above --
-      echo common causes are no internet connection or a corporate proxy
-      echo blocking the npm registry.
-      echo.
-      pause
-      exit /b 1
-    )
-    popd
-  )
-  pushd client && call npm run build
+REM ---- Always rebuild, don't just check whether the output exists ----
+REM Checking only "does dist/exe exist at all" meant a developer who fixed
+REM a bug and re-ran this script would silently launch the stale binary
+REM from before the fix, with no rebuild and no warning -- both npm and
+REM cargo are already incremental, so re-running costs a couple of
+REM seconds when nothing changed and is never wrong.
+echo Building the phone app...
+if not exist "client\node_modules" (
+  pushd client && call npm install
   if errorlevel 1 (
     popd
     echo.
-    echo The phone app failed to build. Scroll up for the error.
+    echo npm install failed. Scroll up for the actual error above --
+    echo common causes are no internet connection or a corporate proxy
+    echo blocking the npm registry.
     echo.
     pause
     exit /b 1
   )
   popd
 )
+pushd client && call npm run build
+if errorlevel 1 (
+  popd
+  echo.
+  echo The phone app failed to build. Scroll up for the error.
+  echo.
+  pause
+  exit /b 1
+)
+popd
 
-if not exist "%HOST_EXE%" (
-  echo Building the host ^(first run only, this takes a few minutes^)...
-  pushd host\src-tauri && call cargo build
-  if errorlevel 1 (
-    popd
-    echo.
-    echo The host failed to build. Scroll up for the error. On Windows,
-    echo Rust needs the "Desktop development with C++" workload from the
-    echo Visual Studio Build Tools to link -- rustup normally prompts to
-    echo install this the first time you build; if you skipped it, get
-    echo it from: https://visualstudio.microsoft.com/visual-cpp-build-tools/
-    echo.
-    pause
-    exit /b 1
-  )
+echo Building the host...
+pushd host\src-tauri && call cargo build
+if errorlevel 1 (
   popd
+  echo.
+  echo The host failed to build. Scroll up for the error. On Windows,
+  echo Rust needs the "Desktop development with C++" workload from the
+  echo Visual Studio Build Tools to link -- rustup normally prompts to
+  echo install this the first time you build; if you skipped it, get
+  echo it from: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+  echo.
+  pause
+  exit /b 1
 )
+popd
 
 echo.
 echo Starting Controller Host...

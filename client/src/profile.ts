@@ -79,10 +79,22 @@ function bit(value: unknown, fallback: number): number {
 }
 
 function migrate(layout: Layout): Layout {
-  const seen = new Set<string>();
-  const controls = (layout.controls ?? [])
-    .filter((control) => control && KNOWN_TYPES.has((control as { type?: string }).type ?? ""))
-    .map((control) => {
+  const filtered = (layout.controls ?? []).filter(
+    (control) => control && KNOWN_TYPES.has((control as { type?: string }).type ?? ""),
+  );
+
+  // Every id already present in the file, so a freshly-minted fallback id
+  // can never collide with a real id that happens to appear LATER in the
+  // array -- checking only ids seen so far missed that case.
+  const reserved = new Set<string>();
+  for (const control of filtered) {
+    if (typeof control.id === "string" && control.id) reserved.add(control.id);
+  }
+  // Ids actually assigned as we walk, to still catch true duplicates (two
+  // controls sharing one real id).
+  const used = new Set<string>();
+
+  const controls = filtered.map((control) => {
     const c = { ...control };
 
     // Geometry: percentages of the surface, and sizes in px. Unclamped, an
@@ -120,10 +132,11 @@ function migrate(layout: Layout): Layout {
 
     let id = c.id;
     let n = 0;
-    while (!id || seen.has(id)) {
+    while (!id || used.has(id)) {
       id = `${c.type}-${n++}`;
+      while (reserved.has(id)) id = `${c.type}-${n++}`;
     }
-    seen.add(id);
+    used.add(id);
     c.id = id;
 
     return c;

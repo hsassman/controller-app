@@ -37,7 +37,7 @@ That's it. The page connects itself — there's nothing to type.
 > Both devices must be on the same Wi-Fi. If Windows Firewall prompts on the first run, allow it on **private networks**.
 > To type the address manually instead, the host window shows that too.
 
-**Add it to your home screen** from your browser's menu and it opens fullscreen like a native app, remembering your layouts and settings.
+**Add it to your home screen** from your browser's menu and it opens fullscreen like a native app, remembering your layouts and settings. (Offline caching needs a secure origin, which a plain `http://` LAN address isn't, so the app always loads fresh over Wi-Fi rather than from a cache — harmless, since your phone is already on the same network as the host.)
 
 **Building the portable zip yourself** (needs Node.js + Rust on the *building* machine only — not on the machine you'll play on):
 
