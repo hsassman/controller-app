@@ -15,6 +15,26 @@ use status::{report_error, SharedStatus};
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Must be the first plugin registered: it needs to intercept a
+        // second launch before anything else in this process (including the
+        // port binds below) has a chance to run. See the dependency comment
+        // in Cargo.toml for why a second instance is a real, reproducible
+        // bug and not just wasted memory -- it silently grabs different
+        // fallback ports and plugs in a second virtual controller, leaving
+        // the phone with two different addresses and no way to tell which
+        // one the game is actually listening to.
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            // Reaching here means a *second* launch was attempted while this
+            // (the first, real) instance is already running; surface the
+            // window that's already doing the job instead of leaving the
+            // user staring at nothing, which is what "do nothing" would
+            // look like.
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .invoke_handler(tauri::generate_handler![status::get_status])
         .setup(|app| {
             let app_handle = app.handle().clone();

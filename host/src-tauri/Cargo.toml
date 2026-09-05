@@ -16,6 +16,16 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
+# Enforces one running copy of the host. Without this, double-clicking the
+# exe again (easy to do by habit, or via a stale desktop shortcut) silently
+# starts a SECOND instance that falls back to a different port for both the
+# WebSocket and the page server -- and plugs in a second, separate virtual
+# controller. The phone then has two different addresses to choose from
+# depending on which instance served the page it loaded, and whichever one
+# it picks may not be the instance a game is actually reading input from.
+# Single-instance turns "which window is the real one?" into "there is only
+# one," by focusing the existing window instead of starting a competitor.
+tauri-plugin-single-instance = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "net", "sync", "time", "fs", "io-util"] }
 tokio-tungstenite = "0.24"
 futures-util = "0.3"

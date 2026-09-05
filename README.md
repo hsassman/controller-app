@@ -181,6 +181,12 @@ Rust on Windows needs the **Desktop development with C++** workload from the Vis
 
 If you're setting this up for someone else, don't make them deal with any of the above — build `PhoneController-Portable.zip` yourself (see [Getting started](#getting-started)) and just send them that. It needs nothing but ViGEmBus.
 
+### The address or QR code seems to change, or a typed address won't connect
+
+Only one copy of `controller-host.exe` can meaningfully run at a time — a second launch (easy to trigger by double-clicking it again out of habit, or from a stale shortcut) now just brings the existing window to the front rather than starting a competing copy. Before this was enforced, a second instance would silently fall back to different ports for everything and plug in a second, separate virtual controller, leaving two different addresses in play with no way to tell which one a game was actually reading from — which looked exactly like "the address keeps changing" or "the one I typed doesn't work."
+
+If you're hitting this on a build from before it was fixed: close every "Controller Host" window and check Task Manager for any `controller-host.exe` still running in the background, end them all, then relaunch once.
+
 ---
 
 ## How it works
