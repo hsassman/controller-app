@@ -73,10 +73,22 @@ pub async fn run_http_server(
     let url = format!("http://{lan_ip}:{port}");
     println!("Phone page served at {url}  (open this on your phone)");
     println!("serving client bundle from {}", root.display());
+    // Rendered once here rather than on demand: the URL is fixed for the
+    // life of the process, and the window may ask for the snapshot before
+    // or after this point, so both paths need the finished SVG ready.
+    let qr_svg = crate::qr::svg_for(&url);
     if let Some(state) = app_handle.try_state::<crate::status::SharedStatus>() {
-        state.update(|s| s.web_url = Some(url.clone()));
+        state.update(|s| {
+            s.web_url = Some(url.clone());
+            s.qr_svg = qr_svg.clone();
+        });
     }
     let _ = app_handle.emit("web-address", url);
+    // Sent separately from `web-address` so a window that loaded before the
+    // page server bound still receives the code, without having to poll.
+    if let Some(svg) = qr_svg {
+        let _ = app_handle.emit("web-qr", svg);
+    }
 
     let connection_slots = Arc::new(tokio::sync::Semaphore::new(MAX_CONNECTIONS));
 
@@ -99,11 +111,12 @@ pub async fn run_http_server(
         };
         let root = root.clone();
         let lan_ip = lan_ip.clone();
+        let handle = app_handle.clone();
         tokio::spawn(async move {
             let _permit = permit;
             // A failed request is logged, never fatal: one malformed
             // request must not take the page server down for the session.
-            if let Err(err) = serve_one(stream, &root, &lan_ip, ws_port).await {
+            if let Err(err) = serve_one(stream, &root, &lan_ip, ws_port, &handle).await {
                 eprintln!("http request failed: {err}");
             }
         });
@@ -115,6 +128,7 @@ async fn serve_one(
     root: &Path,
     lan_ip: &str,
     ws_port: u16,
+    app_handle: &AppHandle,
 ) -> std::io::Result<()> {
     let head = match tokio::time::timeout(HEAD_TIMEOUT, read_head(&mut stream)).await {
         Ok(result) => match result? {
@@ -149,8 +163,19 @@ async fn serve_one(
     // answers, the page knows it was served by a host and can connect
     // itself instead of asking the user to type an address.
     if target == "/host-info.json" {
+        // `padReady` is the phone's only way to know the PC can actually
+        // act on input. Without it the page connects, says "Connected" and
+        // silently does nothing when ViGEmBus is missing -- which reads as
+        // "this app is broken" rather than "install one driver".
+        let pad_ready = app_handle
+            .try_state::<crate::status::SharedStatus>()
+            .map(|state| state.snapshot().pad_ready)
+            // Unknown means don't accuse: claiming the driver is missing
+            // when we simply cannot tell would be a worse failure.
+            .unwrap_or(true);
         let body = format!(
-            "{{\"ws\":\"{lan_ip}:{ws}\",\"host\":\"{lan_ip}\",\"wsPort\":{ws}}}",
+            "{{\"ws\":\"{lan_ip}:{ws}\",\"host\":\"{lan_ip}\",\"wsPort\":{ws},\
+             \"padReady\":{pad_ready}}}",
             ws = ws_port
         );
         return respond(

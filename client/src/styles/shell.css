@@ -1,0 +1,208 @@
+/* Topbar connection actions and the first-run hint. Loads after style.css,
+   so these win ties without inflated specificity. */
+
+/* ---- Reconnect / change PC ----
+   Only rendered while the link is actually down. Previously a dropped
+   connection left "Connection lost -- reconnecting..." on screen with a
+   16-second backoff behind it and nothing to press, which reads as a hang. */
+.conn-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.conn-actions[hidden] {
+  display: none;
+}
+
+.conn-actions button {
+  min-height: 2rem;
+  padding: 0.3rem 0.7rem;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 650;
+  color: var(--fg);
+  background: var(--panel-bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.conn-actions button:hover {
+  border-color: var(--accent);
+}
+
+.conn-actions button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+#reconnect-btn {
+  border-color: rgba(var(--accent-rgb), 0.55);
+  color: var(--accent-text, var(--accent));
+}
+
+/* ---- First-run hint ----
+   Sits over the pad rather than replacing it: the controller is already
+   live behind this, and saying so while showing it is the point. */
+.onboarding {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  width: min(30rem, calc(100% - 2rem));
+  padding: 1rem 1.15rem 1.05rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.012)),
+    var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  box-shadow: var(--panel-shadow);
+}
+
+.onboarding:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.onboarding h2 {
+  margin: 0 0 0.5rem;
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.onboarding ul {
+  margin: 0;
+  padding-left: 1.05rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.onboarding li {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--fg-muted);
+}
+
+.onboarding-dismiss {
+  margin-top: 0.85rem;
+  width: 100%;
+  min-height: 2.4rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--accent-fg);
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 0.6rem;
+  cursor: pointer;
+}
+
+.onboarding-dismiss:hover {
+  background: var(--accent-active);
+  border-color: var(--accent-active);
+}
+
+.onboarding-dismiss:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* A short landscape phone is the normal case, and the hint must never be
+   taller than the viewport it is centred in. */
+@media (max-height: 420px) {
+  .onboarding {
+    padding: 0.75rem 0.9rem 0.8rem;
+  }
+
+  .onboarding li {
+    font-size: 0.76rem;
+    line-height: 1.35;
+  }
+
+  .onboarding-dismiss {
+    margin-top: 0.6rem;
+    min-height: 2.2rem;
+  }
+}
+
+:root.high-contrast .onboarding {
+  background: #000;
+  border-color: #fff;
+}
+
+:root.high-contrast .onboarding li {
+  color: #fff;
+}
+
+:root.high-contrast .onboarding-dismiss {
+  background: #ffd400;
+  border-color: #ffd400;
+  color: #000;
+}
+
+:root.high-contrast .conn-actions button {
+  background: #000;
+  border-color: #fff;
+  color: #fff;
+}
+
+/* ---- Missing-driver banner ----
+   Sits over the pad rather than replacing it: the controls still work as
+   controls, they just aren't reaching a game yet, and hiding them would
+   suggest otherwise. */
+.pad-warning {
+  position: absolute;
+  left: 50%;
+  bottom: 0.75rem;
+  transform: translateX(-50%);
+  z-index: 4;
+  width: min(34rem, calc(100% - 1.5rem));
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--panel-bg);
+  border: 1px solid var(--warn, #ffc94a);
+  border-left-width: 3px;
+  border-radius: 0.6rem;
+  box-shadow: var(--panel-shadow);
+}
+
+.pad-warning p {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--fg);
+}
+
+.pad-warning-dismiss {
+  flex: none;
+  align-self: flex-start;
+  min-height: 2rem;
+  padding: 0.3rem 0.7rem;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 650;
+  color: var(--fg);
+  background: var(--panel-bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.pad-warning-dismiss:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+:root.high-contrast .pad-warning {
+  background: #000;
+  border-color: #ffd400;
+}

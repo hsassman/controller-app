@@ -13,6 +13,10 @@ pub struct Status {
     pub ws_address: Option<String>,
     /// Full URL of the phone page, if it is being served.
     pub web_url: Option<String>,
+    /// `web_url` rendered as an `<svg>` QR code, so the address can be
+    /// scanned instead of typed. `None` when there is no URL to encode, or
+    /// if encoding failed -- the window lays out without it either way.
+    pub qr_svg: Option<String>,
     /// False when this PC's LAN address could not be determined, in which
     /// case any address shown would be a loopback guess and useless to a
     /// phone -- the window says so rather than showing it.

@@ -1,6 +1,7 @@
 import type { Layout } from "../layout.ts";
 import type { Settings } from "../settings.ts";
-import { THEMES, ACCENT_PRESETS } from "../theme.ts";
+import { THEMES, ACCENT_PRESETS, BUTTON_MATERIALS, DPAD_STYLES } from "../theme.ts";
+import { promptDialog, confirmDialog, alertDialog } from "../dialog.ts";
 import { mappingName } from "../mappings.ts";
 import {
   listProfiles,
@@ -72,6 +73,7 @@ export function renderSettingsPanel(layout: Layout, current: Settings, host: Set
 
   const body = document.createElement("div");
   body.className = "panel-body";
+  body.id = "settings-tabpanel";
   body.setAttribute("role", "tabpanel");
   panel.appendChild(body);
 
@@ -81,22 +83,53 @@ export function renderSettingsPanel(layout: Layout, current: Settings, host: Set
   };
 
   let activeTab: TabId = "appearance";
+  const tabButtons: HTMLButtonElement[] = [];
 
-  const renderTabs = () => {
-    tabList.innerHTML = "";
+  /// Selects a tab and keeps the ARIA state in step. The tablist is a single
+  /// tab stop (roving tabindex): Tab moves past it into the panel, and the
+  /// arrow keys move between tabs, which is what the tab role promises.
+  const selectTab = (id: TabId, moveFocus: boolean) => {
+    activeTab = id;
+    for (const btn of tabButtons) {
+      const on = btn.dataset.tab === id;
+      btn.setAttribute("aria-selected", String(on));
+      btn.tabIndex = on ? 0 : -1;
+      btn.classList.toggle("on", on);
+      if (on && moveFocus) btn.focus();
+    }
+    body.setAttribute("aria-labelledby", `settings-tab-${id}`);
+    renderBody();
+  };
+
+  const onTabKey = (e: KeyboardEvent) => {
+    const index = tabButtons.findIndex((b) => b === e.target);
+    if (index < 0) return;
+    let next = index;
+    if (e.key === "ArrowRight") next = (index + 1) % tabButtons.length;
+    else if (e.key === "ArrowLeft") next = (index - 1 + tabButtons.length) % tabButtons.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = tabButtons.length - 1;
+    else return;
+    e.preventDefault();
+    selectTab(TABS[next].id, true);
+    haptic("ui");
+  };
+
+  const buildTabs = () => {
     for (const tab of TABS) {
       const btn = document.createElement("button");
       btn.type = "button";
+      btn.id = `settings-tab-${tab.id}`;
+      btn.dataset.tab = tab.id;
       btn.textContent = tab.label;
       btn.setAttribute("role", "tab");
-      btn.setAttribute("aria-selected", String(tab.id === activeTab));
-      btn.classList.toggle("on", tab.id === activeTab);
+      btn.setAttribute("aria-controls", body.id);
       btn.addEventListener("click", () => {
-        activeTab = tab.id;
-        renderTabs();
-        renderBody();
+        selectTab(tab.id, false);
         haptic("ui");
       });
+      btn.addEventListener("keydown", onTabKey);
+      tabButtons.push(btn);
       tabList.appendChild(btn);
     }
   };
@@ -122,8 +155,8 @@ export function renderSettingsPanel(layout: Layout, current: Settings, host: Set
     }
   };
 
-  renderTabs();
-  renderBody();
+  buildTabs();
+  selectTab(activeTab, false);
   document.body.appendChild(overlay);
 
   // Focus management for a modal dialog: move focus in, trap Tab inside
@@ -141,7 +174,9 @@ export function renderSettingsPanel(layout: Layout, current: Settings, host: Set
 
   const focusable = () =>
     [...overlay.querySelectorAll<HTMLElement>('button, input, select, [tabindex]:not([tabindex="-1"])')].filter(
-      (el) => !el.hasAttribute("disabled") && el.offsetParent !== null,
+      // tabIndex < 0 skips the unselected tabs: the tablist is one stop, so
+      // Tab has to step over them the way the browser itself would.
+      (el) => !el.hasAttribute("disabled") && el.offsetParent !== null && el.tabIndex >= 0,
     );
 
   const onDocumentKey = (e: KeyboardEvent) => {
@@ -236,8 +271,51 @@ function renderAppearance(
   sliderRow(body, "Control opacity", current.controlOpacity, 0.35, 1, 0.05, (v) => `${Math.round(v * 100)}%`, (v) =>
     emit({ controlOpacity: v }),
   );
+  choiceRow(
+    body,
+    "Button material",
+    BUTTON_MATERIALS.map((m) => ({ value: m.id, label: m.name })),
+    current.buttonMaterial,
+    (v) => emit({ buttonMaterial: v }),
+  );
+  choiceRow(
+    body,
+    "D-pad style",
+    DPAD_STYLES.map((d) => ({ value: d.id, label: d.name })),
+    current.dpadStyle,
+    (v) => emit({ dpadStyle: v }),
+  );
+
+  sliderRow(body, "Press glow", current.glowIntensity, 0, 1.5, 0.05, (v) =>
+    v === 0 ? "Off" : `${Math.round(v * 100)}%`, (v) => emit({ glowIntensity: v }),
+  );
   switchRow(body, "Show button labels", current.showLabels, (v) => emit({ showLabels: v }));
   switchRow(body, "Background glow", current.surfaceGlow, (v) => emit({ surfaceGlow: v }));
+
+  choiceRow(
+    body,
+    "Dim when idle",
+    IDLE_DIM_CHOICES,
+    // Match on the stored number so a hand-edited value still highlights the
+    // nearest offered option rather than leaving the group with none pressed.
+    nearestIdleChoice(current.idleDimSeconds),
+    (v) => emit({ idleDimSeconds: v }),
+  );
+  hint(body, "The controls fade after this long with no input, and come straight back on the next touch.");
+}
+
+const IDLE_DIM_CHOICES: { value: number; label: string }[] = [
+  { value: 0, label: "Off" },
+  { value: 5, label: "5 s" },
+  { value: 10, label: "10 s" },
+  { value: 30, label: "30 s" },
+];
+
+function nearestIdleChoice(seconds: number): number {
+  if (!Number.isFinite(seconds) || seconds <= 0) return 0;
+  return IDLE_DIM_CHOICES.reduce((best, c) =>
+    Math.abs(c.value - seconds) < Math.abs(best.value - seconds) ? c : best,
+  ).value;
 }
 
 function renderFeel(
@@ -301,6 +379,13 @@ function renderProfiles(body: HTMLElement, host: SettingsPanelHost, refresh: () 
   const profiles = listProfiles();
   const active = activeProfileId();
 
+  // The dialogs return focus to the button that opened them, which the
+  // re-render then removes; put focus somewhere real instead of on <body>.
+  const refreshAndFocus = () => {
+    refresh();
+    body.querySelector<HTMLElement>(".profile-item.on .profile-use")?.focus();
+  };
+
   hint(body, "Each profile is a complete layout. Switch between them from the bar at the top.");
 
   const list = document.createElement("div");
@@ -327,12 +412,16 @@ function renderProfiles(body: HTMLElement, host: SettingsPanelHost, refresh: () 
     const actions = document.createElement("div");
     actions.className = "profile-actions";
 
-    const rename = smallButton("Rename", () => {
-      const name = prompt("Profile name", profile.name);
+    const rename = smallButton("Rename", async () => {
+      const name = await promptDialog("Rename profile", {
+        label: "Profile name",
+        value: profile.name,
+        confirmLabel: "Save",
+      });
       if (name === null) return;
       renameProfile(profile.id, name);
       host.onProfilesChanged();
-      refresh();
+      refreshAndFocus();
     });
     const dup = smallButton("Duplicate", () => {
       duplicateProfile(profile.id);
@@ -340,16 +429,21 @@ function renderProfiles(body: HTMLElement, host: SettingsPanelHost, refresh: () 
       refresh();
     });
     const exp = smallButton("Export", () => exportLayout(profile));
-    const del = smallButton("Delete", () => {
-      if (!confirm(`Delete the "${profile.name}" profile? This can't be undone.`)) return;
+    const del = smallButton("Delete", async () => {
+      const ok = await confirmDialog("Delete profile", {
+        body: `"${profile.name}" and its layout will be removed. This can't be undone.`,
+        confirmLabel: "Delete",
+        danger: true,
+      });
+      if (!ok) return;
       // The store refuses to delete the last profile; reflect that here
       // instead of leaving the user tapping a button that does nothing.
       if (!deleteProfile(profile.id)) {
-        alert("This is your only profile, so it can't be deleted.");
+        await alertDialog("Can't delete this profile", "It's your only one, so there'd be nothing left to play with.");
         return;
       }
       host.onProfilesChanged();
-      refresh();
+      refreshAndFocus();
     });
     del.classList.add("danger");
     del.disabled = profiles.length <= 1;
@@ -364,12 +458,16 @@ function renderProfiles(body: HTMLElement, host: SettingsPanelHost, refresh: () 
   add.type = "button";
   add.className = "full-width";
   add.textContent = "+ New profile";
-  add.addEventListener("click", () => {
-    const name = prompt("Name for the new profile", "My layout");
+  add.addEventListener("click", async () => {
+    const name = await promptDialog("New profile", {
+      label: "Name",
+      value: "My layout",
+      confirmLabel: "Create",
+    });
     if (name === null) return;
     createProfile(name);
     host.onProfilesChanged();
-    refresh();
+    refreshAndFocus();
   });
   body.appendChild(add);
 }
@@ -393,6 +491,53 @@ function section(parent: HTMLElement, title: string): HTMLElement {
   wrap.appendChild(heading);
   parent.appendChild(wrap);
   return wrap;
+}
+
+let choiceGroupSeq = 0;
+
+/// A labelled set of mutually exclusive options, in the same pressed-button
+/// language as the theme cards. Updates its own pressed state in place rather
+/// than re-rendering the tab: several groups share a tab, so a re-render's
+/// refocus-by-selector would land on the wrong group's chip.
+function choiceRow<T extends string | number>(
+  parent: HTMLElement,
+  title: string,
+  options: { value: T; label: string }[],
+  value: T,
+  onPick: (v: T) => void,
+): void {
+  const wrap = section(parent, title);
+  const heading = wrap.querySelector("h3")!;
+  heading.id = `choice-group-${++choiceGroupSeq}`;
+
+  const group = document.createElement("div");
+  group.className = "choice-group";
+  group.setAttribute("role", "group");
+  group.setAttribute("aria-labelledby", heading.id);
+
+  const chips: { chip: HTMLButtonElement; value: T }[] = [];
+  const mark = (picked: T) => {
+    for (const { chip, value: v } of chips) {
+      chip.setAttribute("aria-pressed", String(v === picked));
+      chip.classList.toggle("on", v === picked);
+    }
+  };
+
+  for (const option of options) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "choice-chip";
+    chip.textContent = option.label;
+    chip.addEventListener("click", () => {
+      mark(option.value);
+      onPick(option.value);
+      haptic("ui");
+    });
+    chips.push({ chip, value: option.value });
+    group.appendChild(chip);
+  }
+  mark(value);
+  wrap.appendChild(group);
 }
 
 function hint(parent: HTMLElement, text: string): void {

@@ -1,4 +1,10 @@
+// style.css first, then the focused sheets that build on it. Import order
+// is cascade order, so anything here intentionally wins ties against the
+// base rules rather than fighting them with extra specificity.
 import "./style.css";
+import "./styles/dialogs.css";
+import "./styles/shell.css";
+import "./styles/settings-extra.css";
 import { renderConnectScreen } from "./screens/connect.ts";
 import { renderControllerScreen } from "./screens/controller.ts";
 import { loadSettings, applyHighContrast } from "./settings.ts";

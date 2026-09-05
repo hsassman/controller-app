@@ -29,6 +29,12 @@ export function renderControls(
 ): () => void {
   let disposed = false;
 
+  /// The surface size the current controls were built for, so the observer
+  /// can tell a genuine resize from a callback describing what is already on
+  /// screen.
+  let drawnW = -1;
+  let drawnH = -1;
+
   const draw = (releaseHeld: boolean) => {
     if (disposed) return;
     // Wiping the surface destroys the element holding the pointer, so its
@@ -40,6 +46,9 @@ export function renderControls(
     // The user's size multiplier rides on top of the fit-to-viewport scale
     // rather than replacing it, so scaling up on a small phone still cannot
     // push a control off-screen further than the fit calculation allows.
+    const rect = container.getBoundingClientRect();
+    drawnW = rect.width;
+    drawnH = rect.height;
     const scale = computeScale(container) * getSettings().controlScale;
     container.innerHTML = "";
     container.classList.toggle("hide-labels", !getSettings().showLabels);
@@ -50,15 +59,23 @@ export function renderControls(
   };
   draw(false);
 
-  // ResizeObserver fires once immediately on observe(); that first callback
-  // is the size we just drew at, so skip it rather than rebuilding the
-  // surface twice on every mount.
-  let seenFirstObservation = false;
+  // ResizeObserver fires once on observe(), normally describing the size we
+  // just drew at -- so redraw only when the box actually differs, rather
+  // than skipping the first callback outright.
+  //
+  // Counting callbacks was wrong in the ordinary case: the page is usually
+  // opened in portrait, where the surface is `display: none` and so has no
+  // box at all. The spec fires no initial callback for a box-less element,
+  // which meant the *rotation* to landscape produced the first observation
+  // and got swallowed. The pad then stayed drawn at the scale computed from
+  // a 0x0 rect -- a flat 1.0, up to 30% wrong -- until something else
+  // happened to resize it.
   const observer = new ResizeObserver(() => {
-    if (!seenFirstObservation) {
-      seenFirstObservation = true;
-      return;
-    }
+    const rect = container.getBoundingClientRect();
+    // A collapsed box carries no usable size; keep what is drawn and wait
+    // for the observation that comes with real dimensions.
+    if (rect.width === 0 || rect.height === 0) return;
+    if (rect.width === drawnW && rect.height === drawnH) return;
     draw(true);
   });
   observer.observe(container);
@@ -210,9 +227,32 @@ function buildDpad(cfg: Extract<ControlConfig, { type: "dpad" }>, scale: number)
   applyTint(el, cfg.tint);
   positioned(el, cfg.x, cfg.y, cfg.size * scale, cfg.size * scale);
 
+  // Real structure rather than one clipped div: a recessed well, a cross that
+  // rocks as a rigid body, and four individually lit arms carrying arrow
+  // glyphs. Purely presentational -- every listener below still lives on the
+  // host, so hit-testing and pointer capture are unchanged.
+  const well = document.createElement("div");
+  well.className = "dpad-well";
+  well.setAttribute("aria-hidden", "true");
+  el.appendChild(well);
+
+  const cross = document.createElement("div");
+  cross.className = "dpad-cross";
+  cross.setAttribute("aria-hidden", "true");
+  for (const dir of ["up", "right", "down", "left"]) {
+    const arm = document.createElement("div");
+    arm.className = `dpad-arm ${dir}`;
+    const arrow = document.createElement("i");
+    arrow.className = "dpad-arrow";
+    arm.appendChild(arrow);
+    cross.appendChild(arm);
+  }
+  // Keeps the `.dpad-indicator` name the tint / high-contrast rules key on
+  // while gaining the structural `.dpad-hub` hook.
   const indicator = document.createElement("div");
-  indicator.className = "dpad-indicator";
-  el.appendChild(indicator);
+  indicator.className = "dpad-hub dpad-indicator";
+  cross.appendChild(indicator);
+  el.appendChild(cross);
 
   let activeBits: number[] = [];
 

@@ -1,4 +1,6 @@
-//! Binary frame constants for the host. Mirrors `protocol/frame.rs` and
+//! Binary frame constants for the host. Mirrors `protocol/frame.ts`, which
+//! is the client's half of the same wire format: the two must be changed
+//! together.
 
 pub const FRAME_TYPE_INPUT: u8 = 0x01;
 pub const FRAME_TYPE_PING: u8 = 0x02;

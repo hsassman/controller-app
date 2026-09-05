@@ -26,9 +26,9 @@ The app ships as a **portable build**: one `.exe` and a folder of static files. 
 2. Download `PhoneController-Portable.zip` from the [latest release](../../releases/latest) and copy it to the PC you want to play on.
 3. Unzip it anywhere, double-click **`controller-host.exe`**.
    - Windows will likely show a **"Windows protected your PC"** SmartScreen prompt the first time, because the exe isn't code-signed. Click **More info → Run anyway**. That's expected for an app shared this way, not a sign anything is wrong.
-4. A window opens showing an address. Open it in your phone's browser.
+4. A window opens showing a **QR code**. Point your phone's camera at it.
 
-That's it. The page connects itself — there's nothing to type.
+That's it — no typing an IP on a phone keypad, and the page connects itself once it opens. The address is printed under the code if you'd rather type it.
 
 <p align="center">
   <img src="screenshots/01-connect.png" alt="The connect screen, with automatic host discovery" width="80%">
@@ -94,7 +94,9 @@ Each profile is a complete layout. Keep a shooter layout and a racing layout sid
 
 ### Themes and feel
 
-Five themes, a free-form accent colour, and control size, opacity and labels all adjustable. Vibration strength, stick dead zone and sensitivity curve are yours to tune.
+Eight themes, a free-form accent colour, and control size, opacity and labels all adjustable. Vibration strength, stick dead zone and sensitivity curve are yours to tune.
+
+Beyond colour, the pad's **material** changes how every control catches light — matte, gloss, brushed metal or neon — and the **d-pad** can be a moulded cross, four separate keys, or a round rocker disc. Press glow is a slider, down to off. **Dim when idle** fades the controls after a chosen pause and brings them straight back on the next touch, which is what you want when the phone is next to you between rounds or you're recording the screen.
 
 <p align="center">
   <img src="screenshots/05-settings.png" alt="The settings panel" width="70%">
@@ -111,7 +113,9 @@ Five themes, a free-form accent colour, and control size, opacity and labels all
 - **High-contrast mode** that genuinely flattens every decorative layer, on every theme.
 - **Toggle mode** per button: press once to hold, press again to release.
 - **Reduce motion**, honouring both the app setting and the OS preference.
-- Every touch target clears WCAG 2.2's 24px minimum; UI boundaries clear 3:1 contrast.
+- **Pinch-zoom stays available** everywhere except the pad itself, so the connect screen and settings text can be magnified. Locking zoom app-wide is the usual shortcut here, and it fails WCAG 1.4.4 for anyone who needs larger text.
+- **A custom accent can't make labels unreadable.** Pick any colour you like; where the accent is used as text it is lightened only as far as 4.5:1 requires, so the hue survives and the words stay legible.
+- Every touch target clears WCAG 2.2's 24px minimum; UI boundaries clear 3:1 contrast on all eight themes.
 
 <p align="center">
   <img src="screenshots/08-high-contrast.png" alt="High-contrast mode" width="100%">
@@ -123,6 +127,7 @@ Five themes, a free-form accent colour, and control size, opacity and labels all
 - **Live latency readout** in the top bar, so "it feels laggy" has an actual number attached.
 - **Heartbeat detection.** A phone that walks out of Wi-Fi range produces no TCP reset, so the socket would sit open and the UI would keep claiming "Connected". A ping/pong heartbeat catches that and reconnects.
 - **Nothing gets stuck.** Rotating the phone, opening settings, switching profiles or disconnecting all release held inputs and flush a neutral frame first — because the host keeps applying the last frame it received, so "stop sending" is not the same as "release".
+- **A dead link releases the pad.** A phone that sleeps or leaves Wi-Fi sends no TCP close, so the host would otherwise sit on its last frame until Windows' keepalive noticed — hours later, with your character still running forward. The host drops a client that goes quiet for six seconds and returns the pad to neutral.
 - **Screen wake lock**, so the phone doesn't dim mid-game.
 - Multi-touch throughout, with per-control pointer ownership so a stray thumb can't release a button someone else is holding.
 
@@ -130,7 +135,7 @@ Five themes, a free-form accent colour, and control size, opacity and labels all
 
 ## Checking that it works
 
-The host window has a live input monitor — press something on the phone and the buttons light up, the stick dots move, the trigger bars fill.
+The host window has a live input monitor — press something on the phone and the buttons light up, the stick dots move, the trigger bars fill. The window walks you through this on first run, and says plainly when the ViGEmBus driver is missing, which is the one failure that otherwise looks like a working connection: the phone connects, reports "Connected", and every press is silently discarded.
 
 > **Windows' own "Game controllers" panel (`joy.cpl`) will not show it moving.** That panel reads the legacy DirectInput API, which Xbox-type controllers — real ones included — don't report through. It is not a sign that anything is wrong. Games and Steam read XInput and see the pad correctly.
 

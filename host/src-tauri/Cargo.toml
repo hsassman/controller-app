@@ -6,22 +6,27 @@ edition = "2021"
 
 [lib]
 name = "controller_host_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
+# `rlib` only: `staticlib`/`cdylib` are the Tauri template's iOS/Android
+# outputs, and this is a Windows desktop app. Building them cost link time
+# and produced artifacts nothing consumed.
+crate-type = ["rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
-tokio = { version = "1", features = ["rt-multi-thread", "net", "macros", "sync", "time", "fs", "io-util"] }
+tokio = { version = "1", features = ["rt-multi-thread", "net", "sync", "time", "fs", "io-util"] }
 tokio-tungstenite = "0.24"
 futures-util = "0.3"
 serde = { version = "1", features = ["derive"] }
+# Renders the phone URL as a QR code in the host window, so the address gets
+# onto the phone by pointing a camera at it instead of being typed by hand
+# on a keypad. `default-features = false` keeps the `image` crate out: the
+# window only ever needs the SVG renderer.
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 
 # Windows-only: virtual Xbox 360 controller via the ViGEmBus kernel driver.
-# Gated to the Windows target per docs/03-TECH-STACK.md ("Windows virtual
-# gamepad: ViGEmBus + vigem-client crate") -- this project is Windows-first
-# for Phase 1, Linux uinput support is Phase 5 (see docs/08-ROADMAP.md), so
-# non-Windows builds simply compile without gamepad injection for now.
+# Non-Windows builds compile without gamepad injection.
 [target.'cfg(windows)'.dependencies]
 vigem-client = "0.1"

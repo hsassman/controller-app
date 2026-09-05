@@ -32,6 +32,19 @@ const MIN_PONG_INTERVAL: Duration = Duration::from_millis(50);
 /// Cap on how many malformed messages one connection may log.
 const MAX_MALFORMED_LOGS: u32 = 5;
 
+/// How long a connected client may go completely silent before the host
+/// drops it.
+///
+/// This is the difference between a stuck character and a released one. A
+/// phone that sleeps, walks out of Wi-Fi range or is force-quit sends no
+/// FIN, so the read below would block until Windows' TCP keepalive notices
+/// -- two hours by default. Nothing else would release the pad in that
+/// time, and the pad holds the last frame it was given: hold the stick
+/// forward, lose Wi-Fi, and the character keeps running until this app is
+/// killed. The client heartbeats every 2s, so several missed pings in a row
+/// is already a dead link.
+const IDLE_TIMEOUT: Duration = Duration::from_secs(6);
+
 use crate::frame::{pong_for, InputFrame, FRAME_TYPE_INPUT};
 
 /// Public so the HTTP server can report it to the phone in
@@ -179,7 +192,7 @@ pub fn create_pad(app_handle: &AppHandle) -> SharedPad {
     #[cfg(not(windows))]
     {
         let _ = app_handle;
-        eprintln!("virtual gamepad injection is Windows-only for now (docs/08-ROADMAP.md Phase 5)");
+        eprintln!("virtual gamepad injection is Windows-only for now");
         PadState::new(None)
     }
 }
@@ -266,11 +279,21 @@ async fn handle_connection(
     let mut last_pong_at: Option<Instant> = None;
     let mut malformed_logged: u32 = 0;
 
-    while let Some(msg) = read.next().await {
-        let msg = match msg {
-            Ok(msg) => msg,
-            Err(err) => {
+    loop {
+        let msg = match tokio::time::timeout(IDLE_TIMEOUT, read.next()).await {
+            Ok(Some(Ok(msg))) => msg,
+            Ok(Some(Err(err))) => {
                 ended_with = Err(err);
+                break;
+            }
+            // Stream ended cleanly.
+            Ok(None) => break,
+            Err(_) => {
+                eprintln!(
+                    "no traffic from {peer_addr} for {}s -- treating the link as dead and \
+                     releasing the pad",
+                    IDLE_TIMEOUT.as_secs()
+                );
                 break;
             }
         };

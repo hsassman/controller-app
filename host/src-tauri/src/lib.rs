@@ -3,6 +3,7 @@ mod frame;
 mod gamepad;
 mod http;
 mod ports;
+mod qr;
 mod server;
 mod status;
 

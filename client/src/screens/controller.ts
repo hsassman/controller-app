@@ -9,8 +9,15 @@ import { fullscreenSupported, isFullscreen, toggleFullscreen, keepAwakeWhileVisi
 import { renderSettingsPanel } from "./settings-panel.ts";
 import { loadLayout, listProfiles, setActiveProfile, activeProfileId } from "../profile.ts";
 import { renderEditor, type EditorHandle } from "./editor.ts";
+import { confirmDialog } from "../dialog.ts";
+import { showFirstRunHint } from "../onboarding.ts";
 
 const SEND_RATE_HZ = 100;
+/// Written by the connect screen just before it dials, so the first entry is
+/// the address this session is actually on. Read (never written) here so
+/// "Reconnect now" has a target without connection.ts having to expose one.
+const RECENT_HOSTS_KEY = "controller-recent-hosts";
+const DEFAULT_PORT = 8787;
 
 export function renderControllerScreen(
   container: HTMLElement,
@@ -19,11 +26,18 @@ export function renderControllerScreen(
 ): void {
   container.innerHTML = `
     <div class="screen controller-screen">
-      <div class="topbar">
-        <div id="status" class="status" data-state="connected" role="status">
+      <header class="topbar">
+        <h1 id="screen-heading" class="visually-hidden" tabindex="-1">Game controller</h1>
+        <div id="status" class="status" data-state="connected">
           <span id="status-dot" aria-hidden="true"></span>
-          <span id="status-text">Connected</span>
-          <span id="status-latency" class="status-latency" hidden></span>
+          <span id="status-text" role="status">Connected</span>
+          <!-- Outside the live region: the ping is rewritten every couple of
+               seconds, and announcing it forever is unusable. -->
+          <span id="status-latency" class="status-latency" aria-hidden="true" hidden></span>
+        </div>
+        <div id="conn-actions" class="conn-actions" hidden>
+          <button id="reconnect-btn" type="button">Reconnect now</button>
+          <button id="change-host-btn" type="button">Change PC</button>
         </div>
         <label id="profile-picker" class="profile-picker">
           <span class="visually-hidden">Active layout profile</span>
@@ -37,15 +51,15 @@ export function renderControllerScreen(
           <button id="settings-btn" type="button" aria-label="Settings" title="Settings">⚙</button>
           <button id="disconnect-btn" type="button">Disconnect</button>
         </div>
-      </div>
-      <div class="surface-wrap">
+      </header>
+      <main class="surface-wrap">
         <div id="controls-surface" class="controls-surface" role="group" aria-label="Game controller"></div>
         <div id="empty-layout" class="empty-layout" hidden>
           <h2>This layout has no controls</h2>
           <p>Tap <strong>Edit layout</strong>, then <strong>Presets</strong> to start from a standard pad.</p>
         </div>
-      </div>
-      <div class="rotate-block" role="status">
+      </main>
+      <div class="rotate-block">
         <span class="rotate-icon" aria-hidden="true">📱</span>
         <h2>Rotate your device</h2>
         <p>This controller is designed for landscape. Turn your phone sideways to play.</p>
@@ -65,6 +79,11 @@ export function renderControllerScreen(
   const fullscreenBtn = container.querySelector<HTMLButtonElement>("#fullscreen-btn")!;
   const profilePicker = container.querySelector<HTMLLabelElement>("#profile-picker")!;
   const profileSelect = container.querySelector<HTMLSelectElement>("#profile-select")!;
+  const heading = container.querySelector<HTMLHeadingElement>("#screen-heading")!;
+  const connActions = container.querySelector<HTMLDivElement>("#conn-actions")!;
+  const reconnectBtn = container.querySelector<HTMLButtonElement>("#reconnect-btn")!;
+  const changeHostBtn = container.querySelector<HTMLButtonElement>("#change-host-btn")!;
+  const surfaceWrap = container.querySelector<HTMLElement>(".surface-wrap")!;
 
   const settings = loadSettings();
   const applySettings = () => {
@@ -78,6 +97,13 @@ export function renderControllerScreen(
   // canvas touches this app uses don't reliably reset the platform idle
   // timer — so the lock is requested as soon as there is something to play.
   keepAwakeWhileVisible();
+
+  // Without the ViGEmBus driver the PC accepts the connection and reports
+  // "Connected" while quietly discarding every input, which reads as a
+  // broken app rather than a missing driver. The host says so in
+  // /host-info.json; say it here too, because the phone is what the player
+  // is looking at.
+  void warnIfPadUnavailable(surfaceWrap);
 
   let layout = loadLayout();
   let editing = false;
@@ -117,7 +143,20 @@ export function renderControllerScreen(
     profilePicker.hidden = profiles.length < 2;
   };
 
-  const showPlayMode = () => {
+  /// Rebuilds the play controls. Called whenever the input state is cleared
+  /// out from under the DOM: a toggle-mode button holds its latched class and
+  /// aria-pressed until it is rebuilt, so without this it keeps looking held
+  /// while its bit is already clear, and the next tap turns it back on.
+  const renderPlaySurface = () => {
+    releaseSurface();
+    teardownSurface = renderControls(surface, layout, () => settings, flushNeutralFrame);
+  };
+
+  /// `focusHeading` is for arrivals -- first mount and coming back out of the
+  /// editor -- where the element that had focus no longer exists. It stays
+  /// off for in-place refreshes so a profile change can't yank focus out of
+  /// the picker the user is still using.
+  const showPlayMode = (focusHeading = false) => {
     releaseSurface();
     editing = false;
     editToolbar.hidden = true;
@@ -131,6 +170,9 @@ export function renderControllerScreen(
     syncProfiles();
     container.querySelector<HTMLElement>("#empty-layout")!.hidden = layout.controls.length > 0;
     teardownSurface = renderControls(surface, layout, () => settings, flushNeutralFrame);
+    heading.textContent = "Game controller";
+    document.title = "Playing — Phone Controller";
+    if (focusHeading) heading.focus();
   };
 
   const showEditMode = () => {
@@ -149,26 +191,42 @@ export function renderControllerScreen(
     editBtn.textContent = "Discard";
     doneBtn.hidden = false;
     container.querySelector<HTMLElement>("#empty-layout")!.hidden = true;
+    heading.textContent = "Layout editor";
+    document.title = "Editing layout — Phone Controller";
     const handle = renderEditor(surface, editToolbar, layout, {
       getSettings: () => settings,
       onSettingsChanged: () => saveSettings(settings),
       onDone: (updated) => {
         layout = updated;
-        showPlayMode();
+        showPlayMode(true);
       },
-      onCancel: () => leaveEditor(),
+      onCancel: () => void leaveEditor(),
     });
     editorHandle = handle;
     teardownSurface = handle.teardown;
   };
 
-  /// Leaves the editor, asking first if it would throw work away.
-  const leaveEditor = () => {
-    if (editorHandle?.isDirty() && !confirm("Discard your changes to this layout?")) return;
-    showPlayMode();
+  /// Leaves the editor, asking first if it would throw work away. The prompt
+  /// is async, so the editor is still mounted while it is open -- re-check
+  /// nothing here, just act on the answer.
+  const leaveEditor = async () => {
+    if (editorHandle?.isDirty()) {
+      const discard = await confirmDialog("Discard your changes to this layout?", {
+        body: "The layout goes back to how it was when you opened the editor.",
+        confirmLabel: "Discard",
+        cancelLabel: "Keep editing",
+        danger: true,
+      });
+      if (!discard) return;
+    }
+    showPlayMode(true);
   };
 
-  showPlayMode();
+  showPlayMode(true);
+
+  // On a first run the hint is what the user needs to read, so it takes
+  // focus from the heading and hands it back when dismissed.
+  showFirstRunHint(surfaceWrap, () => heading.focus());
 
   const STATUS_LABEL: Record<ConnectionState, string> = {
     idle: "Not connected",
@@ -189,7 +247,12 @@ export function renderControllerScreen(
     statusEl.dataset.state = state;
     statusText.textContent = STATUS_LABEL[state];
     // "lost" auto-reconnects (see connection.ts); the send loop keeps
-    // running and simply no-ops until the socket is OPEN again.
+    // running and simply no-ops until the socket is OPEN again. The backoff
+    // grows to 16s though, so without these two buttons the only thing the
+    // user can do about a dropped Wi-Fi is stare at the message and wait.
+    const offline = state === "lost" || state === "error";
+    connActions.hidden = !offline;
+    reconnectBtn.disabled = lastHost() === null;
   };
   connection.setStateHandler(handleState);
 
@@ -238,19 +301,48 @@ export function renderControllerScreen(
     haptic("ui");
   });
 
-  disconnectBtn.addEventListener("click", () => {
-    if (!confirm("Disconnect from your PC?")) return;
+  /// Tears the session down and hands the user back to the connect screen.
+  const goToConnectScreen = () => {
     // Release inputs and flush one neutral frame before closing, so the
     // host's still-plugged-in pad doesn't retain a held button.
     resetAll();
     flushNeutralFrame();
     cleanup();
     connection.disconnect();
+    document.title = "Phone Controller";
     onDisconnected();
+  };
+
+  disconnectBtn.addEventListener("click", () => {
+    void (async () => {
+      const confirmed = await confirmDialog("Disconnect from your PC?", {
+        body: "The virtual gamepad is unplugged on the PC until you connect again.",
+        confirmLabel: "Disconnect",
+        danger: true,
+      });
+      if (!confirmed) return;
+      goToConnectScreen();
+    })();
+  });
+
+  reconnectBtn.addEventListener("click", () => {
+    const host = lastHost();
+    if (!host) return;
+    haptic("ui");
+    // disconnect() first: it is the only thing that cancels the pending
+    // backoff timer, which would otherwise fire later and tear down the
+    // socket this click just opened.
+    connection.disconnect();
+    connection.connect(host);
+  });
+
+  changeHostBtn.addEventListener("click", () => {
+    haptic("ui");
+    goToConnectScreen();
   });
 
   editBtn.addEventListener("click", () => {
-    if (editing) leaveEditor();
+    if (editing) void leaveEditor();
     else showEditMode();
   });
 
@@ -268,6 +360,7 @@ export function renderControllerScreen(
   settingsBtn.addEventListener("click", () => {
     resetAll();
     flushNeutralFrame();
+    if (!editing) renderPlaySurface();
     renderSettingsPanel(layout, settings, {
       getLayout: () => layout,
       onChange: (updated) => {
@@ -277,10 +370,7 @@ export function renderControllerScreen(
         // Re-render so changed dead zone / toggle-mode / appearance settings
         // take effect, but only in play mode -- and always through
         // releaseSurface() so we never stack a second ResizeObserver.
-        if (!editing) {
-          releaseSurface();
-          teardownSurface = renderControls(surface, layout, () => settings, flushNeutralFrame);
-        }
+        if (!editing) renderPlaySurface();
       },
       onProfilesChanged: () => {
         resetAll();
@@ -290,4 +380,56 @@ export function renderControllerScreen(
       },
     });
   });
+}
+
+/// Shows a dismissible banner when the PC has no virtual pad to drive.
+///
+/// Only ever *adds* information: if the endpoint is missing, unreachable or
+/// from an older host that doesn't report `padReady`, nothing is shown. A
+/// false alarm here would be worse than silence.
+async function warnIfPadUnavailable(host: HTMLElement): Promise<void> {
+  let ready: unknown;
+  try {
+    const res = await fetch("/host-info.json", { cache: "no-store" });
+    if (!res.ok) return;
+    ({ padReady: ready } = (await res.json()) as { padReady?: unknown });
+  } catch {
+    return; // page opened from somewhere other than the host
+  }
+  if (ready !== false) return;
+
+  const banner = document.createElement("div");
+  banner.className = "pad-warning";
+  banner.setAttribute("role", "alert");
+
+  const text = document.createElement("p");
+  text.innerHTML =
+    "<strong>The PC can't create a controller yet.</strong> " +
+    "The ViGEmBus driver isn't installed, so your presses arrive but go nowhere. " +
+    "Install it on the PC from the link in the Controller Host window, then restart that app.";
+  banner.appendChild(text);
+
+  const dismiss = document.createElement("button");
+  dismiss.type = "button";
+  dismiss.className = "pad-warning-dismiss";
+  dismiss.textContent = "Dismiss";
+  dismiss.addEventListener("click", () => banner.remove());
+  banner.appendChild(dismiss);
+
+  host.appendChild(banner);
+}
+
+/// The address this session connected to, for "Reconnect now". The connect
+/// screen stores it on the way in; `location.hostname` is the fallback for
+/// when storage is blocked but the host served this page itself.
+function lastHost(): string | null {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(RECENT_HOSTS_KEY) ?? "null") as unknown;
+    if (Array.isArray(parsed) && typeof parsed[0] === "string") return parsed[0];
+  } catch {
+    // Blocked or corrupt storage -- fall through to the served-from host.
+  }
+  const host = location.hostname;
+  if (!host || /^(localhost|127\.0\.0\.1)$/.test(host)) return null;
+  return `${host}:${DEFAULT_PORT}`;
 }

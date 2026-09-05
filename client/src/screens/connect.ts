@@ -119,6 +119,10 @@ export function renderConnectScreen(
       chip.className = "host-chip";
       chip.textContent = host;
       chip.addEventListener("click", () => {
+        // Counts as taking over: without this, discovery could still land a
+        // moment later and reconnect to a different address than the one
+        // that was just tapped.
+        cancelAuto();
         hostInput.value = host;
         connect();
       });
@@ -186,7 +190,14 @@ export function renderConnectScreen(
   statusText.textContent = "Looking for your PC…";
 
   void discoverHost().then((address) => {
-    if (userTookOver || !container.isConnected) return;
+    // `handedOff`/`connection` are the real guards. `container.isConnected`
+    // never goes false here -- #app is static in index.html and is only ever
+    // refilled -- so on its own it let a late discovery call connect() on a
+    // connection already handed to the controller screen. That path runs
+    // disconnect() with manualDisconnect set and the listeners aborted, so
+    // no close event ever fires: the UI keeps saying "Connected" while
+    // nothing reaches the PC, and it never reconnects.
+    if (userTookOver || handedOff || connection) return;
     if (!address) {
       // No host served this page, so the manual form is the real UI --
       // put the status back rather than leaving a stale "looking…".

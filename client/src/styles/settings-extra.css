@@ -1,0 +1,108 @@
+/* Additions that belong with the settings/theming work but load after
+   style.css, so they win ties without needing inflated specificity. */
+
+/* ---- Border contrast (WCAG 1.4.11) ----
+   These borders are the only thing separating inputs, panels and toolbar
+   buttons from their background, so they are UI components and owe 3:1.
+   Midnight, Carbon and Nebula sat at 2.7-2.9:1. Each value below is the
+   smallest lift toward white that clears the threshold, so the palette
+   looks unchanged. Sunset and Mint already passed and are left alone. */
+:root {
+  --border: #646877; /* was #5b6070 -- 2.69:1 on --panel-bg */
+}
+
+:root[data-theme="carbon"] {
+  --border: #64646d; /* was #5d5d66 -- 2.75:1 */
+}
+
+:root[data-theme="nebula"] {
+  --border: #6b5f94; /* was #665a91 -- 2.85:1 */
+}
+
+/* ---- Three more themes ----
+   Every variable the built-in theme blocks declare is declared here too:
+   a partial block would silently inherit Midnight's shell and read as the
+   wrong material rather than as a different theme. */
+
+:root[data-theme="aurora"] {
+  --bg: #04161a;
+  --panel-bg: #0b262c;
+  --panel-bg-raised: #103138;
+  --border: #3f8290;
+  --fg-muted: #93c3cc;
+  --shell: linear-gradient(177deg, #2b5b64 0%, #1f444c 42%, #163238 78%, #112a2f 100%);
+  --dpad-shell: linear-gradient(177deg, #326a75 0%, #27535c 46%, #1c3d44 100%);
+  --chip-bg: linear-gradient(180deg, #17414a, #0e2c33);
+}
+
+:root[data-theme="crimson"] {
+  --bg: #170709;
+  --panel-bg: #261115;
+  --panel-bg-raised: #31171c;
+  --border: #90555d;
+  --fg-muted: #c99aa2;
+  --shell: linear-gradient(177deg, #5c3038 0%, #45242b 42%, #321a20 78%, #26141a 100%);
+  --dpad-shell: linear-gradient(177deg, #663640 0%, #4e2a32 46%, #391f25 100%);
+  --chip-bg: linear-gradient(180deg, #3b1f25, #271418);
+}
+
+:root[data-theme="mono"] {
+  --bg: #0c0c0d;
+  --panel-bg: #1a1a1c;
+  --panel-bg-raised: #232326;
+  --border: #6a6a70;
+  --fg-muted: #a3a3aa;
+  --shell: linear-gradient(177deg, #45454a 0%, #313135 42%, #212124 78%, #191919 100%);
+  --dpad-shell: linear-gradient(177deg, #4e4e54 0%, #3b3b40 46%, #2b2b2f 100%);
+  --chip-bg: linear-gradient(180deg, #303034, #202023);
+}
+
+/* ---- Readable accent text ----
+   `--accent` doubles as a label colour on panels, so a dark custom accent
+   made these unreadable -- and, being saved, stayed that way across
+   restarts. theme.ts derives `--accent-text`: the same hue, lightened only
+   as far as 4.5:1 demands. Borders and fills keep the literal accent, since
+   contrast does not apply to them the same way and they carry the colour
+   the user actually chose. */
+.topbar-actions button.on,
+.edit-toolbar button.on,
+.slider-value,
+button.full-width,
+.host-chip:hover,
+.troubleshoot summary::before {
+  color: var(--accent-text, var(--accent));
+}
+
+/* ---- Idle dim ----
+   Fades the pad after a spell with no input, for screen recording and for
+   watching something on the phone between rounds. The surface keeps its
+   layout and stays interactive: the first touch both restores it and does
+   what it was going to do anyway, so this can never cost an input. */
+:root.idle-dim .controls-surface {
+  opacity: 0.18;
+  transition: opacity 0.9s ease-out;
+}
+
+.controls-surface {
+  transition: opacity 0.18s ease-out;
+}
+
+/* Fading is decoration, and this one is on a long timer -- honour both the
+   OS preference and the in-app switch. */
+:root.reduce-motion .controls-surface,
+:root.reduce-motion.idle-dim .controls-surface {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .controls-surface,
+  :root.idle-dim .controls-surface {
+    transition: none;
+  }
+}
+
+/* Never dim the editor: the whole point there is to see what you are
+   arranging, and "no input for 10s" is normal while thinking. */
+:root.idle-dim .controls-surface:has(.edit-control) {
+  opacity: 1;
+}

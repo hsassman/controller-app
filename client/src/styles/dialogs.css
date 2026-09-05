@@ -1,0 +1,138 @@
+/* In-app confirm/prompt/alert dialogs (see dialog.ts).
+   Loaded after style.css, so these win ties against the base panel rules
+   without needing extra specificity. */
+
+.dialog-overlay {
+  /* Above the settings panel: a dialog raised *from* settings (rename or
+     delete a profile) must not appear behind the panel that opened it. */
+  z-index: 20;
+  backdrop-filter: blur(2px);
+}
+
+.dialog-panel {
+  width: min(23rem, 92vw);
+  padding: 1.15rem 1.25rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.dialog-panel h2 {
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.dialog-body {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--fg-muted);
+}
+
+.dialog-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin-top: 0.2rem;
+}
+
+input.dialog-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem 0.7rem;
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--fg);
+  background: var(--input-bg, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+}
+
+input.dialog-input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+/* Submitting an empty name is the one invalid state, so it is called out
+   in place rather than by swapping the dialog for an error. */
+input.dialog-input.invalid {
+  border-color: var(--danger, #ff5c8a);
+  box-shadow: 0 0 0 3px rgba(var(--danger-rgb, 255, 92, 138), 0.18);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.dialog-actions button {
+  min-height: 2.5rem;
+  padding: 0.5rem 1rem;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 650;
+  border-radius: 0.6rem;
+  border: 1px solid var(--border);
+  background: var(--panel-bg-raised, rgba(255, 255, 255, 0.05));
+  color: var(--fg);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.dialog-actions button:hover {
+  border-color: var(--accent);
+}
+
+.dialog-actions button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.dialog-confirm {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+.dialog-confirm:hover {
+  background: var(--accent-active);
+  border-color: var(--accent-active);
+}
+
+.dialog-confirm.danger {
+  background: var(--danger, #ff5c8a);
+  border-color: var(--danger, #ff5c8a);
+  color: #1a0509;
+}
+
+.dialog-confirm.danger:hover {
+  filter: brightness(1.08);
+}
+
+:root.high-contrast .dialog-panel {
+  background: #000;
+  border-color: #fff;
+}
+
+:root.high-contrast .dialog-actions button {
+  background: #000;
+  border-color: #fff;
+  color: #fff;
+}
+
+:root.high-contrast .dialog-confirm,
+:root.high-contrast .dialog-confirm.danger {
+  background: #ffd400;
+  border-color: #ffd400;
+  color: #000;
+}

@@ -5,158 +5,330 @@
     <title>Controller Host</title>
     <style>
       :root {
-        --bg: #111;
-        --panel: #1a1a1c;
-        --line: #2c2c30;
-        --text: #eee;
-        --muted: #8b8b92;
+        --bg: #0e0e10;
+        --panel: #17171a;
+        --panel-2: #131316;
+        --line: #2a2a30;
+        --line-soft: #232328;
+        --text: #ededf1;
+        --muted: #8d8d96;
+        --muted-dim: #6d6d76;
         --accent: #4ade80;
+        --accent-dim: #1e5c39;
         --warn: #f4b942;
+        --danger: #ff6b6b;
+        --radius: 10px;
       }
       * {
         box-sizing: border-box;
       }
+      html {
+        color-scheme: dark;
+      }
       body {
         margin: 0;
-        font-family: system-ui, sans-serif;
+        font-family:
+          "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+        font-size: 15px;
+        line-height: 1.5;
         background: var(--bg);
         color: var(--text);
         min-height: 100vh;
         display: flex;
         justify-content: center;
-        padding: 1.5rem 1rem;
+        padding: 1.4rem 1.1rem 2.4rem;
+        -webkit-font-smoothing: antialiased;
       }
       main {
         width: 100%;
-        max-width: 620px;
+        max-width: 660px;
+      }
+      .mono {
+        font-family: ui-monospace, "Cascadia Mono", "Consolas", monospace;
+      }
+
+      /* ---------- top bar ---------- */
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1rem;
       }
       h1 {
-        font-size: 1.1rem;
+        font-size: 0.95rem;
         font-weight: 600;
+        letter-spacing: 0.01em;
         margin: 0;
       }
       h2 {
-        font-size: 0.72rem;
+        font-size: 0.7rem;
         font-weight: 600;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.09em;
         text-transform: uppercase;
         color: var(--muted);
-        margin: 0 0 0.6rem;
+        margin: 0 0 0.75rem;
       }
-      header {
-        text-align: center;
+
+      /* The connected state must not read as colour alone: the dot changes
+         shape (hollow -> filled ring) and the label changes wording too. */
+      #status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.3rem 0.7rem 0.3rem 0.6rem;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--panel-2);
+        font-size: 0.78rem;
+        color: var(--muted);
+        white-space: nowrap;
       }
-      /* The phone URL is the one thing a user needs from this window, so
-         it gets the size and the copy button; the raw WebSocket address is
-         demoted to a fallback line for manual entry. */
+      #status-dot {
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 50%;
+        border: 2px solid var(--muted-dim);
+        background: transparent;
+      }
+      #status.connected {
+        color: var(--accent);
+        border-color: var(--accent-dim);
+      }
+      #status.connected #status-dot {
+        background: var(--accent);
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.15);
+      }
+
+      /* ---------- alerts ---------- */
+      /* Without the driver the phone still connects and looks healthy while
+         every input is silently dropped, so this warning outranks everything
+         else on the page when it is showing. */
+      #vigembus-warning {
+        display: none;
+        border: 1px solid #8a3b3b;
+        border-left: 4px solid var(--danger);
+        background: linear-gradient(180deg, #2a1516, #221315);
+        border-radius: var(--radius);
+        padding: 0.9rem 1rem;
+        margin-bottom: 1.1rem;
+      }
+      #vigembus-warning h2 {
+        color: #ffc9c9;
+        font-size: 0.95rem;
+        letter-spacing: 0;
+        text-transform: none;
+        margin: 0 0 0.35rem;
+      }
+      #vigembus-warning p {
+        margin: 0 0 0.5rem;
+        font-size: 0.85rem;
+        color: #f0c3c3;
+      }
+      #vigembus-warning p:last-child {
+        margin-bottom: 0;
+      }
+      #vigembus-warning a {
+        color: #ffb4b4;
+      }
+      #startup-error {
+        display: none;
+        border: 1px solid #7a3a3a;
+        background: #221315;
+        border-radius: var(--radius);
+        padding: 0.7rem 0.9rem;
+        margin-bottom: 1.1rem;
+        color: #ffb4b4;
+        font-size: 0.82rem;
+      }
+      #startup-error p {
+        margin: 0 0 0.4rem;
+      }
+      #startup-error p:last-child {
+        margin-bottom: 0;
+      }
+
+      /* ---------- hero: the URL and its QR code ---------- */
+      .hero {
+        background: linear-gradient(180deg, #1b1b1f, var(--panel));
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 1.2rem;
+        display: flex;
+        gap: 1.2rem;
+        align-items: center;
+      }
+      .hero-text {
+        flex: 1 1 260px;
+        min-width: 0;
+      }
+      .eyebrow {
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 0 0 0.35rem;
+      }
       #web-address {
-        font-size: 1.55rem;
-        font-family: ui-monospace, monospace;
-        margin-top: 0.5rem;
-        color: var(--fg);
+        font-size: 1.5rem;
+        line-height: 1.25;
+        font-weight: 600;
+        letter-spacing: -0.01em;
         user-select: all;
         word-break: break-all;
       }
       #copy-url {
-        margin-top: 0.6rem;
-        padding: 0.35rem 0.85rem;
+        margin-top: 0.75rem;
+        padding: 0.4rem 0.9rem;
         font: inherit;
         font-size: 0.8rem;
-        color: var(--fg);
+        color: var(--text);
         background: #23262e;
         border: 1px solid #3a3e48;
         border-radius: 999px;
         cursor: pointer;
       }
-      #copy-url:hover {
+      #copy-url:hover:not(:disabled) {
         border-color: var(--accent);
+      }
+      #copy-url:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      #copy-url:disabled {
+        opacity: 0.45;
+        cursor: default;
       }
       #manual {
         margin-top: 0.7rem;
         font-size: 0.75rem;
-        color: var(--muted);
+        color: var(--muted-dim);
       }
       #address {
-        font-family: ui-monospace, monospace;
         user-select: all;
+        color: var(--muted);
       }
       #hint {
-        margin-top: 0.4rem;
+        margin-top: 0.45rem;
         font-size: 0.85rem;
         color: var(--muted);
       }
-      #status {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.45rem;
-        margin-top: 0.9rem;
-        font-size: 0.85rem;
-        color: var(--muted);
+
+      /* The QR block is removed from the flow entirely when the host could
+         not produce one, so the hero collapses to a normal text card rather
+         than reserving an empty white square. */
+      #qr-block {
+        display: none;
+        flex: 0 0 auto;
+        text-align: center;
       }
-      #status-dot {
-        width: 0.55rem;
-        height: 0.55rem;
+      #qr-block.ready {
+        display: block;
+      }
+      /* White quiet zone: QR modules are dark-on-light, and a camera needs
+         the light margin around them to find the code. */
+      #qr {
+        width: 152px;
+        height: 152px;
+        padding: 8px;
+        background: #fff;
+        color: #000;
+        border-radius: 8px;
+      }
+      #qr svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+        shape-rendering: crispEdges;
+      }
+      #qr-caption {
+        margin-top: 0.45rem;
+        font-size: 0.72rem;
+        color: var(--muted);
+        max-width: 168px;
+      }
+
+      /* ---------- next steps ---------- */
+      .steps {
+        margin: 1.1rem 0 0;
+        padding: 0;
+        list-style: none;
+        counter-reset: step;
+        font-size: 0.87rem;
+      }
+      .steps li {
+        counter-increment: step;
+        position: relative;
+        padding-left: 1.8rem;
+        margin-bottom: 0.4rem;
+        color: var(--text);
+      }
+      .steps li::before {
+        content: counter(step);
+        position: absolute;
+        left: 0;
+        top: 0.08rem;
+        width: 1.25rem;
+        height: 1.25rem;
         border-radius: 50%;
-        background: #55555c;
-        transition: background 0.15s;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        color: var(--muted);
+        font-size: 0.7rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
-      #status.connected #status-dot {
-        background: var(--accent);
-      }
-      #status.connected {
-        color: var(--accent);
-      }
-      #startup-error {
-        display: none;
+      .aside {
         margin-top: 0.9rem;
-        padding: 0.6rem 0.8rem;
-        border-radius: 0.5rem;
-        border: 1px solid #7a3a3a;
-        background: #2a1414;
-        color: #ffb4b4;
-        font-size: 0.8rem;
-        line-height: 1.45;
-        text-align: left;
+        font-size: 0.78rem;
+        line-height: 1.5;
+        color: var(--muted);
+        border-left: 2px solid var(--line);
+        padding-left: 0.75rem;
       }
-      #vigembus-warning {
-        display: none;
-        margin: 1rem auto 0;
-        padding: 0.6rem 0.8rem;
-        border: 1px solid var(--warn);
-        border-radius: 6px;
-        font-size: 0.85rem;
-        color: var(--warn);
-        text-align: left;
+      .aside strong {
+        color: #b9b9c2;
+        font-weight: 600;
       }
-      #vigembus-warning a {
-        color: var(--warn);
-      }
+
+      /* ---------- live input ---------- */
       section {
         background: var(--panel);
         border: 1px solid var(--line);
-        border-radius: 8px;
-        padding: 0.9rem 1rem;
+        border-radius: var(--radius);
+        padding: 0.95rem 1rem 1rem;
         margin-top: 1.1rem;
       }
+      /* Fixed column count so the chips form two even rows instead of
+         reflowing into a ragged one as the window is resized. */
       .buttons {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.4rem;
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 0.35rem;
+      }
+      @media (max-width: 520px) {
+        .buttons {
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+        }
       }
       .btn {
-        min-width: 3.1rem;
         text-align: center;
-        padding: 0.35rem 0.55rem;
-        border: 1px solid var(--line);
-        border-radius: 5px;
-        font-size: 0.8rem;
-        font-family: ui-monospace, monospace;
-        color: #6f6f77;
-        background: #151517;
+        padding: 0.4rem 0.4rem;
+        border: 1px solid var(--line-soft);
+        border-radius: 6px;
+        font-size: 0.75rem;
+        letter-spacing: 0.02em;
+        color: #74747d;
+        background: var(--panel-2);
+        /* Cheap to toggle: only paint properties change, never geometry. */
         transition:
-          background 0.06s,
-          color 0.06s,
-          border-color 0.06s;
+          background 0.06s linear,
+          color 0.06s linear,
+          border-color 0.06s linear;
       }
       .btn.on {
         background: var(--accent);
@@ -167,142 +339,201 @@
       .analog {
         display: flex;
         flex-wrap: wrap;
-        gap: 1rem;
-        align-items: flex-start;
+        gap: 1.4rem;
+        align-items: center;
       }
       .stick {
         text-align: center;
         font-size: 0.72rem;
         color: var(--muted);
-        font-family: ui-monospace, monospace;
       }
       .pad {
         position: relative;
-        width: 104px;
-        height: 104px;
+        width: 108px;
+        height: 108px;
         border: 1px solid var(--line);
         border-radius: 50%;
-        background: #151517;
-        margin-bottom: 0.35rem;
+        background:
+          radial-gradient(circle at 50% 50%, #1c1c20 0 39%, transparent 39.5%),
+          var(--panel-2);
+        margin-bottom: 0.4rem;
       }
       .pad::before,
       .pad::after {
         content: "";
         position: absolute;
-        background: var(--line);
+        background: var(--line-soft);
       }
       .pad::before {
-        left: 0;
-        right: 0;
+        left: 8%;
+        right: 8%;
         top: 50%;
         height: 1px;
       }
       .pad::after {
-        top: 0;
-        bottom: 0;
+        top: 8%;
+        bottom: 8%;
         left: 50%;
         width: 1px;
       }
       .dot {
         position: absolute;
-        width: 14px;
-        height: 14px;
-        margin: -7px 0 0 -7px;
+        width: 15px;
+        height: 15px;
+        margin: -7.5px 0 0 -7.5px;
         border-radius: 50%;
         background: var(--accent);
+        box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.16);
         left: 50%;
         top: 50%;
       }
       .triggers {
-        flex: 1 1 180px;
-        min-width: 170px;
+        flex: 1 1 190px;
+        min-width: 180px;
+        max-width: 320px;
       }
       .trigger-row {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        font-size: 0.75rem;
-        font-family: ui-monospace, monospace;
+        gap: 0.55rem;
+        font-size: 0.74rem;
         color: var(--muted);
-        margin-bottom: 0.55rem;
+        margin-bottom: 0.7rem;
       }
       .trigger-row .label {
         width: 1.6rem;
+        color: #9a9aa3;
       }
       .bar {
         flex: 1;
-        height: 10px;
-        background: #151517;
-        border: 1px solid var(--line);
-        border-radius: 5px;
+        height: 12px;
+        background: var(--panel-2);
+        border: 1px solid var(--line-soft);
+        border-radius: 6px;
         overflow: hidden;
       }
       .bar > i {
         display: block;
         height: 100%;
         width: 0%;
-        background: var(--accent);
+        background: linear-gradient(90deg, var(--accent-dim), var(--accent));
       }
       .trigger-row .val {
         width: 2.2rem;
         text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      #ls-val,
+      #rs-val {
+        font-variant-numeric: tabular-nums;
       }
       #note {
         margin-top: 1.1rem;
         font-size: 0.78rem;
-        line-height: 1.5;
+        line-height: 1.55;
         color: var(--muted);
         border-left: 2px solid var(--line);
         padding-left: 0.75rem;
+      }
+      @media (max-width: 520px) {
+        .hero {
+          flex-direction: column-reverse;
+          align-items: stretch;
+          text-align: center;
+        }
+        #qr-block.ready {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
       }
     </style>
   </head>
   <body>
     <main>
-      <header>
+      <div class="topbar">
         <h1>Controller Host</h1>
-        <div id="web-address">starting…</div>
-        <div id="hint">Open this address in your phone's browser — it connects itself.</div>
-        <button id="copy-url" type="button">Copy address</button>
-        <div id="manual">
-          Typing it in by hand instead? Use <span id="address">…</span> on the connect screen.
+        <div id="status">
+          <span id="status-dot"></span>
+          <span id="status-text" aria-live="polite">Waiting for a phone to connect…</span>
         </div>
-        <div id="status"><span id="status-dot"></span><span id="status-text">Waiting for a phone to connect…</span></div>
-        <div id="startup-error"></div>
-        <div id="vigembus-warning">
-          ViGEmBus driver not detected. Install it from
+      </div>
+
+      <!-- role="alert" is on a node that starts hidden, so it announces once
+           on the single transition to visible rather than on every update. -->
+      <div id="vigembus-warning" role="alert">
+        <h2>Gamepad driver missing — nothing will move yet</h2>
+        <p>
+          The ViGEmBus driver is not installed, so this app cannot create a virtual
+          controller. Your phone will still connect and look like it is working, but
+          <strong>every button press is ignored</strong> until the driver is installed.
+        </p>
+        <p>
+          Install it from
           <a href="https://github.com/ViGEm/ViGEmBus/releases" target="_blank" rel="noopener"
             >github.com/ViGEm/ViGEmBus/releases</a
           >, then restart this app.
+        </p>
+      </div>
+
+      <div id="startup-error" role="alert"></div>
+
+      <header class="hero">
+        <div class="hero-text">
+          <p class="eyebrow">Open on your phone</p>
+          <div id="web-address" class="mono">starting…</div>
+          <button id="copy-url" type="button" disabled>Copy address</button>
+          <div id="hint">Any browser will do — the page connects itself.</div>
+          <div id="manual">
+            Typing it by hand instead? Use <span id="address" class="mono">…</span> on the
+            connect screen.
+          </div>
+        </div>
+        <div id="qr-block">
+          <div id="qr" role="img" aria-label="QR code for the phone address"></div>
+          <div id="qr-caption">Scan with your phone's camera</div>
         </div>
       </header>
 
-      <section>
-        <h2>Live input</h2>
+      <ol class="steps">
+        <li>Open the address above on your phone, on the same Wi-Fi as this PC.</li>
+        <li>Click your game's window on this PC so it has the keyboard focus.</li>
+        <li>Press something on the phone — the Live input panel below should light up.</li>
+      </ol>
+
+      <p class="aside">
+        <strong>Blocked by Windows Firewall?</strong> If Windows asked for permission when
+        this app started, it must be allowed on <strong>private networks</strong>. Without
+        that, your phone cannot reach this PC at all. You can change it later under Windows
+        Security → Firewall &amp; network protection → Allow an app through firewall.
+      </p>
+
+      <section aria-labelledby="live-input-h">
+        <h2 id="live-input-h">Live input</h2>
         <div class="buttons" id="buttons"></div>
       </section>
 
-      <section>
-        <h2>Sticks &amp; triggers</h2>
+      <section aria-labelledby="analog-h">
+        <h2 id="analog-h">Sticks &amp; triggers</h2>
         <div class="analog">
           <div class="stick">
             <div class="pad"><div class="dot" id="dot-l"></div></div>
-            <div id="ls-val">L 0, 0</div>
+            <div id="ls-val" class="mono">L 0, 0</div>
           </div>
           <div class="stick">
             <div class="pad"><div class="dot" id="dot-r"></div></div>
-            <div id="rs-val">R 0, 0</div>
+            <div id="rs-val" class="mono">R 0, 0</div>
           </div>
           <div class="triggers">
             <div class="trigger-row">
-              <span class="label">LT</span>
+              <span class="label mono">LT</span>
               <span class="bar"><i id="lt-bar"></i></span>
-              <span class="val" id="lt-val">0</span>
+              <span class="val mono" id="lt-val">0</span>
             </div>
             <div class="trigger-row">
-              <span class="label">RT</span>
+              <span class="label mono">RT</span>
               <span class="bar"><i id="rt-bar"></i></span>
-              <span class="val" id="rt-val">0</span>
+              <span class="val mono" id="rt-val">0</span>
             </div>
           </div>
         </div>
@@ -340,17 +571,29 @@
         ["Right", 7],
       ];
 
+      const el = (id) => document.getElementById(id);
+
       const cells = new Map();
-      const buttonsEl = document.getElementById("buttons");
+      const buttonsEl = el("buttons");
       for (const [name, bit] of BUTTONS) {
-        const el = document.createElement("div");
-        el.className = "btn";
-        el.textContent = name;
-        buttonsEl.appendChild(el);
-        cells.set(bit, el);
+        const cell = document.createElement("div");
+        cell.className = "btn mono";
+        cell.textContent = name;
+        buttonsEl.appendChild(cell);
+        cells.set(bit, cell);
       }
 
-      const el = (id) => document.getElementById(id);
+      // render() runs at input frequency, so every node it touches is looked
+      // up once here rather than per frame.
+      const dotL = el("dot-l");
+      const dotR = el("dot-r");
+      const lsVal = el("ls-val");
+      const rsVal = el("rs-val");
+      const ltBar = el("lt-bar");
+      const rtBar = el("rt-bar");
+      const ltVal = el("lt-val");
+      const rtVal = el("rt-val");
+
       // Half the pad's inner travel, in px, for the stick dots.
       const TRAVEL = 44;
 
@@ -365,14 +608,108 @@
         for (const [bit, cell] of cells) {
           cell.classList.toggle("on", (s.buttons & (1 << bit)) !== 0);
         }
-        place(el("dot-l"), s.left_stick_x, s.left_stick_y);
-        place(el("dot-r"), s.right_stick_x, s.right_stick_y);
-        el("ls-val").textContent = `L ${s.left_stick_x}, ${s.left_stick_y}`;
-        el("rs-val").textContent = `R ${s.right_stick_x}, ${s.right_stick_y}`;
-        el("lt-bar").style.width = `${(s.left_trigger / 255) * 100}%`;
-        el("rt-bar").style.width = `${(s.right_trigger / 255) * 100}%`;
-        el("lt-val").textContent = s.left_trigger;
-        el("rt-val").textContent = s.right_trigger;
+        place(dotL, s.left_stick_x, s.left_stick_y);
+        place(dotR, s.right_stick_x, s.right_stick_y);
+        lsVal.textContent = `L ${s.left_stick_x}, ${s.left_stick_y}`;
+        rsVal.textContent = `R ${s.right_stick_x}, ${s.right_stick_y}`;
+        ltBar.style.width = `${(s.left_trigger / 255) * 100}%`;
+        rtBar.style.width = `${(s.right_trigger / 255) * 100}%`;
+        ltVal.textContent = s.left_trigger;
+        rtVal.textContent = s.right_trigger;
+      }
+
+      // ---- phone address -------------------------------------------------
+
+      // The snapshot from get_status can be read before the HTTP server has
+      // published its URL, so "no URL yet" is not the same as "no URL ever":
+      // only the web-address event, which fires once the answer is known,
+      // may declare the page unavailable.
+      function setWebAddress(url) {
+        el("web-address").textContent = url;
+        const copy = el("copy-url");
+        copy.disabled = false;
+        copy.style.display = "";
+      }
+
+      function setWebAddressUnavailable() {
+        el("web-address").textContent = "phone page unavailable";
+        el("hint").textContent =
+          "Run `npm run build` in the client folder, then restart this app.";
+        el("copy-url").disabled = true;
+      }
+
+      // ---- QR code -------------------------------------------------------
+
+      let qrShown = false;
+
+      // The SVG is built by this app's own Rust, but it is still markup being
+      // spliced into the document: parse it in isolation, require an <svg>
+      // root, and drop anything executable before adopting it.
+      function showQr(svgText) {
+        if (qrShown || typeof svgText !== "string" || !svgText.trim()) return;
+        let doc;
+        try {
+          doc = new DOMParser().parseFromString(svgText, "image/svg+xml");
+        } catch {
+          return;
+        }
+        const svg = doc.documentElement;
+        if (
+          !svg ||
+          svg.namespaceURI !== "http://www.w3.org/2000/svg" ||
+          svg.localName !== "svg" ||
+          doc.getElementsByTagName("parsererror").length
+        ) {
+          return;
+        }
+        for (const node of svg.querySelectorAll("script, foreignObject, a")) node.remove();
+        for (const node of svg.querySelectorAll("*")) {
+          for (const attr of Array.from(node.attributes)) {
+            if (/^on/i.test(attr.name)) node.removeAttribute(attr.name);
+          }
+        }
+        // Let CSS size it. A viewBox is what makes that scale losslessly, so
+        // without one the intrinsic size is left alone instead.
+        if (svg.getAttribute("viewBox")) {
+          svg.removeAttribute("width");
+          svg.removeAttribute("height");
+        }
+        const host = el("qr");
+        host.replaceChildren(document.importNode(svg, true));
+        el("qr-block").classList.add("ready");
+        qrShown = true;
+      }
+
+      // ---- startup errors ------------------------------------------------
+
+      // A message can arrive both in the snapshot and as an event; each one
+      // gets its own line, and repeats of the same text are dropped.
+      const seenErrors = new Set();
+
+      function showStartupError(message) {
+        if (!message || seenErrors.has(message)) return;
+        seenErrors.add(message);
+        const box = el("startup-error");
+        const line = document.createElement("p");
+        line.textContent = message;
+        box.appendChild(line);
+        box.style.display = "block";
+      }
+
+      function showVigembusWarning() {
+        el("vigembus-warning").style.display = "block";
+      }
+
+      function applyStatus(s) {
+        if (s.wsAddress) el("address").textContent = s.wsAddress;
+        if (s.webUrl) setWebAddress(s.webUrl);
+        if (s.qrSvg) showQr(s.qrSvg);
+        if (s.vigembusMissing) showVigembusWarning();
+        if (!s.lanIpKnown) {
+          el("hint").textContent =
+            "This PC's network address could not be determined — check its Wi-Fi or Ethernet connection.";
+        }
+        for (const message of s.errors || []) showStartupError(message);
       }
 
       listen("server-address", (event) => {
@@ -383,36 +720,14 @@
         // page cannot be served -- say that plainly instead of showing a
         // URL that would 404.
         if (!event.payload) {
-          el("web-address").textContent = "phone page unavailable";
-          el("hint").textContent =
-            "Run `npm run build` in the client folder, then restart this app.";
-          el("copy-url").style.display = "none";
+          setWebAddressUnavailable();
           return;
         }
-        el("web-address").textContent = event.payload;
+        setWebAddress(event.payload);
       });
-
-      function showStartupError(message) {
-        const box = el("startup-error");
-        box.style.display = "block";
-        box.textContent = message;
-      }
-
-      function applyStatus(s) {
-        if (s.wsAddress) el("address").textContent = s.wsAddress;
-        if (s.webUrl) {
-          el("web-address").textContent = s.webUrl;
-        } else {
-          el("web-address").textContent = "phone page unavailable";
-          el("copy-url").style.display = "none";
-        }
-        if (s.vigembusMissing) el("vigembus-warning").style.display = "block";
-        if (!s.lanIpKnown) {
-          el("hint").textContent =
-            "This PC's network address could not be determined — check its Wi-Fi or Ethernet connection.";
-        }
-        for (const message of s.errors || []) showStartupError(message);
-      }
+      // Sent separately from the snapshot because the QR can only be built
+      // once the HTTP server has bound a port.
+      listen("web-qr", (event) => showQr(event.payload));
 
       // Pull the startup snapshot. Everything below this is decided before
       // this script runs, so the events announcing it have already been
@@ -424,18 +739,17 @@
 
       el("copy-url").addEventListener("click", async () => {
         const url = el("web-address").textContent.trim();
+        const copy = el("copy-url");
         try {
           await navigator.clipboard.writeText(url);
-          el("copy-url").textContent = "Copied";
+          copy.textContent = "Copied";
         } catch {
           // Clipboard can be blocked; the address is selectable either way.
-          el("copy-url").textContent = "Select it above";
+          copy.textContent = "Select it above";
         }
-        setTimeout(() => (el("copy-url").textContent = "Copy address"), 1600);
+        setTimeout(() => (copy.textContent = "Copy address"), 1600);
       });
-      listen("vigembus-missing", () => {
-        el("vigembus-warning").style.display = "block";
-      });
+      listen("vigembus-missing", showVigembusWarning);
       listen("client-state", (event) => {
         const { connected, clients } = event.payload;
         const status = el("status");

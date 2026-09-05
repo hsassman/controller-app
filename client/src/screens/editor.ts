@@ -8,8 +8,14 @@ import { renderInspector, dimsOf, setDims } from "./inspector.ts";
 import { computeScale } from "../controls.ts";
 import { haptic } from "../haptics.ts";
 import { ButtonBit } from "../../../protocol/frame.ts";
+import { alertDialog, confirmDialog } from "../dialog.ts";
 
 const MAX_HISTORY = 50;
+
+/// Every editable control points at this one element instead of carrying the
+/// instructions in its own aria-label, where they were re-read in full on
+/// every arrow-key nudge.
+const CONTROL_HELP_ID = "edit-control-help";
 
 const KNOWN_TYPES = new Set<string>(["button", "dpad", "stick", "trigger"]);
 
@@ -63,6 +69,16 @@ export function renderEditor(
   panel.setAttribute("role", "region");
   panel.setAttribute("aria-label", "Control properties");
   surface.parentElement?.appendChild(panel);
+
+  // Lives beside the surface, not in it, so rerenderSurface() cannot destroy
+  // the element every control's aria-describedby points at.
+  const controlHelp = document.createElement("p");
+  controlHelp.id = CONTROL_HELP_ID;
+  controlHelp.className = "visually-hidden";
+  controlHelp.textContent =
+    "Drag to move, or use the corner handle to resize. When focused: arrow keys move, " +
+    "shift and arrow keys resize, enter opens properties, delete removes.";
+  surface.parentElement?.appendChild(controlHelp);
 
   const gridOverlay = document.createElement("div");
   gridOverlay.className = "grid-overlay";
@@ -225,7 +241,16 @@ export function renderEditor(
     <div class="toolbar-group" role="group" aria-label="File">
       <button id="export-layout" type="button">Export</button>
       <button id="import-btn" type="button">Import</button>
-      <input id="import-layout" type="file" accept="application/json" class="visually-hidden" />
+      <!-- Driven entirely by the Import button, so it must not be a tab stop
+           of its own: focusable but invisible is a dead keyboard landing. -->
+      <input
+        id="import-layout"
+        type="file"
+        accept="application/json"
+        class="visually-hidden"
+        tabindex="-1"
+        aria-hidden="true"
+      />
     </div>
   `;
 
@@ -375,8 +400,13 @@ export function renderEditor(
     document.addEventListener("pointerdown", onOutsidePresetPointer, true);
   });
 
-  toolbar.querySelector<HTMLButtonElement>("#reset-layout")!.addEventListener("click", () => {
-    if (!confirm("Reset to the default layout? This discards your current edits.")) return;
+  toolbar.querySelector<HTMLButtonElement>("#reset-layout")!.addEventListener("click", async () => {
+    const confirmed = await confirmDialog("Reset this layout?", {
+      body: "Every control goes back to the default arrangement. Your current edits are discarded.",
+      confirmLabel: "Reset",
+      danger: true,
+    });
+    if (!confirmed) return;
     mutate(() => {
       working.controls = defaultLayout().controls;
       selectedId = null;
@@ -407,7 +437,14 @@ export function renderEditor(
       });
       rerender();
     } catch {
-      alert("That file isn't a valid layout profile.");
+      await alertDialog(
+        "That file isn't a layout",
+        "It couldn't be read as a layout profile. Use a file exported from this app with Export.",
+      );
+    } finally {
+      // Without this, picking the same file again after a failure fires no
+      // change event, so a retry looks like the button is dead.
+      importInput.value = "";
     }
   });
 
@@ -432,12 +469,10 @@ export function renderEditor(
     if (cfg.tint) el.style.setProperty("--tint", cfg.tint);
 
     const label = "label" in cfg ? cfg.label : "D-pad";
-    el.setAttribute(
-      "aria-label",
-      `${label}. Tap to open its properties, drag to move, corner handle to resize. ` +
-        `When focused: arrow keys move, shift+arrow keys resize, enter opens properties, ` +
-        `delete removes.`,
-    );
+    // Short name, shared description: the name is what gets re-announced on
+    // every nudge, so the instructions must not be part of it.
+    el.setAttribute("aria-label", `${label}, editable`);
+    el.setAttribute("aria-describedby", CONTROL_HELP_ID);
 
     let { w, h } = dimsOf(cfg);
 
@@ -470,11 +505,14 @@ export function renderEditor(
     // control; the mapping line is the one that drops.
     el.dataset.compact = String(Math.min(w, h) < 58);
 
-    const removeBtn = document.createElement("button");
+    // A real <button> here would be a focusable control inside an element
+    // that is itself role="button", which no assistive technology can
+    // present sensibly. It is a pointer shortcut only: keyboard users delete
+    // with the Delete key or the properties panel's own Delete button.
+    const removeBtn = document.createElement("span");
     removeBtn.className = "edit-remove";
-    removeBtn.type = "button";
     removeBtn.textContent = "×";
-    removeBtn.setAttribute("aria-label", `Remove ${label}`);
+    removeBtn.setAttribute("aria-hidden", "true");
     removeBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
     removeBtn.addEventListener("click", (e) => {
       e.stopPropagation();

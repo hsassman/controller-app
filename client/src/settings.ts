@@ -1,4 +1,5 @@
-import type { ThemeId } from "./theme.ts";
+import type { ButtonMaterial, DpadStyle, ThemeId } from "./theme.ts";
+import { BUTTON_MATERIALS, DPAD_STYLES, THEMES } from "./theme.ts";
 
 const STORAGE_KEY = "controller-settings-v1";
 
@@ -17,6 +18,10 @@ export interface Settings {
   controlScale: number; // 0.75-1.4, multiplies every control's size
   showLabels: boolean; // draw A/B/X/Y/LB/... text on controls
   surfaceGlow: boolean; // the moulded vignette behind the controls
+  buttonMaterial: ButtonMaterial; // how the control surfaces catch light
+  dpadStyle: DpadStyle; // the d-pad's silhouette
+  glowIntensity: number; // 0-1.5, multiplies the accent glow on pressed controls
+  idleDimSeconds: number; // seconds of no input before the controls fade; 0 = off
 
   // --- Feel ---
   haptics: boolean;
@@ -42,6 +47,10 @@ export function defaults(): Settings {
     controlScale: 1,
     showLabels: true,
     surfaceGlow: true,
+    buttonMaterial: "gloss",
+    dpadStyle: "cross",
+    glowIntensity: 1,
+    idleDimSeconds: 0,
 
     haptics: true,
     hapticStrength: 0.6,
@@ -73,8 +82,18 @@ function sanitize(s: Settings): Settings {
   s.controlScale = num(s.controlScale, 0.75, 1.4, d.controlScale);
   s.hapticStrength = num(s.hapticStrength, 0, 1, d.hapticStrength);
   s.gridSize = num(s.gridSize, 0.5, 10, d.gridSize);
+  s.glowIntensity = num(s.glowIntensity, 0, 1.5, d.glowIntensity);
+  // Capped well above the offered presets so a hand-edited value stays
+  // usable, but not so high that "on" is indistinguishable from "off".
+  s.idleDimSeconds = num(s.idleDimSeconds, 0, 600, d.idleDimSeconds);
   if (!Array.isArray(s.toggleButtonIds)) s.toggleButtonIds = [];
   if (typeof s.accent !== "string" || !/^#[0-9a-f]{6}$/i.test(s.accent)) s.accent = d.accent;
+
+  // An id no longer in the list (a removed theme, a corrupt value) would
+  // otherwise reach the DOM and match no rule at all.
+  if (!THEMES.some((t) => t.id === s.theme)) s.theme = d.theme;
+  if (!BUTTON_MATERIALS.some((m) => m.id === s.buttonMaterial)) s.buttonMaterial = d.buttonMaterial;
+  if (!DPAD_STYLES.some((p) => p.id === s.dpadStyle)) s.dpadStyle = d.dpadStyle;
   return s;
 }
 
