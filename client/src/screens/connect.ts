@@ -1,4 +1,5 @@
 import { HostConnection, type ConnectionState } from "../connection.ts";
+import { haptic } from "../haptics.ts";
 
 const RECENT_KEY = "controller-recent-hosts";
 const MAX_RECENT = 4;
@@ -7,6 +8,10 @@ const MAX_RECENT = 4;
 /// typing a port number on a phone keypad is the fiddliest part of setup.
 const DEFAULT_PORT = 8787;
 
+/// Same-origin discovery: reads /host-info.json relative to whatever served
+/// this page. Never crosses origins, so it never needs CORS headers this
+/// project deliberately doesn't send (see install.ts -- exposing this cross-
+/// origin would let any site the phone visits scan the LAN for this app).
 async function discoverHost(): Promise<string | null> {
   try {
     const controller = new AbortController();
@@ -33,6 +38,14 @@ const STATUS_LABEL: Record<ConnectionState, string> = {
   error: "Connection error — check the IP:port and that the host app is running",
   lost: "Connection lost — reconnecting…",
 };
+
+/// Just the host portion of a normalized `host:port` string, for comparing
+/// against `location.hostname`. This app only ever deals in LAN IPv4
+/// addresses and plain hostnames, so a plain split is enough -- no IPv6
+/// bracket syntax to account for.
+function hostnameOf(hostPort: string): string {
+  return hostPort.split(":")[0] ?? hostPort;
+}
 
 export interface ConnectScreenOptions {
   autoConnect?: boolean;
@@ -81,6 +94,10 @@ export function renderConnectScreen(
         <span id="status-dot" aria-hidden="true"></span>
         <span id="status-text">${STATUS_LABEL.idle}</span>
       </div>
+      <!-- Only visible while an attempt is actually in flight (connecting,
+           retrying, or erroring) -- there is nothing to cancel from idle or
+           once connected, and this screen is left the moment we connect. -->
+      <button id="cancel-btn" type="button" class="cancel-connect" hidden>Cancel</button>
 
       <details class="troubleshoot">
         <summary>Not connecting?</summary>
@@ -96,6 +113,7 @@ export function renderConnectScreen(
 
   const hostInput = container.querySelector<HTMLInputElement>("#host-input")!;
   const connectBtn = container.querySelector<HTMLButtonElement>("#connect-btn")!;
+  const cancelBtn = container.querySelector<HTMLButtonElement>("#cancel-btn")!;
   const statusEl = container.querySelector<HTMLDivElement>("#status")!;
   const statusText = container.querySelector<HTMLSpanElement>("#status-text")!;
   const recentWrap = container.querySelector<HTMLDivElement>("#recent-hosts")!;
@@ -135,6 +153,15 @@ export function renderConnectScreen(
   /// Set once we have handed a live connection to the controller screen, so
   /// a late callback from a stale socket cannot render a second one.
   let handedOff = false;
+  /// Bumped by every connect() and by cancel(); a same-origin discovery
+  /// probe compares against the value it captured before awaiting, so a
+  /// cancel (or a second attempt) pressed mid-probe cannot resurrect an
+  /// abandoned attempt when the fetch finally resolves.
+  let attemptToken = 0;
+  // Cancelled the moment the user touches the form, so an automatic
+  // page-load connect attempt can never fight someone taking control --
+  // manually connecting, or explicitly cancelling.
+  let userTookOver = false;
 
   const setState = (instance: HostConnection, state: ConnectionState) => {
     if (instance !== connection) return;
@@ -142,10 +169,43 @@ export function renderConnectScreen(
     statusText.textContent = STATUS_LABEL[state];
     connectBtn.disabled = state === "connecting";
     connectBtn.textContent = state === "connecting" ? "Connecting…" : "Connect";
+    // Nothing to cancel once connected (this screen is about to be replaced)
+    // or from idle (there is no attempt in flight yet).
+    cancelBtn.hidden = state === "idle" || state === "connected";
     if (state === "connected" && !handedOff) {
       handedOff = true;
       onConnected(instance);
     }
+  };
+
+  /// Stops whatever is in flight -- a live socket, a pending reconnect
+  /// backoff, or an in-progress discovery probe -- and returns the screen to
+  /// a clean idle state. Without this, the only way to interrupt an attempt
+  /// stuck retrying a bad address was to force-quit and reopen the page.
+  const cancelAttempt = () => {
+    attemptToken++;
+    connection?.disconnect();
+    connection = null;
+    handedOff = false;
+    // An explicit cancel must stick even if the page-load discovery probe is
+    // still in flight and resolves a moment later -- otherwise a cancelled
+    // attempt could be silently resurrected.
+    userTookOver = true;
+    statusEl.dataset.state = "idle";
+    statusText.textContent = STATUS_LABEL.idle;
+    connectBtn.disabled = false;
+    connectBtn.textContent = "Connect";
+    cancelBtn.hidden = true;
+    haptic("ui");
+  };
+
+  const attemptConnect = (target: string) => {
+    hostInput.value = target;
+    rememberHost(target);
+    renderRecent();
+    const instance: HostConnection = new HostConnection((state) => setState(instance, state));
+    connection = instance;
+    instance.connect(target);
   };
 
   const connect = () => {
@@ -155,26 +215,42 @@ export function renderConnectScreen(
       return;
     }
     const target = normalizeHost(raw);
-    hostInput.value = target;
-    rememberHost(target);
-    renderRecent();
     // Retiring the previous attempt is what stops a reconnect chain from
     // outliving the address it was chasing.
     connection?.disconnect();
-    const instance: HostConnection = new HostConnection((state) => setState(instance, state));
-    connection = instance;
-    instance.connect(target);
+    connection = null;
+    const token = ++attemptToken;
+    statusEl.dataset.state = "connecting";
+    statusText.textContent = "Connecting…";
+    connectBtn.disabled = true;
+    connectBtn.textContent = "Connecting…";
+    cancelBtn.hidden = false;
+
+    // If the address points at the very PC that served this page -- the
+    // overwhelmingly common case, since there is no other way to have
+    // reached this screen -- trust a fresh same-origin discovery over
+    // whatever port was typed. This is what stops a wrong-port paste (the
+    // page's own http:// address, shown large in the host window, pasted
+    // into a field that wants the smaller WebSocket address further down)
+    // from retrying forever with no way to tell what went wrong: the correct
+    // port is re-derived here instead of trusted blindly.
+    if (hostnameOf(target) === location.hostname) {
+      void discoverHost().then((discovered) => {
+        if (token !== attemptToken) return; // cancelled, or superseded
+        attemptConnect(discovered ?? target);
+      });
+    } else {
+      attemptConnect(target);
+    }
   };
 
   connectBtn.addEventListener("click", connect);
+  cancelBtn.addEventListener("click", cancelAttempt);
   hostInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") connect();
   });
 
-  // Auto-connect when the host itself served this page. Cancelled the
-  // moment the user touches the form, so an automatic attempt can never
-  // fight someone typing a different address.
-  let userTookOver = false;
+  // Auto-connect when the host itself served this page.
   const cancelAuto = () => {
     userTookOver = true;
   };
@@ -204,9 +280,16 @@ export function renderConnectScreen(
       statusText.textContent = STATUS_LABEL.idle;
       return;
     }
+    // `address` already came from the same discovery check connect() would
+    // otherwise repeat for a same-origin target; go straight to attemptConnect
+    // rather than run that fetch twice back to back.
+    attemptToken++;
+    statusEl.dataset.state = "connecting";
     statusText.textContent = "Found your PC — connecting…";
-    hostInput.value = address;
-    connect();
+    connectBtn.disabled = true;
+    connectBtn.textContent = "Connecting…";
+    cancelBtn.hidden = false;
+    attemptConnect(address);
   });
 }
 

@@ -367,3 +367,38 @@
   border-color: #fff;
   color: #fff;
 }
+
+/* ---- Cancel a connect attempt ----
+   Only ever visible while a socket, a reconnect backoff, or a same-origin
+   discovery probe is actually in flight (see setState in connect.ts). A
+   quiet outline rather than a filled button: it is an escape hatch, not the
+   primary action on this screen. */
+.cancel-connect {
+  margin-top: 0.6rem;
+  min-height: 2.4rem;
+  width: 100%;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--fg-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  cursor: pointer;
+}
+
+.cancel-connect:hover {
+  color: var(--fg);
+  border-color: var(--accent);
+}
+
+.cancel-connect:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+:root.high-contrast .cancel-connect {
+  color: #fff;
+  border-color: #fff;
+  background: #000;
+}
