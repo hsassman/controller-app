@@ -11,6 +11,7 @@ import { loadLayout, listProfiles, setActiveProfile, activeProfileId } from "../
 import { renderEditor, type EditorHandle } from "./editor.ts";
 import { confirmDialog } from "../dialog.ts";
 import { showFirstRunHint } from "../onboarding.ts";
+import { maybeOfferShortcut } from "../install.ts";
 
 const SEND_RATE_HZ = 100;
 /// Written by the connect screen just before it dials, so the first entry is
@@ -226,7 +227,13 @@ export function renderControllerScreen(
 
   // On a first run the hint is what the user needs to read, so it takes
   // focus from the heading and hands it back when dismissed.
-  showFirstRunHint(surfaceWrap, () => heading.focus());
+  const hintShown = showFirstRunHint(surfaceWrap, () => {
+    heading.focus();
+    // Offered only once the first-run hint is out of the way, so the two
+    // cards never stack on a landscape phone's very short viewport.
+    void maybeOfferShortcut(surfaceWrap);
+  });
+  if (!hintShown) void maybeOfferShortcut(surfaceWrap);
 
   const STATUS_LABEL: Record<ConnectionState, string> = {
     idle: "Not connected",

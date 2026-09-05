@@ -37,7 +37,19 @@ That's it — no typing an IP on a phone keypad, and the page connects itself on
 > Both devices must be on the same Wi-Fi. If Windows Firewall prompts on the first run, allow it on **private networks**.
 > To type the address manually instead, the host window shows that too.
 
-**Add it to your home screen** from your browser's menu and it opens fullscreen like a native app, remembering your layouts and settings. (Offline caching needs a secure origin, which a plain `http://` LAN address isn't, so the app always loads fresh over Wi-Fi rather than from a cache — harmless, since your phone is already on the same network as the host.)
+### Play fullscreen: add it to your Home Screen
+
+Opened from Safari or Chrome, the browser's address bar and toolbar eat the top and bottom of the screen — exactly the space a landscape gamepad wants. Added to your Home Screen, the same page launches standalone with no browser chrome at all, and connects itself on open.
+
+The app offers this to you the first time you connect, and it's always available under **Settings → Look → "Play fullscreen — add to Home Screen"**. On iOS: **Share → Add to Home Screen**. On Android: **menu → Install app**.
+
+**One catch worth knowing about, which the app handles for you.** A Home Screen icon pins the exact address it was made from. The obvious one — `http://192.168.x.x:8788` — belongs to a DHCP lease, so the day your router hands the PC a different IP, the icon opens a page that no longer exists.
+
+So the host also advertises a **permanent address**: `http://<your-pc-name>.local:8788`. That name follows the machine whatever its IP becomes — Windows answers for it over mDNS, and iOS resolves it through Bonjour. Before you make the shortcut, the app checks your phone can actually reach that name and offers to move you there, carrying your layouts and settings across (they're stored per address, so it hands them over rather than leaving them behind). The host window shows the permanent address too.
+
+If your network blocks mDNS — some guest networks and access points with client isolation do — the app simply doesn't make the offer, and says the shortcut is tied to the current IP. Nothing breaks; you just remake it if the address ever changes.
+
+> Offline caching needs a secure origin, which a plain `http://` LAN address isn't, so the app always loads fresh over Wi-Fi rather than from a cache. Harmless here — your phone is on the same network as the host by definition.
 
 **Building the portable zip yourself** (needs Node.js + Rust on the *building* machine only — not on the machine you'll play on):
 

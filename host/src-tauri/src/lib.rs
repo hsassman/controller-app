@@ -5,6 +5,7 @@ mod http;
 mod ports;
 mod qr;
 mod server;
+mod stable;
 mod status;
 
 use tauri::Manager;

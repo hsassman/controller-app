@@ -14,6 +14,7 @@ import {
   exportLayout,
 } from "../profile.ts";
 import { haptic } from "../haptics.ts";
+import { isStandalone, maybeOfferShortcut } from "../install.ts";
 
 export interface SettingsPanelHost {
   onChange(settings: Settings): void;
@@ -302,6 +303,28 @@ function renderAppearance(
     (v) => emit({ idleDimSeconds: v }),
   );
   hint(body, "The controls fade after this long with no input, and come straight back on the next touch.");
+
+  // Only worth offering when it would change something. Launched from a
+  // Home Screen icon the browser chrome is already gone, and on a desktop
+  // browser there is nowhere to put an icon in the first place.
+  if (!isStandalone()) {
+    const shortcut = document.createElement("button");
+    shortcut.type = "button";
+    shortcut.className = "full-width";
+    shortcut.textContent = "Play fullscreen — add to Home Screen";
+    shortcut.addEventListener("click", () => {
+      haptic("ui");
+      // Closes the panel first: the card renders over the play surface, and
+      // the panel sits on top of it.
+      closeOpenPanel?.();
+      const surface = document.querySelector<HTMLElement>(".surface-wrap");
+      // `force` because this is an explicit request, so an earlier dismissal
+      // must not silently do nothing.
+      if (surface) void maybeOfferShortcut(surface, true);
+    });
+    body.appendChild(shortcut);
+    hint(body, "Removes the browser's address bar and toolbar, and pins an address that survives your PC changing IP.");
+  }
 }
 
 const IDLE_DIM_CHOICES: { value: number; label: string }[] = [

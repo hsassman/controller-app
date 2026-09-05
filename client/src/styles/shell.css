@@ -206,3 +206,164 @@
   background: #000;
   border-color: #ffd400;
 }
+
+/* ---- Home Screen shortcut card ----
+   Shares the first-run hint's shape deliberately: same place, same weight,
+   so the two never feel like different kinds of interruption. Scrollable
+   because a landscape phone is short and this one has a numbered list. */
+.shortcut-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  width: min(32rem, calc(100% - 2rem));
+  max-height: calc(100% - 1.5rem);
+  overflow-y: auto;
+  padding: 1rem 1.15rem 1.05rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.012)),
+    var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  box-shadow: var(--panel-shadow);
+}
+
+.shortcut-card:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.shortcut-card h2 {
+  margin: 0 0 0.45rem;
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.shortcut-intro,
+.shortcut-warn,
+.shortcut-note {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--fg-muted);
+}
+
+/* The reason the shortcut would otherwise break. Worth more weight than
+   the surrounding copy. */
+.shortcut-warn {
+  color: var(--fg);
+  padding: 0.5rem 0.6rem;
+  background: rgba(var(--accent-rgb), 0.08);
+  border-left: 3px solid var(--accent);
+  border-radius: 0.4rem;
+}
+
+.shortcut-note.good {
+  color: var(--ok, #3fd9a4);
+}
+
+.shortcut-go {
+  width: 100%;
+  min-height: 2.5rem;
+  margin-bottom: 0.5rem;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 650;
+  color: var(--accent-fg);
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 0.6rem;
+  cursor: pointer;
+}
+
+.shortcut-go:hover:not(:disabled) {
+  background: var(--accent-active);
+  border-color: var(--accent-active);
+}
+
+.shortcut-go:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.shortcut-card ol {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.shortcut-card li {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--fg-muted);
+}
+
+.shortcut-dismiss {
+  margin-top: 0.8rem;
+  width: 100%;
+  min-height: 2.4rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--fg);
+  background: var(--panel-bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  cursor: pointer;
+}
+
+.shortcut-dismiss:hover {
+  border-color: var(--accent);
+}
+
+.shortcut-go:focus-visible,
+.shortcut-dismiss:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (max-height: 420px) {
+  .shortcut-card {
+    padding: 0.7rem 0.85rem 0.75rem;
+  }
+
+  .shortcut-card li,
+  .shortcut-intro,
+  .shortcut-warn,
+  .shortcut-note {
+    font-size: 0.74rem;
+    line-height: 1.35;
+  }
+}
+
+:root.high-contrast .shortcut-card {
+  background: #000;
+  border-color: #fff;
+}
+
+:root.high-contrast .shortcut-card li,
+:root.high-contrast .shortcut-intro,
+:root.high-contrast .shortcut-note {
+  color: #fff;
+}
+
+:root.high-contrast .shortcut-warn {
+  color: #fff;
+  background: #000;
+  border-left-color: #ffd400;
+}
+
+:root.high-contrast .shortcut-go {
+  background: #ffd400;
+  border-color: #ffd400;
+  color: #000;
+}
+
+:root.high-contrast .shortcut-dismiss {
+  background: #000;
+  border-color: #fff;
+  color: #fff;
+}

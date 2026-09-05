@@ -210,6 +210,45 @@
         user-select: all;
         color: var(--muted);
       }
+      /* The address a Home Screen shortcut should be built on. Set apart
+         from the scan-me address above because they are used at different
+         moments and for different reasons. */
+      #permanent {
+        margin-top: 0.85rem;
+        padding: 0.55rem 0.7rem;
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--accent);
+        border-radius: 6px;
+        display: grid;
+        gap: 0.2rem;
+      }
+      .permanent-label {
+        font-size: 0.66rem;
+        font-weight: 600;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--muted-dim);
+      }
+      #permanent-url {
+        font-size: 1rem;
+        color: var(--text);
+        user-select: all;
+        word-break: break-all;
+      }
+      .permanent-why {
+        font-size: 0.73rem;
+        line-height: 1.45;
+        color: var(--muted);
+      }
+      #port-warning {
+        margin-top: 0.6rem;
+        padding: 0.5rem 0.65rem;
+        border: 1px solid var(--warn);
+        border-radius: 6px;
+        font-size: 0.73rem;
+        line-height: 1.45;
+        color: var(--warn);
+      }
       #hint {
         margin-top: 0.45rem;
         font-size: 0.85rem;
@@ -488,6 +527,23 @@
             Typing it by hand instead? Use <span id="address" class="mono">…</span> on the
             connect screen.
           </div>
+          <!-- Only shown once the host has confirmed the name resolves back
+               to this machine. The address above is tied to a DHCP lease, so
+               a Home Screen shortcut built on it dies when the lease does;
+               this one follows the PC. -->
+          <div id="permanent" hidden>
+            <span class="permanent-label">Permanent address</span>
+            <span id="permanent-url" class="mono"></span>
+            <span class="permanent-why"
+              >Use this one for a phone Home Screen shortcut — it keeps working after this
+              PC changes IP. The phone offers to switch for you.</span
+            >
+          </div>
+          <div id="port-warning" hidden>
+            The usual port was already in use, so this session moved to another one. A
+            shortcut saved from an earlier session points at the old port and will not
+            open until that program is closed and this app restarted.
+          </div>
         </div>
         <div id="qr-block">
           <div id="qr" role="img" aria-label="QR code for the phone address"></div>
@@ -700,10 +756,20 @@
         el("vigembus-warning").style.display = "block";
       }
 
+      function setPermanent(url) {
+        if (!url) return;
+        el("permanent-url").textContent = url;
+        el("permanent").hidden = false;
+      }
+
       function applyStatus(s) {
         if (s.wsAddress) el("address").textContent = s.wsAddress;
         if (s.webUrl) setWebAddress(s.webUrl);
         if (s.qrSvg) showQr(s.qrSvg);
+        setPermanent(s.stableUrl);
+        // Only meaningful once a URL exists: before the page server binds,
+        // the snapshot's default would otherwise read as a port problem.
+        if (s.webUrl && s.canonicalPort === false) el("port-warning").hidden = false;
         if (s.vigembusMissing) showVigembusWarning();
         if (!s.lanIpKnown) {
           el("hint").textContent =
@@ -728,6 +794,7 @@
       // Sent separately from the snapshot because the QR can only be built
       // once the HTTP server has bound a port.
       listen("web-qr", (event) => showQr(event.payload));
+      listen("stable-address", (event) => setPermanent(event.payload));
 
       // Pull the startup snapshot. Everything below this is decided before
       // this script runs, so the events announcing it have already been

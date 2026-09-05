@@ -73,17 +73,35 @@ pub async fn run_http_server(
     let url = format!("http://{lan_ip}:{port}");
     println!("Phone page served at {url}  (open this on your phone)");
     println!("serving client bundle from {}", root.display());
+    // The name-based address, when mDNS can actually deliver it here. This
+    // is what a Home Screen shortcut should be built on -- see stable.rs.
+    let stable_url = crate::stable::url_for(port, &lan_ip);
+    if let Some(stable) = &stable_url {
+        println!("permanent address: {stable}  (survives this PC changing IP)");
+    }
+
     // Rendered once here rather than on demand: the URL is fixed for the
     // life of the process, and the window may ask for the snapshot before
     // or after this point, so both paths need the finished SVG ready.
+    //
+    // The QR encodes the IP address, not the name: scanning has to work on
+    // the first try, and a network that silently drops mDNS would turn the
+    // one action the whole setup depends on into a dead end. The phone is
+    // offered the permanent address afterwards, once it can test it.
     let qr_svg = crate::qr::svg_for(&url);
+    let canonical_port = port == HTTP_PORT;
     if let Some(state) = app_handle.try_state::<crate::status::SharedStatus>() {
         state.update(|s| {
             s.web_url = Some(url.clone());
             s.qr_svg = qr_svg.clone();
+            s.stable_url = stable_url.clone();
+            s.canonical_port = canonical_port;
         });
     }
     let _ = app_handle.emit("web-address", url);
+    if let Some(stable) = stable_url.clone() {
+        let _ = app_handle.emit("stable-address", stable);
+    }
     // Sent separately from `web-address` so a window that loaded before the
     // page server bound still receives the code, without having to poll.
     if let Some(svg) = qr_svg {
@@ -167,15 +185,26 @@ async fn serve_one(
         // act on input. Without it the page connects, says "Connected" and
         // silently does nothing when ViGEmBus is missing -- which reads as
         // "this app is broken" rather than "install one driver".
-        let pad_ready = app_handle
+        let snapshot = app_handle
             .try_state::<crate::status::SharedStatus>()
-            .map(|state| state.snapshot().pad_ready)
+            .map(|state| state.snapshot());
+        let pad_ready = snapshot
+            .as_ref()
+            .map(|s| s.pad_ready)
             // Unknown means don't accuse: claiming the driver is missing
             // when we simply cannot tell would be a worse failure.
             .unwrap_or(true);
+        // Handed to the phone so it can offer a Home Screen shortcut built
+        // on a name that outlives this PC's current IP. `null` when there
+        // isn't one; the page then simply doesn't make the offer.
+        let stable = snapshot
+            .as_ref()
+            .and_then(|s| s.stable_url.clone())
+            .map(|url| format!("\"{}\"", url.replace('"', "")))
+            .unwrap_or_else(|| "null".to_string());
         let body = format!(
             "{{\"ws\":\"{lan_ip}:{ws}\",\"host\":\"{lan_ip}\",\"wsPort\":{ws},\
-             \"padReady\":{pad_ready}}}",
+             \"padReady\":{pad_ready},\"stableUrl\":{stable}}}",
             ws = ws_port
         );
         return respond(

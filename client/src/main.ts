@@ -11,6 +11,13 @@ import { loadSettings, applyHighContrast } from "./settings.ts";
 import { applyAppearance } from "./theme.ts";
 import { configureHaptics } from "./haptics.ts";
 import { suppressZoomGestures } from "./zoom.ts";
+import { consumeHandoff } from "./install.ts";
+
+// Must run before anything reads storage. Arriving from the IP address at
+// the permanent one is a different origin and so a different localStorage;
+// this carries the layouts and settings across, and the very next line
+// loads them.
+consumeHandoff();
 
 // Appearance is applied before the first screen renders, not after: doing
 // it later means the connect screen paints once in the default theme and

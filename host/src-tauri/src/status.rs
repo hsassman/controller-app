@@ -17,6 +17,14 @@ pub struct Status {
     /// scanned instead of typed. `None` when there is no URL to encode, or
     /// if encoding failed -- the window lays out without it either way.
     pub qr_svg: Option<String>,
+    /// `http://<hostname>.local:<port>`, when that name was verified to
+    /// reach this machine. Unlike `web_url` it survives a new DHCP lease,
+    /// so it is the address a phone's Home Screen shortcut should pin.
+    pub stable_url: Option<String>,
+    /// False when the page server had to fall back off its usual port
+    /// because something else held it. Worth saying, because a shortcut
+    /// saved earlier pins the old port and would no longer open.
+    pub canonical_port: bool,
     /// False when this PC's LAN address could not be determined, in which
     /// case any address shown would be a loopback guess and useless to a
     /// phone -- the window says so rather than showing it.
