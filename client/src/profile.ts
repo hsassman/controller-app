@@ -1,5 +1,6 @@
 import type { Layout } from "./layout.ts";
 import { defaultLayout } from "./layout.ts";
+import { ACCENT_PRESETS } from "./theme.ts";
 
 const STORE_KEY = "controller-profiles-v1";
 /// The pre-multi-profile key. Read once, on first load after upgrading, so
@@ -78,7 +79,34 @@ function bit(value: unknown, fallback: number): number {
   return n >= 0 && n <= MAX_BUTTON_BIT ? n : fallback;
 }
 
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
+/// Caps a stored background image so one huge photo can't blow past
+/// localStorage's ~5MB quota (which is shared with every other profile,
+/// every skin, and the settings blob) and silently take the whole app's
+/// persistence down with it.
+const MAX_BACKGROUND_IMAGE_BYTES = 2_000_000;
+
+/// Exported so share.ts can run an incoming scanned/pasted layout through
+/// exactly the same validation a file import gets, rather than trusting
+/// whatever a QR code decoded to.
+export function sanitizeLayout(layout: Layout): Layout {
+  return migrate(layout);
+}
+
 function migrate(layout: Layout): Layout {
+  if (typeof layout.color !== "string" || !HEX_COLOR.test(layout.color)) {
+    delete layout.color;
+  }
+  if (layout.background) {
+    const bg = layout.background;
+    const validType = bg.type === "color" || bg.type === "image";
+    const validValue =
+      typeof bg.value === "string" &&
+      (bg.type === "color" ? HEX_COLOR.test(bg.value) : bg.value.length <= MAX_BACKGROUND_IMAGE_BYTES);
+    if (!validType || !validValue) delete layout.background;
+  }
+
   const filtered = (layout.controls ?? []).filter(
     (control) => control && KNOWN_TYPES.has((control as { type?: string }).type ?? ""),
   );
@@ -207,11 +235,32 @@ export function createProfile(name: string, from?: Layout): Layout {
     ...structuredClone(source),
     id: uniqueProfileId(store, name),
     name: name.trim() || "Untitled",
+    // Rotates through the accent palette rather than copying the source's
+    // colour, so a duplicate is visually distinguishable from its parent in
+    // the switcher instead of showing the same dot twice.
+    color: ACCENT_PRESETS[store.profiles.length % ACCENT_PRESETS.length],
   };
   store.profiles.push(layout);
   store.activeId = layout.id;
   writeStore(store);
   return layout;
+}
+
+export function setProfileColor(id: string, color: string): void {
+  const store = readStore();
+  const profile = store.profiles.find((p) => p.id === id);
+  if (!profile) return;
+  profile.color = color;
+  writeStore(store);
+}
+
+export function setProfileBackground(id: string, background: Layout["background"]): void {
+  const store = readStore();
+  const profile = store.profiles.find((p) => p.id === id);
+  if (!profile) return;
+  if (background) profile.background = background;
+  else delete profile.background;
+  writeStore(store);
 }
 
 export function duplicateProfile(id: string): Layout | null {

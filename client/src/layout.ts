@@ -16,6 +16,10 @@ export interface ButtonConfig {
   /// pressed fill, so a user can colour-code a custom layout the way the
   /// stock face buttons are coloured.
   tint?: string;
+  /// Per-control override for the global press-glow effect. Absent means
+  /// "follow the global Look setting"; false turns glow off on just this
+  /// control even while the rest of the pad glows.
+  glow?: boolean;
   toggle: boolean;
 }
 
@@ -26,6 +30,7 @@ export interface DpadConfig {
   y: number;
   size: number;
   tint?: string;
+  glow?: boolean;
 }
 
 export interface StickConfig {
@@ -41,6 +46,7 @@ export interface StickConfig {
   /// often wants a large dead zone for movement and a tight one for aim.
   deadZone?: number;
   tint?: string;
+  glow?: boolean;
   /// Which physical axis pair this drives. Must be explicit: inferring it
   /// from `id` broke as soon as the editor could create/duplicate controls
   /// (every new stick silently became the right stick).
@@ -56,16 +62,30 @@ export interface TriggerConfig {
   width: number;
   height: number;
   tint?: string;
+  glow?: boolean;
   /// Explicit for the same reason as StickConfig.stick.
   trigger: "left" | "right";
 }
 
 export type ControlConfig = ButtonConfig | DpadConfig | StickConfig | TriggerConfig;
 
+/// A profile's own visual backdrop, independent of the active theme. Absent
+/// means "just the theme's plain background" -- most profiles never set one.
+export interface BackgroundConfig {
+  type: "color" | "image";
+  /// A hex colour for "color", or a data: URL for "image".
+  value: string;
+}
+
 export interface Layout {
   id: string;
   name: string;
   controls: ControlConfig[];
+  /// A small identity colour shown as a dot next to the profile's name in
+  /// the switcher and the Profiles list, so profiles are recognisable at a
+  /// glance instead of being an unlabelled list of similar names.
+  color?: string;
+  background?: BackgroundConfig;
 }
 
 export function defaultLayout(): Layout {

@@ -136,3 +136,20 @@ input.dialog-input.invalid {
   border-color: #ffd400;
   color: #000;
 }
+
+/* Share-a-layout QR panel (settings-panel.ts showShareDialog). */
+.share-panel {
+  align-items: center;
+  text-align: center;
+}
+
+.share-qr {
+  width: min(15rem, 70vw);
+  height: min(15rem, 70vw);
+  border-radius: 0.5rem;
+  /* The QR itself is drawn black-on-white for scanner contrast regardless
+     of theme; this frame keeps that white square from looking like a
+     rendering glitch against a dark panel. */
+  padding: 0.6rem;
+  background: #fff;
+}

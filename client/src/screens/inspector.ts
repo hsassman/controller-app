@@ -199,6 +199,18 @@ export function renderInspector(
     }),
   );
 
+  // ---- Glow (per-control override of the global Look → Press glow) ----
+  body.appendChild(
+    switchRow("Glow", cfg.glow ?? true, (on) => {
+      host.pushHistory(`glow:${cfg.id}`);
+      // Stored as undefined rather than `true` when on, so "follow the
+      // global setting" and "explicitly on" don't diverge the moment the
+      // global slider changes later.
+      cfg.glow = on ? undefined : false;
+      host.onChange();
+    }),
+  );
+
   // ---- Position (fine nudge, for placement that drag can't hit exactly) ----
   const pos = document.createElement("div");
   pos.className = "inspector-row inspector-pos";
@@ -428,6 +440,20 @@ function sliderRow(
     onCommit(v);
   });
   el.append(readout, input);
+  return el;
+}
+
+function switchRow(labelText: string, value: boolean, onChange: (v: boolean) => void): HTMLElement {
+  const { row: el, label } = row(labelText);
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.className = "switch";
+  input.checked = value;
+  const id = `insp-${Math.random().toString(36).slice(2, 8)}`;
+  input.id = id;
+  label.setAttribute("for", id);
+  input.addEventListener("change", () => onChange(input.checked));
+  el.appendChild(input);
   return el;
 }
 

@@ -1,6 +1,6 @@
 import type { Layout } from "../layout.ts";
 import type { Settings } from "../settings.ts";
-import { THEMES, ACCENT_PRESETS, BUTTON_MATERIALS, DPAD_STYLES } from "../theme.ts";
+import { THEMES, ACCENT_PRESETS, BUTTON_MATERIALS, DPAD_STYLES, applyBackground } from "../theme.ts";
 import { promptDialog, confirmDialog, alertDialog } from "../dialog.ts";
 import { mappingName } from "../mappings.ts";
 import {
@@ -12,9 +12,14 @@ import {
   renameProfile,
   deleteProfile,
   exportLayout,
+  setProfileColor,
+  setProfileBackground,
 } from "../profile.ts";
 import { haptic } from "../haptics.ts";
 import { isStandalone, maybeOfferShortcut } from "../install.ts";
+import { ICON_PACKS } from "../iconPacks.ts";
+import { listSkins, saveSkin, deleteSkin, randomAppearance, type Skin, type SkinAppearance } from "../skins.ts";
+import { buildShareUrl, renderQrCanvas } from "../share.ts";
 
 export interface SettingsPanelHost {
   onChange(settings: Settings): void;
@@ -139,7 +144,7 @@ export function renderSettingsPanel(layout: Layout, current: Settings, host: Set
     body.innerHTML = "";
     switch (activeTab) {
       case "appearance":
-        renderAppearance(body, current, emit);
+        renderAppearance(body, current, emit, host);
         break;
       case "feel":
         renderFeel(body, current, emit);
@@ -216,6 +221,7 @@ function renderAppearance(
   body: HTMLElement,
   current: Settings,
   emit: (partial: Partial<Settings>) => void,
+  host: SettingsPanelHost,
 ): void {
   const themeRow = section(body, "Theme");
   const themes = document.createElement("div");
@@ -234,7 +240,7 @@ function renderAppearance(
       // The theme's own accent comes along, so a theme switch lands looking
       // intentional instead of inheriting the previous theme's colour.
       emit({ theme: theme.id, accent: theme.accent });
-      renderReplace(body, () => renderAppearance(body, current, emit), ".theme-card.on");
+      renderReplace(body, () => renderAppearance(body, current, emit, host), ".theme-card.on");
     });
     themes.appendChild(btn);
   }
@@ -253,7 +259,7 @@ function renderAppearance(
     btn.classList.toggle("on", colour.toLowerCase() === current.accent.toLowerCase());
     btn.addEventListener("click", () => {
       emit({ accent: colour });
-      renderReplace(body, () => renderAppearance(body, current, emit), ".swatch.on");
+      renderReplace(body, () => renderAppearance(body, current, emit, host), ".swatch.on");
     });
     swatches.appendChild(btn);
   }
@@ -286,12 +292,23 @@ function renderAppearance(
     current.dpadStyle,
     (v) => emit({ dpadStyle: v }),
   );
+  choiceRow(
+    body,
+    "Face button icons",
+    ICON_PACKS.map((p) => ({ value: p.id, label: p.name })),
+    current.iconPack,
+    (v) => emit({ iconPack: v }),
+  );
+  hint(body, "Purely cosmetic — A/B/X/Y still send Xbox input either way. A control you've relabelled yourself keeps its own text.");
 
   sliderRow(body, "Press glow", current.glowIntensity, 0, 1.5, 0.05, (v) =>
     v === 0 ? "Off" : `${Math.round(v * 100)}%`, (v) => emit({ glowIntensity: v }),
   );
   switchRow(body, "Show button labels", current.showLabels, (v) => emit({ showLabels: v }));
   switchRow(body, "Background glow", current.surfaceGlow, (v) => emit({ surfaceGlow: v }));
+
+  renderBackgroundSection(body, current, emit, host);
+  renderSkinsSection(body, current, emit, host);
 
   choiceRow(
     body,
@@ -327,6 +344,223 @@ function renderAppearance(
   }
 }
 
+/// Base64 inflates a file by roughly a third; capped comfortably under
+/// profile.ts's MAX_BACKGROUND_IMAGE_BYTES so a file that looks acceptable
+/// here doesn't get silently dropped by that sanitizer afterwards.
+const MAX_BACKGROUND_IMAGE_FILE_BYTES = 1_400_000;
+
+function renderBackgroundSection(
+  body: HTMLElement,
+  current: Settings,
+  emit: (partial: Partial<Settings>) => void,
+  host: SettingsPanelHost,
+): void {
+  const layout = host.getLayout?.();
+  if (!layout) return;
+  const bg = layout.background;
+
+  const apply = (next: Layout["background"]) => {
+    setProfileBackground(layout.id, next);
+    applyBackground(next);
+    host.onProfilesChanged();
+    renderReplace(body, () => renderAppearance(body, current, emit, host));
+  };
+
+  const section_ = section(body, "Background");
+  hint(section_, "A backdrop for this profile only, layered behind the theme's usual glow.");
+
+  const mode = bg?.type ?? "none";
+  const modeRow = document.createElement("div");
+  modeRow.className = "segmented";
+  modeRow.setAttribute("role", "radiogroup");
+  modeRow.setAttribute("aria-label", "Background type");
+  const options: [string, string][] = [
+    ["none", "None"],
+    ["color", "Colour"],
+    ["image", "Photo"],
+  ];
+  for (const [value, text] of options) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = text;
+    btn.setAttribute("role", "radio");
+    btn.setAttribute("aria-checked", String(value === mode));
+    if (value === mode) btn.classList.add("on");
+    btn.addEventListener("click", () => {
+      haptic("ui");
+      if (value === "none") apply(undefined);
+      else if (value === "color") apply({ type: "color", value: "#1a1d24" });
+      // "image" alone does nothing yet -- it's chosen by picking a file
+      // below, so switching to it here would otherwise clear a working
+      // background for no visible result.
+    });
+    modeRow.appendChild(btn);
+  }
+  section_.appendChild(modeRow);
+
+  if (mode === "color") {
+    const picker = document.createElement("input");
+    picker.type = "color";
+    picker.className = "swatch swatch-custom";
+    picker.value = /^#[0-9a-f]{6}$/i.test(bg?.value ?? "") ? bg!.value : "#1a1d24";
+    picker.setAttribute("aria-label", "Background colour");
+    picker.addEventListener("input", () => apply({ type: "color", value: picker.value }));
+    section_.appendChild(picker);
+  }
+
+  if (mode === "image") {
+    if (bg?.type === "image") {
+      const preview = document.createElement("img");
+      preview.className = "bg-preview";
+      preview.src = bg.value;
+      preview.alt = "Current background photo";
+      section_.appendChild(preview);
+    }
+    const chooseBtn = document.createElement("button");
+    chooseBtn.type = "button";
+    chooseBtn.className = "small";
+    chooseBtn.textContent = bg?.type === "image" ? "Choose a different photo" : "Choose a photo";
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "image/*";
+    fileInput.className = "visually-hidden";
+    fileInput.tabIndex = -1;
+    chooseBtn.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      if (file.size > MAX_BACKGROUND_IMAGE_FILE_BYTES) {
+        await alertDialog(
+          "That photo is too big",
+          `Pick something under ${Math.round(MAX_BACKGROUND_IMAGE_FILE_BYTES / 1_000_000)}MB — a phone's full-resolution camera roll photo is usually well past what a background needs.`,
+        );
+        return;
+      }
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+      apply({ type: "image", value: dataUrl });
+    });
+    section_.append(chooseBtn, fileInput);
+  }
+}
+
+/// Skins bundle Look settings (theme, accent, material, d-pad, glow, icon
+/// pack) under a name, independent of any one profile's layout -- see
+/// skins.ts for why they're kept separate from profiles.
+function renderSkinsSection(
+  body: HTMLElement,
+  current: Settings,
+  emit: (partial: Partial<Settings>) => void,
+  host: SettingsPanelHost,
+): void {
+  const section_ = section(body, "My skins");
+  hint(section_, "Save the look you've built (theme, accent, material, d-pad, glow, icons) and reapply it to any profile.");
+
+  const refresh = () => renderReplace(body, () => renderAppearance(body, current, emit, host));
+
+  const actions = document.createElement("div");
+  actions.className = "inspector-actions";
+
+  const remix = document.createElement("button");
+  remix.type = "button";
+  remix.textContent = "🎲 Remix";
+  remix.title = "Try a random combination";
+  remix.addEventListener("click", () => {
+    haptic("ui");
+    emit(randomAppearance());
+    refresh();
+  });
+
+  const save = document.createElement("button");
+  save.type = "button";
+  save.textContent = "Save current look…";
+  save.addEventListener("click", async () => {
+    const name = await promptDialog("Save this look as a skin", {
+      label: "Skin name",
+      value: "My skin",
+      confirmLabel: "Save",
+    });
+    if (name === null) return;
+    const appearance: SkinAppearance = {
+      theme: current.theme,
+      accent: current.accent,
+      buttonMaterial: current.buttonMaterial,
+      dpadStyle: current.dpadStyle,
+      glowIntensity: current.glowIntensity,
+      iconPack: current.iconPack,
+    };
+    saveSkin(name, appearance);
+    refresh();
+  });
+
+  actions.append(remix, save);
+  section_.appendChild(actions);
+
+  const skins = listSkins();
+  if (skins.length === 0) {
+    hint(section_, "No saved skins yet.");
+    return;
+  }
+  const list = document.createElement("div");
+  list.className = "profile-list";
+  for (const skin of skins) {
+    list.appendChild(skinRow(skin, current, emit, refresh));
+  }
+  section_.appendChild(list);
+}
+
+function skinRow(
+  skin: Skin,
+  current: Settings,
+  emit: (partial: Partial<Settings>) => void,
+  refresh: () => void,
+): HTMLElement {
+  const item = document.createElement("div");
+  item.className = "profile-item";
+  const isActive =
+    current.theme === skin.theme &&
+    current.accent.toLowerCase() === skin.accent.toLowerCase() &&
+    current.buttonMaterial === skin.buttonMaterial &&
+    current.dpadStyle === skin.dpadStyle &&
+    current.iconPack === skin.iconPack;
+  if (isActive) item.classList.add("on");
+
+  const use = document.createElement("button");
+  use.type = "button";
+  use.className = "profile-use";
+  use.innerHTML = `<span class="profile-use-title"><span class="profile-dot" style="background:${skin.accent}"></span><strong></strong></span>`;
+  use.querySelector("strong")!.textContent = skin.name;
+  use.addEventListener("click", () => {
+    haptic("ui");
+    emit({
+      theme: skin.theme,
+      accent: skin.accent,
+      buttonMaterial: skin.buttonMaterial,
+      dpadStyle: skin.dpadStyle,
+      glowIntensity: skin.glowIntensity,
+      iconPack: skin.iconPack,
+    });
+    refresh();
+  });
+
+  const del = smallButton("Delete", () => {
+    deleteSkin(skin.id);
+    refresh();
+  });
+  del.classList.add("danger");
+
+  const actions = document.createElement("div");
+  actions.className = "profile-actions";
+  actions.appendChild(del);
+
+  item.append(use, actions);
+  return item;
+}
+
 const IDLE_DIM_CHOICES: { value: number; label: string }[] = [
   { value: 0, label: "Off" },
   { value: 5, label: "5 s" },
@@ -347,9 +581,19 @@ function renderFeel(
   emit: (partial: Partial<Settings>) => void,
 ): void {
   switchRow(body, "Vibration", current.haptics, (v) => emit({ haptics: v }));
-  sliderRow(body, "Vibration strength", current.hapticStrength, 0, 1, 0.05, (v) =>
+  const strengthRow = sliderRow(body, "Vibration strength", current.hapticStrength, 0, 1, 0.05, (v) =>
     v === 0 ? "Off" : `${Math.round(v * 100)}%`, (v) => emit({ hapticStrength: v }),
   );
+  const testBtn = document.createElement("button");
+  testBtn.type = "button";
+  testBtn.className = "small";
+  testBtn.textContent = "Test";
+  // configureHaptics() has already been called by the time this fires --
+  // emit() runs applySettings() synchronously on every slider input -- so
+  // this always buzzes at whatever strength is currently on screen, not a
+  // stale value from when the panel opened.
+  testBtn.addEventListener("click", () => haptic("click"));
+  strengthRow.appendChild(testBtn);
   sliderRow(body, "Stick dead zone", current.deadZone, 0, 0.5, 0.01, (v) => `${Math.round(v * 100)}%`, (v) =>
     emit({ deadZone: v }),
   );
@@ -418,6 +662,18 @@ function renderProfiles(body: HTMLElement, host: SettingsPanelHost, refresh: () 
     item.className = "profile-item";
     if (profile.id === active) item.classList.add("on");
 
+    const colorDot = document.createElement("input");
+    colorDot.type = "color";
+    colorDot.className = "profile-color-picker";
+    colorDot.value = /^#[0-9a-f]{6}$/i.test(profile.color ?? "") ? profile.color! : "#4c8bff";
+    colorDot.setAttribute("aria-label", `${profile.name} colour`);
+    colorDot.title = "Profile colour";
+    colorDot.addEventListener("input", () => {
+      setProfileColor(profile.id, colorDot.value);
+      // No full refresh: recolouring the dot itself is enough feedback, and
+      // a refresh mid-drag on a colour wheel would fight the native picker.
+    });
+
     const use = document.createElement("button");
     use.type = "button";
     use.className = "profile-use";
@@ -452,6 +708,7 @@ function renderProfiles(body: HTMLElement, host: SettingsPanelHost, refresh: () 
       refresh();
     });
     const exp = smallButton("Export", () => exportLayout(profile));
+    const share = smallButton("Share", () => showShareDialog(profile));
     const del = smallButton("Delete", async () => {
       const ok = await confirmDialog("Delete profile", {
         body: `"${profile.name}" and its layout will be removed. This can't be undone.`,
@@ -471,8 +728,11 @@ function renderProfiles(body: HTMLElement, host: SettingsPanelHost, refresh: () 
     del.classList.add("danger");
     del.disabled = profiles.length <= 1;
 
-    actions.append(rename, dup, exp, del);
-    item.append(use, actions);
+    actions.append(rename, dup, exp, share, del);
+    const headRow = document.createElement("div");
+    headRow.className = "profile-head";
+    headRow.append(colorDot, use);
+    item.append(headRow, actions);
     list.appendChild(item);
   }
   body.appendChild(list);
@@ -493,6 +753,79 @@ function renderProfiles(body: HTMLElement, host: SettingsPanelHost, refresh: () 
     refreshAndFocus();
   });
   body.appendChild(add);
+}
+
+/// A lightweight overlay (not the confirm/prompt/alert trio in dialog.ts,
+/// which only ever show text) carrying the QR code a friend on the same
+/// Wi-Fi can scan to pick up this exact layout -- see share.ts for why a
+/// URL fragment is enough with no server-side relay.
+function showShareDialog(profile: Layout): void {
+  const overlay = document.createElement("div");
+  // "dialog-overlay" (not just "overlay"): this opens from inside the
+  // settings panel, which is itself an overlay, and needs the same
+  // above-it stacking dialog.ts's confirm/prompt dialogs get.
+  overlay.className = "overlay dialog-overlay";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-label", `Share ${profile.name}`);
+
+  const panel = document.createElement("div");
+  panel.className = "panel dialog-panel share-panel";
+  overlay.appendChild(panel);
+
+  const title = document.createElement("h2");
+  title.textContent = `Share "${profile.name}"`;
+  panel.appendChild(title);
+
+  const url = buildShareUrl(profile);
+  if (url === null) {
+    const body = document.createElement("p");
+    body.className = "dialog-body";
+    body.textContent =
+      "This layout is too large to fit in a QR code. Use Export instead, and send the file directly.";
+    panel.appendChild(body);
+  } else {
+    const body = document.createElement("p");
+    body.className = "dialog-body";
+    body.textContent = "On the same Wi-Fi, scan this with another phone's camera to pick up this layout.";
+    panel.appendChild(body);
+
+    const canvas = renderQrCanvas(url, 240);
+    canvas.className = "share-qr";
+    panel.appendChild(canvas);
+
+    if (profile.background?.type === "image") {
+      const note = document.createElement("p");
+      note.className = "hint";
+      note.textContent = "The custom background photo isn't included — it's shared with the rest of the look.";
+      panel.appendChild(note);
+    }
+  }
+
+  const actions = document.createElement("div");
+  actions.className = "dialog-actions";
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "dialog-confirm";
+  closeBtn.textContent = "Close";
+  const close = () => {
+    document.removeEventListener("keydown", onKey);
+    overlay.remove();
+  };
+  closeBtn.addEventListener("click", close);
+  actions.appendChild(closeBtn);
+  panel.appendChild(actions);
+
+  overlay.addEventListener("pointerdown", (e) => {
+    if (e.target === overlay) close();
+  });
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape") close();
+  };
+  document.addEventListener("keydown", onKey);
+
+  document.body.appendChild(overlay);
+  closeBtn.focus();
 }
 
 // ---- Row builders ----
@@ -596,7 +929,7 @@ function sliderRow(
   step: number,
   format: (v: number) => string,
   onInput: (v: number) => void,
-): void {
+): HTMLLabelElement {
   const label = document.createElement("label");
   label.className = "slider-row";
   const head = document.createElement("span");
@@ -620,6 +953,7 @@ function sliderRow(
   });
   label.append(head, input);
   parent.appendChild(label);
+  return label;
 }
 
 function smallButton(text: string, onClick: () => void): HTMLButtonElement {

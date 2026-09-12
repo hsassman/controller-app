@@ -2,6 +2,7 @@ import type { ControlConfig, Layout } from "./layout.ts";
 import { isButtonHeld, resetAll, setButton, setStick, setTrigger } from "./inputState.ts";
 import type { Settings } from "./settings.ts";
 import { haptic } from "./haptics.ts";
+import { displayLabel } from "./iconPacks.ts";
 import { ButtonBit } from "../../protocol/frame.ts";
 
 const REF_W = 640;
@@ -114,6 +115,13 @@ function applyTint(el: HTMLElement, tint: string | undefined): void {
   el.classList.add("tinted");
 }
 
+/// `glow` is a per-control override of the global Look → Press glow setting.
+/// Undefined means "follow the global setting"; only an explicit `false`
+/// turns this one control's glow off.
+function applyGlow(el: HTMLElement, glow: boolean | undefined): void {
+  el.classList.toggle("no-glow", glow === false);
+}
+
 function positioned(el: HTMLElement, x: number, y: number, w: number, h: number): void {
   el.style.left = `${x}%`;
   el.style.top = `${y}%`;
@@ -129,9 +137,10 @@ function buildButton(
   const el = document.createElement("div");
   el.className = "control button-control";
   el.setAttribute("role", "button");
+  const shown = displayLabel(cfg.bit, cfg.label, getSettings().iconPack);
   el.setAttribute("aria-label", cfg.label);
   el.tabIndex = 0;
-  el.textContent = cfg.label;
+  el.textContent = shown;
   el.dataset.controlId = cfg.id;
   const bw = cfg.width ?? cfg.size;
   const bh = cfg.height ?? cfg.size;
@@ -142,6 +151,7 @@ function buildButton(
   if (shape === "pill") el.classList.add("button-pill");
   if (shape === "square") el.classList.add("button-square");
   applyTint(el, cfg.tint);
+  applyGlow(el, cfg.glow);
   positioned(el, cfg.x, cfg.y, bw * scale, bh * scale);
 
   const isToggle = () => getSettings().toggleButtonIds.includes(cfg.id);
@@ -225,6 +235,7 @@ function buildDpad(cfg: Extract<ControlConfig, { type: "dpad" }>, scale: number)
   el.tabIndex = 0;
   el.dataset.controlId = cfg.id;
   applyTint(el, cfg.tint);
+  applyGlow(el, cfg.glow);
   positioned(el, cfg.x, cfg.y, cfg.size * scale, cfg.size * scale);
 
   // Real structure rather than one clipped div: a recessed well, a cross that
@@ -369,6 +380,7 @@ function buildStick(
   el.tabIndex = 0;
   el.dataset.controlId = cfg.id;
   applyTint(el, cfg.tint);
+  applyGlow(el, cfg.glow);
   const size = cfg.size * scale;
   positioned(el, cfg.x, cfg.y, size, size);
 
@@ -523,6 +535,7 @@ function buildTrigger(cfg: Extract<ControlConfig, { type: "trigger" }>, scale: n
   el.tabIndex = 0;
   el.dataset.controlId = cfg.id;
   applyTint(el, cfg.tint);
+  applyGlow(el, cfg.glow);
   positioned(el, cfg.x, cfg.y, cfg.width * scale, cfg.height * scale);
 
   const fill = document.createElement("div");

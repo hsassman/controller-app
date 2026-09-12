@@ -189,6 +189,24 @@ export function applyTheme(id: ThemeId): void {
   document.documentElement.dataset.theme = THEMES.some((t) => t.id === id) ? id : "midnight";
 }
 
+/// A profile's own backdrop, layered under the theme's usual page glow
+/// rather than replacing it outright -- a custom colour or photo still
+/// reads as "this app, personalised" instead of a jarring flat swap.
+export function applyBackground(background: { type: "color" | "image"; value: string } | undefined): void {
+  const root = document.documentElement;
+  if (!background) {
+    root.style.removeProperty("--profile-bg-image");
+    root.classList.remove("has-profile-background");
+    return;
+  }
+  const image =
+    background.type === "image"
+      ? `url("${background.value.replace(/"/g, '\\"')}")`
+      : `linear-gradient(${background.value}, ${background.value})`;
+  root.style.setProperty("--profile-bg-image", image);
+  root.classList.add("has-profile-background");
+}
+
 /// ---- Idle dim ----
 ///
 /// Lives here rather than in the settings panel because it has to watch real

@@ -3,7 +3,7 @@ import { renderControls } from "../controls.ts";
 import { snapshot, resetAll } from "../inputState.ts";
 import { encodeInputFrame } from "../../../protocol/frame.ts";
 import { loadSettings, saveSettings, applyHighContrast } from "../settings.ts";
-import { applyAppearance } from "../theme.ts";
+import { applyAppearance, applyBackground } from "../theme.ts";
 import { configureHaptics, haptic } from "../haptics.ts";
 import { fullscreenSupported, isFullscreen, toggleFullscreen, keepAwakeWhileVisible, releaseWakeLock } from "../session.ts";
 import { renderSettingsPanel } from "./settings-panel.ts";
@@ -160,6 +160,10 @@ export function renderControllerScreen(
   const showPlayMode = (focusHeading = false) => {
     releaseSurface();
     editing = false;
+    // Every path that lands here re-reads `layout` fresh, so this is the one
+    // place a per-profile background needs applying rather than chasing
+    // every call site that assigns `layout`.
+    applyBackground(layout.background);
     editToolbar.hidden = true;
     editToolbar.innerHTML = "";
     settingsBtn.hidden = false;

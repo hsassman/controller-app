@@ -12,12 +12,21 @@ import { applyAppearance } from "./theme.ts";
 import { configureHaptics } from "./haptics.ts";
 import { suppressZoomGestures } from "./zoom.ts";
 import { consumeHandoff } from "./install.ts";
+import { consumeSharedLayoutFromUrl } from "./share.ts";
+import { createProfile } from "./profile.ts";
+import { confirmDialog } from "./dialog.ts";
 
 // Must run before anything reads storage. Arriving from the IP address at
 // the permanent one is a different origin and so a different localStorage;
 // this carries the layouts and settings across, and the very next line
 // loads them.
 consumeHandoff();
+
+// A layout shared from another phone's Settings → Profiles → Share (see
+// share.ts) arrives as a URL fragment. Handled before the first screen
+// renders so it works from a cold start -- scanning the code is often how
+// someone opens this app for the very first time.
+const sharedLayout = consumeSharedLayoutFromUrl();
 
 // Appearance is applied before the first screen renders, not after: doing
 // it later means the connect screen paints once in the default theme and
@@ -43,4 +52,15 @@ function showConnectScreen(autoConnect: boolean): void {
   );
 }
 
-showConnectScreen(true);
+async function boot(): Promise<void> {
+  if (sharedLayout) {
+    const accepted = await confirmDialog(`Import "${sharedLayout.name}"?`, {
+      body: "It's added as a new profile without touching any layout you already have.",
+      confirmLabel: "Import",
+    });
+    if (accepted) createProfile(sharedLayout.name, sharedLayout);
+  }
+  showConnectScreen(true);
+}
+
+void boot();

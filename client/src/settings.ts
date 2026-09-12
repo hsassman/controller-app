@@ -1,5 +1,7 @@
 import type { ButtonMaterial, DpadStyle, ThemeId } from "./theme.ts";
 import { BUTTON_MATERIALS, DPAD_STYLES, THEMES } from "./theme.ts";
+import type { IconPackId } from "./iconPacks.ts";
+import { ICON_PACKS } from "./iconPacks.ts";
 
 const STORAGE_KEY = "controller-settings-v1";
 
@@ -22,6 +24,7 @@ export interface Settings {
   dpadStyle: DpadStyle; // the d-pad's silhouette
   glowIntensity: number; // 0-1.5, multiplies the accent glow on pressed controls
   idleDimSeconds: number; // seconds of no input before the controls fade; 0 = off
+  iconPack: IconPackId; // what face buttons draw, purely cosmetic
 
   // --- Feel ---
   haptics: boolean;
@@ -51,6 +54,7 @@ export function defaults(): Settings {
     dpadStyle: "cross",
     glowIntensity: 1,
     idleDimSeconds: 0,
+    iconPack: "letters",
 
     haptics: true,
     hapticStrength: 0.6,
@@ -94,6 +98,7 @@ function sanitize(s: Settings): Settings {
   if (!THEMES.some((t) => t.id === s.theme)) s.theme = d.theme;
   if (!BUTTON_MATERIALS.some((m) => m.id === s.buttonMaterial)) s.buttonMaterial = d.buttonMaterial;
   if (!DPAD_STYLES.some((p) => p.id === s.dpadStyle)) s.dpadStyle = d.dpadStyle;
+  if (!ICON_PACKS.some((p) => p.id === s.iconPack)) s.iconPack = d.iconPack;
   return s;
 }
 

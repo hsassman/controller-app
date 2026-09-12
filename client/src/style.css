@@ -85,6 +85,14 @@
   --glow-intensity: 1;
 }
 
+/* Per-control override (Inspector → Glow): every glow shadow on the page is
+   already written as `calc(k * var(--glow-intensity))`, so resetting the
+   variable's value on just this element turns its glow off without a
+   second copy of every shadow rule. */
+.control.no-glow {
+  --glow-intensity: 0;
+}
+
 /* Matte: injection-moulded ABS. Almost no specular, a dry diffuse body. */
 :root[data-material="matte"] {
   --gloss-op: 0.22;
@@ -306,6 +314,8 @@ body {
   background-color: var(--bg);
   background-image: var(--page-glow);
   background-repeat: no-repeat;
+  background-size: auto;
+  background-position: 0 0;
   color: var(--fg);
   overscroll-behavior: none;
   /* Not `none`: that blocked pinch-zoom across the whole app, including the
@@ -1733,6 +1743,17 @@ button:disabled {
   transition-duration: 0.001ms !important;
 }
 
+/* A profile's own backdrop (Look → Background), layered under the theme's
+   usual page glow rather than replacing it -- see applyBackground() in
+   theme.ts. A solid colour arrives as a degenerate two-stop gradient so it
+   can share the same `cover`-sized layer as a photo. */
+:root.has-profile-background body {
+  background-image: var(--page-glow), var(--profile-bg-image);
+  background-size: auto, cover;
+  background-position: 0 0, center;
+  background-repeat: no-repeat, no-repeat;
+}
+
 :root.no-surface-glow body {
   background-image: none;
 }
@@ -2009,6 +2030,30 @@ button:disabled {
     linear-gradient(to right, rgba(var(--accent-rgb), 0.16) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(var(--accent-rgb), 0.16) 1px, transparent 1px);
   background-size: var(--grid-step, 2%) var(--grid-step, 2%);
+}
+
+/* Alignment guides: shown while dragging a control within snapping
+   distance of another control's centre (see findAlignment in editor.ts). */
+.align-guide {
+  position: absolute;
+  background: var(--accent);
+  pointer-events: none;
+  z-index: 5;
+  box-shadow: 0 0 6px 0 rgba(var(--accent-rgb), 0.8);
+}
+
+.align-guide-v {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  transform: translateX(-0.5px);
+}
+
+.align-guide-h {
+  left: 0;
+  right: 0;
+  height: 1px;
+  transform: translateY(-0.5px);
 }
 
 .edit-control.selected .edit-remove,
@@ -2432,6 +2477,22 @@ button.danger:hover:not(:disabled) {
   height: 1.7rem;
 }
 
+/* The haptics preview button (Feel → Vibration strength → Test). */
+.slider-row > button.small {
+  align-self: flex-start;
+  cursor: pointer;
+}
+
+/* Look → Background: photo preview and the segmented None/Colour/Photo row. */
+.bg-preview {
+  width: 100%;
+  max-height: 6rem;
+  object-fit: cover;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  margin: 0.4rem 0;
+}
+
 /* A real checkbox styled as a switch: native keyboard behaviour and
    announced state, with a target comfortably over 24px. */
 input[type="checkbox"].switch {
@@ -2557,6 +2618,49 @@ input[type="checkbox"].switch:focus-visible {
   text-align: left;
   cursor: pointer;
   min-height: 2.2rem;
+}
+
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Native colour inputs render as an opaque swatch already; this only trims
+   the browser chrome down to match the other round swatches in the panel. */
+.profile-color-picker {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.3rem;
+  height: 1.3rem;
+  flex: none;
+  padding: 0;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+.profile-color-picker::-webkit-color-swatch-wrapper {
+  padding: 0;
+  border-radius: 50%;
+}
+.profile-color-picker::-webkit-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+
+.profile-use-title {
+  display: flex;
+  align-items: center;
+}
+
+.profile-dot {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  margin-right: 0.45rem;
+  flex: none;
 }
 
 .profile-use strong {
@@ -2979,8 +3083,12 @@ input[type="range"] {
   color: var(--ok);
 }
 
-.status-latency[data-quality="poor"] {
+.status-latency[data-quality="ok"] {
   color: var(--warn);
+}
+
+.status-latency[data-quality="poor"] {
+  color: var(--danger);
 }
 
 :root.high-contrast .status-latency {

@@ -84,6 +84,44 @@ export function renderEditor(
   gridOverlay.className = "grid-overlay";
   gridOverlay.setAttribute("aria-hidden", "true");
 
+  // Alignment guides: thin lines that appear while dragging a control near
+  // another control's centre, and pull the drag onto it. Two fixed elements
+  // toggled visible rather than created per-drag, so a fast drag can't leave
+  // an orphaned guide behind if teardown races a pointer event.
+  const guideV = document.createElement("div");
+  guideV.className = "align-guide align-guide-v";
+  guideV.hidden = true;
+  const guideH = document.createElement("div");
+  guideH.className = "align-guide align-guide-h";
+  guideH.hidden = true;
+
+  const ALIGN_THRESHOLD = 1.4; // percent of the surface
+
+  /// The nearest other control's coordinate on `axis` within the alignment
+  /// threshold, or null. Ties go to whichever control comes first -- there
+  /// is no meaningful way to prefer one over another at the same distance.
+  const findAlignment = (axis: "x" | "y", value: number, excludeId: string): number | null => {
+    let best: number | null = null;
+    let bestDist = ALIGN_THRESHOLD;
+    for (const c of working.controls) {
+      if (c.id === excludeId) continue;
+      const dist = Math.abs(c[axis] - value);
+      if (dist <= bestDist) {
+        best = c[axis];
+        bestDist = dist;
+      }
+    }
+    return best;
+  };
+
+  const showGuides = (x: number | null, y: number | null) => {
+    guideV.hidden = x === null;
+    if (x !== null) guideV.style.left = `${x}%`;
+    guideH.hidden = y === null;
+    if (y !== null) guideH.style.top = `${y}%`;
+  };
+  const hideGuides = () => showGuides(null, null);
+
   const selected = (): ControlConfig | undefined =>
     working.controls.find((c) => c.id === selectedId);
 
@@ -147,6 +185,10 @@ export function renderEditor(
       if (!KNOWN_TYPES.has(control.type)) continue;
       surface.appendChild(buildEditableControl(control, scale));
     }
+    // Re-appended every render (innerHTML just wiped them out above) but
+    // always hidden until a drag is actually in progress.
+    hideGuides();
+    surface.append(guideV, guideH);
   };
 
   const rerenderInspector = () => {
@@ -560,18 +602,25 @@ export function renderEditor(
           moved = true;
           snapshotForGesture(`drag:${cfg.id}`);
         }
+        // Alignment with another control's centre takes priority over grid
+        // snapping when both are in play: it is a more specific match, and
+        // fighting the grid for it would make the guide line lie.
+        const alignX = findAlignment("x", rawX, cfg.id);
+        const alignY = findAlignment("y", rawY, cfg.id);
         // Keep the whole control on the surface: controls are centre-anchored,
         // so the centre must stay at least half the control's size from each
         // edge or it hangs off and becomes partly untappable.
-        cfg.x = clamp(snap(rawX), halfW, 100 - halfW);
-        cfg.y = clamp(snap(rawY), halfH, 100 - halfH);
+        cfg.x = clamp(alignX ?? snap(rawX), halfW, 100 - halfW);
+        cfg.y = clamp(alignY ?? snap(rawY), halfH, 100 - halfH);
         el.style.left = `${cfg.x}%`;
         el.style.top = `${cfg.y}%`;
+        showGuides(alignX !== null ? cfg.x : null, alignY !== null ? cfg.y : null);
       };
       const onUp = (ev: PointerEvent) => {
         if (ev.pointerId !== dragPointer) return;
         dragPointer = null;
         historyKey = null; // the drag gesture is over
+        hideGuides();
         el.removeEventListener("pointermove", onMove);
         el.removeEventListener("pointerup", onUp);
         el.removeEventListener("pointercancel", onUp);
