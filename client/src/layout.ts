@@ -65,6 +65,15 @@ export interface TriggerConfig {
   glow?: boolean;
   /// Explicit for the same reason as StickConfig.stick.
   trigger: "left" | "right";
+  /// Fraction of travel from the resting edge that reads as zero. Absent
+  /// means 0 -- a bare finger graze already registers, matching the
+  /// pre-existing behaviour.
+  deadZone?: number;
+  /// Response curve applied after the dead zone, same convention as a
+  /// stick's sensitivityCurve: 1 is linear, >1 gives more precision near
+  /// the resting edge. Absent means 1 (linear), matching the pre-existing
+  /// behaviour.
+  curve?: number;
 }
 
 export type ControlConfig = ButtonConfig | DpadConfig | StickConfig | TriggerConfig;

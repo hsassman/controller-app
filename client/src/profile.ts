@@ -145,6 +145,10 @@ function migrate(layout: Layout): Layout {
       c.clickBit = bit(c.clickBit, c.stick === "left" ? 10 : 11);
       if (c.deadZone !== undefined) c.deadZone = num(c.deadZone, 0, 0.5, 0.12);
     }
+    if (c.type === "trigger") {
+      if (c.deadZone !== undefined) c.deadZone = num(c.deadZone, 0, 0.5, 0);
+      if (c.curve !== undefined) c.curve = num(c.curve, 0.5, 2, 1);
+    }
 
     if (c.type === "stick" && c.stick !== "left" && c.stick !== "right") {
       c.stick = c.id === "left-stick" ? "left" : "right";

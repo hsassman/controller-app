@@ -567,7 +567,8 @@ function buildTrigger(cfg: Extract<ControlConfig, { type: "trigger" }>, scale: n
 
   const update = (clientY: number) => {
     const rect = el.getBoundingClientRect();
-    setValue(Math.min(1, Math.max(0, 1 - (clientY - rect.top) / rect.height)));
+    const raw = Math.min(1, Math.max(0, 1 - (clientY - rect.top) / rect.height));
+    setValue(applyDeadZoneAndCurve(raw, cfg.deadZone ?? 0, cfg.curve ?? 1));
   };
 
   const reset = () => setValue(0);

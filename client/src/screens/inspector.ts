@@ -154,6 +154,36 @@ export function renderInspector(
           },
         ),
       );
+      body.appendChild(
+        sliderRow(
+          "Dead zone",
+          cfg.deadZone ?? 0,
+          0,
+          0.5,
+          0.01,
+          (v) => `${Math.round(v * 100)}%`,
+          (v) => {
+            host.pushHistory(`deadzone:${cfg.id}`);
+            cfg.deadZone = v === 0 ? undefined : v;
+            host.onChange();
+          },
+        ),
+      );
+      body.appendChild(
+        sliderRow(
+          "Curve",
+          cfg.curve ?? 1,
+          0.5,
+          2,
+          0.1,
+          (v) => (v === 1 ? "Linear" : v.toFixed(1)),
+          (v) => {
+            host.pushHistory(`curve:${cfg.id}`);
+            cfg.curve = v === 1 ? undefined : v;
+            host.onChange();
+          },
+        ),
+      );
       break;
     }
     case "dpad":
