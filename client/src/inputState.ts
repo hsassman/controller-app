@@ -26,9 +26,12 @@ export function isButtonHeld(bit: number): boolean {
 }
 
 export function setStick(which: "left" | "right", x: number, y: number): void {
-  // x, y in [-1, 1]; scale to the i16 wire range.
-  const sx = Math.round(clamp(x, -1, 1) * 32767);
-  const sy = Math.round(clamp(y, -1, 1) * 32767);
+  // x, y in [-1, 1]; scale to the full i16 wire range. The negative side
+  // reaches one further than the positive side (-32768 vs 32767), same as a
+  // real XInput pad -- scaling both by 32767 would leave full-left/full-down
+  // one unit short of true full-scale deflection.
+  const sx = scaleAxis(x);
+  const sy = scaleAxis(y);
   if (which === "left") {
     state.leftStickX = sx;
     state.leftStickY = sy;
@@ -62,4 +65,9 @@ export function snapshot(sequence: number): InputFrameData {
 
 function clamp(v: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, v));
+}
+
+function scaleAxis(v: number): number {
+  const c = clamp(v, -1, 1);
+  return Math.round(c * (c < 0 ? 32768 : 32767));
 }

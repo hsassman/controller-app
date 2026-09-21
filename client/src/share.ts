@@ -50,15 +50,23 @@ export function buildShareUrl(layout: Layout): string | null {
   return full.length > MAX_SHARE_CHARS ? null : full;
 }
 
-/// Renders `text` as a QR code into a fresh canvas sized to `pixels` square.
-/// Error-correction level M tolerates a scratched or reflective phone screen
-/// without needing the payload padded.
+/// Renders `text` as a QR code into a fresh canvas displayed at `pixels`
+/// square (the caller's CSS sizing is unchanged). Error-correction level M
+/// tolerates a scratched or reflective phone screen without needing the
+/// payload padded.
 export function renderQrCanvas(text: string, pixels: number): HTMLCanvasElement {
   const qr = qrcode(0, "M");
   qr.addData(text);
   qr.make();
   const count = qr.getModuleCount();
-  const cell = Math.floor(pixels / count) || 1;
+  // Both ends of this scan are phones, which are almost never DPR 1 --
+  // drawing at CSS pixel resolution and letting the browser upscale the
+  // bitmap blurs the modules right at the edges a scanner relies on. Backing
+  // the canvas with `pixels * dpr` real pixels (displayed at the same CSS
+  // size) keeps every module crisp. Capped at 3x: quality gains vanish past
+  // it and it would only cost more canvas memory.
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  const cell = Math.floor((pixels * dpr) / count) || 1;
   const size = cell * count;
 
   const canvas = document.createElement("canvas");

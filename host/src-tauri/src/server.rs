@@ -224,6 +224,14 @@ pub async fn run_server(
                 continue;
             }
         };
+        // Input frames are small (15 bytes) and sent every 10ms; Nagle's
+        // algorithm would happily coalesce them with the next one and sit on
+        // a frame waiting for an ACK, adding tens of milliseconds of input
+        // lag for no bandwidth benefit at this size. Disabling it is a
+        // straight latency win.
+        if let Err(err) = stream.set_nodelay(true) {
+            eprintln!("failed to set TCP_NODELAY for {peer_addr}: {err}");
+        }
         // The permit moves into the task, so it is returned on every exit
         // path including a panic -- the same discipline as ClientLease.
         let Ok(permit) = Arc::clone(&connection_slots).try_acquire_owned() else {
