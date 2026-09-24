@@ -30,10 +30,6 @@ The app ships as a **portable build**: one `.exe` and a folder of static files. 
 
 That's it — no typing an IP on a phone keypad, and the page connects itself once it opens. The address is printed under the code if you'd rather type it.
 
-<p align="center">
-  <img src="screenshots/01-connect.png" alt="The connect screen, with automatic host discovery" width="80%">
-</p>
-
 > Both devices must be on the same Wi-Fi. If Windows Firewall prompts on the first run, allow it on **private networks**.
 > To type the address manually instead, the host window shows that too.
 
