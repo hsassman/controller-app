@@ -1,4 +1,3 @@
-use std::net::UdpSocket;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
@@ -691,14 +690,4 @@ fn parse_frame(bytes: &[u8]) -> Option<InputFrame> {
         Some(&FRAME_TYPE_INPUT) => InputFrame::parse(bytes).ok(),
         _ => None,
     }
-}
-
-pub fn local_lan_ip() -> Option<String> {
-    UdpSocket::bind("0.0.0.0:0")
-        .and_then(|socket| {
-            socket.connect("8.8.8.8:80")?;
-            socket.local_addr()
-        })
-        .map(|addr| addr.ip().to_string())
-        .ok()
 }

@@ -29,7 +29,7 @@ All downloads: [latest release](https://github.com/hsassman/controller-app/relea
 
 | Problem | Fix |
 | --- | --- |
-| Phone can't connect | Make sure both are on the same Wi-Fi (not a guest network), then click **Fix firewall** in the PC window. |
+| Scanning the code opens nothing, or the page never loads | Put the phone on the same Wi-Fi as the PC (not mobile data or a guest network), click **Allow through firewall** in the PC window, and turn off any VPN. If the PC has several network adapters, pick another one under the QR code and scan again. |
 | Connected, but nothing moves in the game | The gamepad driver is missing: click **Install driver** in the PC window. |
 | Windows' "Game Controllers" panel (joy.cpl) shows no movement | Normal for Xbox controllers. Check the live drawing in the PC window instead; games read the pad correctly. |
 | No vibration on iPhone | iPhone browsers can't vibrate. The screen edges pulse with the game's rumble instead. |

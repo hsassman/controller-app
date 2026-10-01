@@ -216,6 +216,54 @@
         background: #10201a;
         color: #b9f5cf;
       }
+      .warn-card {
+        border: 1px solid #7a6324;
+        border-left: 4px solid var(--warn);
+        background: linear-gradient(180deg, #241d0e, #1c170c);
+      }
+      .warn-card h2 {
+        color: #ffe2a3;
+      }
+      .warn-card p,
+      .warn-card li {
+        color: #f1dcb0;
+        font-size: 0.84rem;
+      }
+      .checklist {
+        margin: 0;
+        padding-left: 1.1rem;
+        display: grid;
+        gap: 0.3rem;
+      }
+      #alt-addresses {
+        margin-top: 0.6rem;
+        max-width: 190px;
+        display: grid;
+        gap: 0.35rem;
+      }
+      .alt-label {
+        font-size: 0.7rem;
+        color: var(--muted);
+      }
+      .alt-list {
+        display: grid;
+        gap: 0.3rem;
+      }
+      .alt-list button {
+        font: inherit;
+        font-size: 0.72rem;
+        padding: 0.3rem 0.5rem;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        color: var(--text);
+        cursor: pointer;
+        text-align: left;
+      }
+      .alt-list button.on {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
       #startup-error {
         border: 1px solid #7a3a3a;
         background: #221315;
@@ -665,6 +713,32 @@
 
       <section id="startup-error" class="alert" role="alert" hidden></section>
 
+      <!-- Windows Firewall has no rule for this app: the single most common
+           reason scanning the QR code opens a page that never loads. -->
+      <section id="firewall-card" class="alert warn-card" hidden>
+        <h2>Windows Firewall may be blocking your phone</h2>
+        <p>Allow it once so phones on your network can reach this PC.</p>
+        <div class="actions">
+          <button id="firewall-fix-now" class="btn primary" type="button">Allow through firewall</button>
+          <span id="firewall-fix-result" aria-live="polite"></span>
+        </div>
+      </section>
+
+      <!-- Shown when the QR has been up a while and nothing has arrived. -->
+      <section id="no-phone-card" class="alert warn-card" hidden>
+        <h2 id="no-phone-title">Scanned the code but nothing loads?</h2>
+        <ul class="checklist">
+          <li>Put the phone on the <strong>same Wi-Fi</strong> as this PC — not mobile data or a guest network.</li>
+          <li>Click <strong>Allow through firewall</strong> below, then scan again.</li>
+          <li id="no-phone-alt" hidden>Try <strong>another address</strong> under the QR code: this PC has more than one network adapter, and a VPN or virtual adapter may have been picked first.</li>
+          <li>Turn off any VPN on the PC or phone.</li>
+        </ul>
+        <div class="actions">
+          <button id="no-phone-firewall" class="btn" type="button">Allow through firewall</button>
+          <span id="no-phone-result" aria-live="polite"></span>
+        </div>
+      </section>
+
       <section class="card hero" aria-labelledby="open-h">
         <div class="hero-text">
           <p class="eyebrow" id="open-h">Open on your phone</p>
@@ -693,6 +767,10 @@
         <div id="qr-block">
           <div id="qr" role="img" aria-label="QR code for the phone address"></div>
           <div id="qr-caption">Point your camera here</div>
+          <div id="alt-addresses" hidden>
+            <span class="alt-label">Not loading? Try another address:</span>
+            <div id="alt-list" class="alt-list"></div>
+          </div>
         </div>
       </section>
 
@@ -973,8 +1051,8 @@
       // The SVG comes from this app's own Rust, but it is still markup being
       // spliced into the page: parse it in isolation, require an <svg> root
       // and drop anything executable before adopting it.
-      function showQr(svgText) {
-        if (qrShown || typeof svgText !== "string" || !svgText.trim()) return;
+      function showQr(svgText, replace = false) {
+        if ((qrShown && !replace) || typeof svgText !== "string" || !svgText.trim()) return;
         let doc;
         try {
           doc = new DOMParser().parseFromString(svgText, "image/svg+xml");
@@ -1054,10 +1132,69 @@
           : "Closing this window quits and unplugs the controller.";
       }
 
+      // ---- reaching the phone ---------------------------------------------
+      // Every address this PC answers on, best first, each with its own QR
+      // code. The first is shown; the others are one click away for when the
+      // first belongs to a VPN or virtual adapter the phone can't reach.
+      let addressesShown = "";
+      let chosenUrl = null;
+      function showAddresses(list) {
+        if (!Array.isArray(list) || list.length < 2) return;
+        const key = list.map((a) => a.url).join("|");
+        if (key === addressesShown) return;
+        addressesShown = key;
+        const wrap = el("alt-list");
+        wrap.replaceChildren();
+        for (const option of list) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.textContent = option.adapter ? `${option.adapter}` : option.url.replace(/^http:\/\//, "");
+          btn.title = option.url;
+          btn.classList.toggle("on", option.url === (chosenUrl || list[0].url));
+          btn.addEventListener("click", () => {
+            chosenUrl = option.url;
+            setWebAddress(option.url);
+            // Keep the "typing it by hand" line on the same address.
+            const wsPort = (el("address").textContent.match(/:(\d+)$/) || [])[1];
+            const host = option.url.replace(/^http:\/\//, "").replace(/:\d+$/, "");
+            if (wsPort) el("address").textContent = `${host}:${wsPort}`;
+            if (option.qrSvg) showQr(option.qrSvg, true);
+            for (const b of wrap.children) b.classList.toggle("on", b === btn);
+          });
+          wrap.appendChild(btn);
+        }
+        el("alt-addresses").hidden = false;
+        el("no-phone-alt").hidden = false;
+      }
+
+      // "Nothing happens" after a scan means nothing reached this PC. Once
+      // the code has been up a while with no page load and no phone, say
+      // what to check -- and stop the moment the phone shows up.
+      const shownAt = Date.now();
+      let firewallRule = null;
+      function updateHelp(s) {
+        firewallRule = s.firewallRule ?? firewallRule;
+        el("firewall-card").hidden = firewallRule !== false;
+        const waiting = !(s.pageRequests > 0) && !(s.clients > 0);
+        el("no-phone-card").hidden = !(waiting && s.webUrl && Date.now() - shownAt > 25000);
+      }
+
+      async function allowFirewall(resultNode) {
+        resultNode.textContent = "Approve the Windows prompt…";
+        try {
+          resultNode.textContent = await invoke("fix_firewall");
+          firewallRule = true;
+          el("firewall-card").hidden = true;
+        } catch (err) {
+          resultNode.textContent = String(err);
+        }
+      }
+
       function applyStatus(s) {
         if (s.version) el("version").textContent = `v${s.version}`;
         if (s.wsAddress) el("address").textContent = s.wsAddress;
-        if (s.webUrl) setWebAddress(s.webUrl);
+        // A manually chosen address must survive the 2.5s status poll.
+        if (s.webUrl && !chosenUrl) setWebAddress(s.webUrl);
         if (s.qrSvg) showQr(s.qrSvg);
         setPermanent(s.stableUrl);
         if (s.webUrl && s.canonicalPort === false) el("port-warning").hidden = false;
@@ -1068,6 +1205,8 @@
         }
         for (const message of s.errors || []) showStartupError(message);
         setClients(s.clients || 0);
+        if (!chosenUrl) showAddresses(s.addresses);
+        updateHelp(s);
         showPlayer(s.player);
         setPrefs(s);
       }
@@ -1136,6 +1275,13 @@
         node.classList.toggle("ok", ok);
         node.classList.toggle("bad", !ok);
       };
+      el("firewall-fix-now").addEventListener("click", () => allowFirewall(el("firewall-fix-result")));
+      el("no-phone-firewall").addEventListener("click", () => allowFirewall(el("no-phone-result")));
+      listen("phone-seen", () => (el("no-phone-card").hidden = true));
+      listen("firewall-checked", (e) => {
+        firewallRule = e.payload;
+        el("firewall-card").hidden = firewallRule !== false;
+      });
       el("fix-firewall").addEventListener("click", async () => {
         const btn = el("fix-firewall");
         btn.disabled = true;

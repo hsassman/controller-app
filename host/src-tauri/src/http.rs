@@ -73,6 +73,7 @@ pub fn find_web_root() -> Option<WebRoot> {
 pub async fn run_http_server(
     app_handle: AppHandle,
     lan_ip: String,
+    addresses: Vec<crate::net::LanAddress>,
     listener: std::net::TcpListener,
     port: u16,
     ws_port: u16,
@@ -115,8 +116,20 @@ pub async fn run_http_server(
     // offered the permanent address afterwards, once it can test it.
     let qr_svg = crate::qr::svg_for(&url);
     let canonical_port = port == HTTP_PORT;
+    let options: Vec<crate::status::AddressOption> = addresses
+        .iter()
+        .map(|address| {
+            let url = format!("http://{}:{port}", address.ip);
+            crate::status::AddressOption {
+                qr_svg: crate::qr::svg_for(&url),
+                url,
+                adapter: address.adapter.clone(),
+            }
+        })
+        .collect();
     if let Some(state) = app_handle.try_state::<crate::status::SharedStatus>() {
         state.update(|s| {
+            s.addresses = options;
             s.web_url = Some(url.clone());
             s.qr_svg = qr_svg.clone();
             s.stable_url = stable_url.clone();
@@ -202,6 +215,16 @@ async fn serve_one(
     // The one dynamic endpoint. The client fetches it on load: if it
     // answers, the page knows it was served by a host and can connect
     // itself instead of asking the user to type an address.
+    // A page load is the first sign the phone got through at all; the
+    // window uses the count to tell "nothing reached this PC" (wrong
+    // address, firewall, other network) apart from a later failure.
+    if target == "/" || target == "/index.html" {
+        if let Some(state) = app_handle.try_state::<crate::status::SharedStatus>() {
+            state.update(|s| s.page_requests += 1);
+        }
+        let _ = app_handle.emit("phone-seen", ());
+    }
+
     if target == "/host-info.json" {
         // `padReady` is the phone's only way to know the PC can actually
         // act on input. Without it the page connects, says "Connected" and
@@ -224,8 +247,13 @@ async fn serve_one(
             .and_then(|s| s.stable_url.clone())
             .map(|url| format!("\"{}\"", url.replace('"', "")))
             .unwrap_or_else(|| "null".to_string());
+        // Point the phone back at whatever address it reached us on. The
+        // first-choice address can be the wrong one (a second adapter, a
+        // VPN); a phone that opened the page through another address or
+        // the .local name has just proven that one works.
+        let reached = request_host(&head).unwrap_or_else(|| lan_ip.to_string());
         let body = format!(
-            "{{\"ws\":\"{lan_ip}:{ws}\",\"host\":\"{lan_ip}\",\"wsPort\":{ws},\
+            "{{\"ws\":\"{reached}:{ws}\",\"host\":\"{reached}\",\"wsPort\":{ws},\
              \"padReady\":{pad_ready},\"stableUrl\":{stable},\"version\":\"{version}\"}}",
             ws = ws_port,
             version = env!("CARGO_PKG_VERSION"),
@@ -333,6 +361,25 @@ fn resolve_embedded(target: &str) -> Option<(&'static [u8], &'static str)> {
         None => EMBEDDED_WEB.get_file(path.join("index.html"))?,
     };
     Some((file.contents(), content_type(file.path())))
+}
+
+/// The hostname from the request's Host header, without the port. Only
+/// plain hostnames and IPv4 addresses are accepted, since the value is
+/// echoed into JSON; anything else falls back to the default address.
+fn request_host(head: &str) -> Option<String> {
+    let value = head.lines().skip(1).find_map(|line| {
+        let (name, value) = line.split_once(':')?;
+        name.trim()
+            .eq_ignore_ascii_case("host")
+            .then(|| value.trim())
+    })?;
+    let host = value.rsplit_once(':').map_or(value, |(host, _)| host);
+    let valid = !host.is_empty()
+        && host.len() <= 253
+        && host
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-');
+    valid.then(|| host.to_string())
 }
 
 fn resolve_path(root: &Path, target: &str) -> Option<PathBuf> {
@@ -465,6 +512,17 @@ mod tests {
         assert!(resolve_embedded("/../Cargo.toml").is_none());
         assert!(resolve_embedded("/assets/../../secret").is_none());
         assert!(resolve_embedded("/%2e%2e/secret").is_none());
+    }
+
+    #[test]
+    fn host_header_drives_the_reply_address() {
+        let head = "GET /host-info.json HTTP/1.1\r\nHost: my-pc.local:8788\r\n\r\n";
+        assert_eq!(request_host(head).as_deref(), Some("my-pc.local"));
+        assert_eq!(
+            request_host("GET / HTTP/1.1\r\nHost: bad\"host\r\n\r\n"),
+            None
+        );
+        assert_eq!(request_host("GET / HTTP/1.1\r\n\r\n"), None);
     }
 
     #[test]

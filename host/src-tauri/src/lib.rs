@@ -3,6 +3,7 @@ mod frame;
 #[cfg(windows)]
 mod gamepad;
 mod http;
+mod net;
 mod ports;
 mod qr;
 mod server;
@@ -87,15 +88,16 @@ pub fn run() {
             tauri::async_runtime::spawn(server::retry_until_ready(pad.clone(), app_handle.clone()));
             desktop::refresh_tray(&app_handle);
 
-            // The LAN address is resolved once and shared: the gamepad
-            // server prints it, and the page server needs the same one to
-            // tell the phone where to connect back to.
-            let lan_ip = match server::local_lan_ip() {
-                Some(ip) => {
+            // Every address this PC answers on, best first (see net.rs). The
+            // first goes in the QR code; the rest are offered in the window
+            // for when the first turns out to be a VPN or virtual adapter.
+            let addresses = net::lan_addresses();
+            let lan_ip = match addresses.first() {
+                Some(first) => {
                     if let Some(state) = app_handle.try_state::<SharedStatus>() {
                         state.update(|s| s.lan_ip_known = true);
                     }
-                    ip
+                    first.ip.clone()
                 }
                 None => {
                     report_error(
@@ -109,6 +111,7 @@ pub fn run() {
                     "127.0.0.1".to_string()
                 }
             };
+            desktop::check_firewall(&app_handle);
 
             let ws_bound = ports::bind_from(server::PORT);
             let http_bound = ports::bind_from(http::HTTP_PORT);
@@ -149,6 +152,7 @@ pub fn run() {
                             if let Err(err) = http::run_http_server(
                                 http_handle.clone(),
                                 http_ip,
+                                addresses,
                                 http_listener,
                                 http_port,
                                 port,

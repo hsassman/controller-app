@@ -127,6 +127,40 @@ pub fn startup(app: &AppHandle) {
     sync_status(app);
 }
 
+/// Looks for this app's firewall rule in the background and records the
+/// answer, so the window can warn before the phone even tries -- a missing
+/// rule is the most common reason a scanned QR code "does nothing".
+pub fn check_firewall(app: &AppHandle) {
+    #[cfg(windows)]
+    {
+        let app = app.clone();
+        std::thread::spawn(move || {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+            let found = std::process::Command::new("netsh")
+                .args([
+                    "advfirewall",
+                    "firewall",
+                    "show",
+                    "rule",
+                    "name=Phone Controller Host",
+                ])
+                .creation_flags(CREATE_NO_WINDOW)
+                .output()
+                .map(|out| out.status.success())
+                .ok();
+            if let Some(state) = app.try_state::<SharedStatus>() {
+                state.update(|s| s.firewall_rule = found);
+            }
+            let _ = app.emit("firewall-checked", found);
+        });
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = app;
+    }
+}
+
 /// Copies the live desktop settings into the status snapshot.
 fn sync_status(app: &AppHandle) {
     let autostart = autostart_enabled();
@@ -504,7 +538,17 @@ try {
 /// default for a newly joined Wi-Fi -- is not covered by the prompt's
 /// default "Private" tick. `remoteip=localsubnet` keeps it LAN-only.
 #[tauri::command]
-pub async fn fix_firewall() -> Result<String, String> {
+pub async fn fix_firewall(app: AppHandle) -> Result<String, String> {
+    let result = fix_firewall_inner().await;
+    if result.is_ok() {
+        if let Some(state) = app.try_state::<SharedStatus>() {
+            state.update(|s| s.firewall_rule = Some(true));
+        }
+    }
+    result
+}
+
+async fn fix_firewall_inner() -> Result<String, String> {
     #[cfg(windows)]
     {
         let exe = std::env::current_exe()

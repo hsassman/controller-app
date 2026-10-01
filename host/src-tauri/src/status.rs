@@ -45,6 +45,23 @@ pub struct Status {
     /// A driver install this app started is still in progress.
     pub driver_installing: bool,
     pub version: String,
+    /// Every address the page can be opened on, best first, each with its
+    /// own QR code -- the window offers the others when the first one
+    /// doesn't reach the phone.
+    pub addresses: Vec<AddressOption>,
+    /// Page loads served so far. Zero after the QR has been up a while
+    /// means the phone isn't getting through at all.
+    pub page_requests: u64,
+    /// Whether this app's firewall rule exists (Windows only; None = unknown).
+    pub firewall_rule: Option<bool>,
+}
+
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AddressOption {
+    pub url: String,
+    pub adapter: String,
+    pub qr_svg: Option<String>,
 }
 
 pub struct SharedStatus(Mutex<Status>);
