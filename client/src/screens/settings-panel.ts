@@ -357,6 +357,18 @@ function renderAppearance(
   sliderRow(body, "Control opacity", current.controlOpacity, 0.35, 1, 0.05, (v) => `${Math.round(v * 100)}%`, (v) =>
     emit({ controlOpacity: v }),
   );
+  choiceRow(
+    body,
+    "Top bar",
+    [
+      { value: "auto", label: "Hide while playing" },
+      { value: "always", label: "Always show" },
+    ],
+    current.topBar,
+    (v) => emit({ topBar: v }),
+  );
+  hint(body, "Hidden, the bar slides away once you start playing; tap the handle at the top edge to bring it back.");
+
   sliderRow(body, "Press glow", current.glowIntensity, 0, 1.5, 0.05, (v) =>
     v === 0 ? "Off" : `${Math.round(v * 100)}%`, (v) => emit({ glowIntensity: v }),
   );

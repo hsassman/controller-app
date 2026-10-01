@@ -4,6 +4,7 @@ import type { Settings } from "./settings.ts";
 import { haptic } from "./haptics.ts";
 import { displayLabel } from "./iconPacks.ts";
 import { ButtonBit } from "../../protocol/frame.ts";
+import { mappingName } from "./mappings.ts";
 
 const REF_W = 640;
 const REF_H = 300;
@@ -138,7 +139,12 @@ function buildButton(
   el.className = "control button-control";
   el.setAttribute("role", "button");
   const shown = displayLabel(cfg.bit, cfg.label, getSettings().iconPack);
-  el.setAttribute("aria-label", cfg.label);
+  // A legend that is only a symbol (◀, ≡, ⌂) or nothing at all (the
+  // touchpad) is no name for a screen reader: say what it does instead.
+  el.setAttribute(
+    "aria-label",
+    /[\p{L}\p{N}]/u.test(cfg.label) ? cfg.label : cfg.id === "touchpad" ? "Touchpad" : mappingName(cfg.bit),
+  );
   el.tabIndex = 0;
   el.dataset.controlId = cfg.id;
   // Face colours follow what the button *sends*, not what it is called: a

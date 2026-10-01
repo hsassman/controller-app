@@ -49,25 +49,43 @@ interface Names {
   guide: string;
 }
 
+/// Where the system buttons sit differs between the offset-stick pads:
+/// Xbox has small round Back/Start flanking a big Guide; Nintendo has
+/// -/+ up high and a smaller Home below +.
+type CentreCluster = "xbox" | "nintendo";
+
 /// The offset-stick layout shared by Xbox and Nintendo pads: left stick high
-/// on the left, d-pad below it, face buttons high on the right, right stick
-/// below them, and the system buttons across the middle.
-function offsetLayout(id: string, name: string, n: Names): Layout {
+/// on the left at the same height as the face buttons, d-pad below and
+/// inboard of it, right stick mirrored below the face buttons, and the
+/// system buttons across the middle. Proportions follow the real pads: a
+/// face diamond ~1.35 button-widths across, sticks about twice a face
+/// button, bumpers spanning the shoulder above each grip.
+function offsetLayout(id: string, name: string, n: Names, centre: CentreCluster = "xbox"): Layout {
+  const system: ControlConfig[] =
+    centre === "xbox"
+      ? [
+          button("select", n.back, ButtonBit.SELECT, 41, 41, 34),
+          button("guide", n.guide, ButtonBit.GUIDE, 50, 31, 52),
+          button("start", n.start, ButtonBit.START, 59, 41, 34),
+        ]
+      : [
+          button("select", n.back, ButtonBit.SELECT, 40, 25, 32),
+          button("start", n.start, ButtonBit.START, 60, 25, 32),
+          button("guide", n.guide, ButtonBit.GUIDE, 56.5, 44, 36),
+        ];
   const controls: ControlConfig[] = [
-    { id: "lt", type: "trigger", label: n.lt, x: 7, y: 15, width: 50, height: 52, trigger: "left" },
-    button("lb", n.lb, ButtonBit.L1, 21, 9, 34, { width: 82, height: 34, shape: "pill" }),
-    button("rb", n.rb, ButtonBit.R1, 79, 9, 34, { width: 82, height: 34, shape: "pill" }),
-    { id: "rt", type: "trigger", label: n.rt, x: 93, y: 15, width: 50, height: 52, trigger: "right" },
-    { id: "left-stick", type: "stick", label: "Left stick", x: 19, y: 48, size: 104, clickBit: ButtonBit.L3, stick: "left" },
-    { id: "dpad", type: "dpad", x: 36, y: 77, size: 98 },
-    button("select", n.back, ButtonBit.SELECT, 40, 44, 30, { width: 54, height: 30, shape: "pill" }),
-    button("guide", n.guide, ButtonBit.GUIDE, 50, 33, 50),
-    button("start", n.start, ButtonBit.START, 60, 44, 30, { width: 54, height: 30, shape: "pill" }),
-    { id: "right-stick", type: "stick", label: "Right stick", x: 64, y: 77, size: 98, clickBit: ButtonBit.R3, stick: "right" },
-    button("face-y", n.y, ButtonBit.Y, 83, 29, 46),
-    button("face-x", n.x, ButtonBit.X, 75.5, 48, 46),
-    button("face-b", n.b, ButtonBit.B, 90.5, 48, 46),
-    button("face-a", n.a, ButtonBit.A, 83, 67, 46),
+    { id: "lt", type: "trigger", label: n.lt, x: 7, y: 17, width: 52, height: 62, trigger: "left" },
+    button("lb", n.lb, ButtonBit.L1, 21.5, 8, 32, { width: 92, height: 32, shape: "pill" }),
+    button("rb", n.rb, ButtonBit.R1, 78.5, 8, 32, { width: 92, height: 32, shape: "pill" }),
+    { id: "rt", type: "trigger", label: n.rt, x: 93, y: 17, width: 52, height: 62, trigger: "right" },
+    { id: "left-stick", type: "stick", label: "Left stick", x: 20, y: 49, size: 106, clickBit: ButtonBit.L3, stick: "left" },
+    { id: "dpad", type: "dpad", x: 36, y: 78, size: 96 },
+    ...system,
+    { id: "right-stick", type: "stick", label: "Right stick", x: 64, y: 78, size: 100, clickBit: ButtonBit.R3, stick: "right" },
+    button("face-y", n.y, ButtonBit.Y, 82.5, 31, 46),
+    button("face-x", n.x, ButtonBit.X, 75.5, 47, 46),
+    button("face-b", n.b, ButtonBit.B, 89.5, 47, 46),
+    button("face-a", n.a, ButtonBit.A, 82.5, 63, 46),
   ];
   return { id, name, controls };
 }
@@ -81,11 +99,11 @@ function playstationLayout(): Layout {
     button("rb", "R1", ButtonBit.R1, 80, 9, 34, { width: 78, height: 34, shape: "pill" }),
     { id: "rt", type: "trigger", label: "R2", x: 93, y: 15, width: 50, height: 52, trigger: "right" },
     { id: "dpad", type: "dpad", x: 16, y: 50, size: 106 },
-    button("select", "Create", ButtonBit.SELECT, 31, 20, 26, { width: 58, height: 26, shape: "pill" }),
+    button("select", "Create", ButtonBit.SELECT, 29.5, 21, 24, { width: 52, height: 24, shape: "pill" }),
     // The touchpad's click is the closest thing to a Back button a game sees.
-    button("touchpad", "Touchpad", ButtonBit.SELECT, 50, 21, 60, { width: 150, height: 60, shape: "square" }),
-    button("start", "Options", ButtonBit.START, 69, 20, 26, { width: 58, height: 26, shape: "pill" }),
-    button("guide", "PS", ButtonBit.GUIDE, 50, 52, 38),
+    button("touchpad", "", ButtonBit.SELECT, 50, 22, 72, { width: 176, height: 72, shape: "square" }),
+    button("start", "Options", ButtonBit.START, 70.5, 21, 24, { width: 52, height: 24, shape: "pill" }),
+    button("guide", "PS", ButtonBit.GUIDE, 50, 53, 34),
     { id: "left-stick", type: "stick", label: "Left stick", x: 35, y: 78, size: 96, clickBit: ButtonBit.L3, stick: "left" },
     { id: "right-stick", type: "stick", label: "Right stick", x: 65, y: 78, size: 96, clickBit: ButtonBit.R3, stick: "right" },
     button("face-y", "△", ButtonBit.Y, 84, 32, 46),
@@ -105,8 +123,8 @@ const XBOX: Names = {
   rb: "RB",
   lt: "LT",
   rt: "RT",
-  back: "Back",
-  start: "Start",
+  back: "◀",
+  start: "▶",
   guide: "⊗",
 };
 
@@ -122,7 +140,7 @@ export const PAD_STYLES: PadStyle[] = [
     id: "xboxseries",
     name: "Xbox Series",
     description: "Offset sticks with the faceted hybrid d-pad and View / Menu buttons.",
-    layout: () => offsetLayout("xboxseries", "Xbox Series", { ...XBOX, back: "View", start: "Menu" }),
+    layout: () => offsetLayout("xboxseries", "Xbox Series", { ...XBOX, back: "⧉", start: "≡" }),
     look: { padStyle: "xboxseries", dpadStyle: "faceted", faceStyle: "classic", iconPack: "letters" },
   },
   {
@@ -149,7 +167,7 @@ export const PAD_STYLES: PadStyle[] = [
         back: "−",
         start: "+",
         guide: "⌂",
-      }),
+      }, "nintendo"),
     look: { padStyle: "nintendo", dpadStyle: "cross", faceStyle: "mono", iconPack: "letters" },
   },
 ];

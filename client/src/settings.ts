@@ -52,6 +52,7 @@ export interface Settings {
   stickColor: StickColor; // thumbstick cap colour
   labelStyle: LabelStyle; // printed / engraved / backlit legends
   surfaceStyle: SurfaceStyle; // dark backdrop, or the controller body edge to edge
+  topBar: "auto" | "always"; // the status/menu bar: slides away during play, or stays put
 
   // --- Feel ---
   haptics: boolean;
@@ -92,6 +93,7 @@ export function defaults(): Settings {
     stickColor: "accent",
     labelStyle: "printed",
     surfaceStyle: "backdrop",
+    topBar: "auto",
 
     haptics: true,
     hapticStrength: 0.6,
@@ -154,6 +156,7 @@ function sanitize(s: Settings): Settings {
   if (!STICK_STYLES.some((p) => p.id === s.stickStyle)) s.stickStyle = d.stickStyle;
   if (!STICK_COLORS.some((p) => p.id === s.stickColor)) s.stickColor = d.stickColor;
   if (!LABEL_STYLES.some((p) => p.id === s.labelStyle)) s.labelStyle = d.labelStyle;
+  if (s.topBar !== "auto" && s.topBar !== "always") s.topBar = d.topBar;
   if (!SURFACE_STYLES.some((p) => p.id === s.surfaceStyle)) s.surfaceStyle = d.surfaceStyle;
   return s;
 }

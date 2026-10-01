@@ -1,0 +1,151 @@
+/* ============================================================
+   SLIM TOP BAR
+   ============================================================
+   Loaded last. The bar used to be a 54px row of pill buttons with
+   "Connected" spelled out; it is now a ~36px strip of icon buttons and a
+   single status chip that only uses words when something is wrong. In
+   "auto" mode (controller.ts) it floats over the pad and slides away while
+   you play. */
+
+.topbar {
+  padding: 0.18rem 0.45rem;
+  min-height: 2.25rem;
+  gap: 0.3rem;
+}
+
+.topbar .status {
+  font-size: 0.7rem;
+  padding: 0.16rem 0.55rem;
+  gap: 0.35rem;
+  min-height: 1.6rem;
+}
+
+/* Connected needs no words: the green dot, the player and the ping say it.
+   The text stays in the accessibility tree (it is the live region). */
+.topbar .status[data-state="connected"] #status-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.topbar .status-player,
+.topbar .status-latency {
+  font-size: 0.68rem;
+  padding-left: 0.4rem;
+}
+
+.topbar-actions {
+  gap: 0.25rem;
+}
+
+.topbar-actions button {
+  padding: 0.22rem 0.65rem;
+  font-size: 0.76rem;
+  min-height: 1.75rem;
+}
+
+/* 28px square: clears the 24px WCAG target with room to spare. */
+.topbar-actions .icon-btn {
+  width: 1.85rem;
+  height: 1.75rem;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  font-size: 0.92rem;
+  line-height: 1;
+}
+
+#settings-btn {
+  width: 1.85rem;
+  padding: 0;
+}
+
+.profile-picker select {
+  padding-top: 0.18rem;
+  padding-bottom: 0.18rem;
+  font-size: 0.7rem;
+}
+
+/* ---- Floating / auto-hide ---- */
+
+.controller-screen.bar-auto {
+  position: relative;
+}
+
+.controller-screen.bar-auto .topbar {
+  position: absolute;
+  top: env(safe-area-inset-top);
+  left: 0;
+  right: 0;
+  z-index: 9;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  backdrop-filter: blur(10px) saturate(1.2);
+  transition:
+    transform 0.22s ease-out,
+    opacity 0.22s ease-out;
+}
+
+.controller-screen.bar-auto.bar-hidden .topbar {
+  transform: translateY(-110%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.bar-handle {
+  display: none;
+}
+
+.controller-screen.bar-auto.bar-hidden .bar-handle {
+  display: block;
+  position: absolute;
+  top: env(safe-area-inset-top);
+  left: 50%;
+  translate: -50% 0;
+  z-index: 9;
+  width: 4.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.bar-handle span {
+  display: block;
+  width: 2.6rem;
+  height: 0.28rem;
+  margin: 0.35rem auto 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fg) 34%, transparent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.bar-handle:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+  border-radius: 0.5rem;
+}
+
+:root.reduce-motion .controller-screen.bar-auto .topbar {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .controller-screen.bar-auto .topbar {
+    transition: none;
+  }
+}
+
+:root.high-contrast .controller-screen.bar-auto .topbar {
+  background: #000;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+:root.high-contrast .bar-handle span {
+  background: #fff;
+}

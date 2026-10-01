@@ -57,13 +57,16 @@ export function renderControllerScreen(
         </label>
         <div id="edit-toolbar" class="edit-toolbar" hidden></div>
         <div class="topbar-actions">
-          <button id="fullscreen-btn" type="button" aria-label="Enter fullscreen" title="Fullscreen">⛶</button>
-          <button id="edit-btn" type="button">Edit layout</button>
+          <button id="fullscreen-btn" class="icon-btn" type="button" aria-label="Enter fullscreen" title="Fullscreen">⛶</button>
+          <button id="edit-btn" class="icon-btn" type="button" aria-label="Edit layout" title="Edit layout">✎</button>
           <button id="done-editing" class="primary" type="button" hidden>Done</button>
-          <button id="settings-btn" type="button" aria-label="Settings" title="Settings">⚙</button>
-          <button id="disconnect-btn" type="button">Disconnect</button>
+          <button id="settings-btn" class="icon-btn" type="button" aria-label="Settings" title="Settings">⚙</button>
+          <button id="disconnect-btn" class="icon-btn" type="button" aria-label="Disconnect" title="Disconnect">⏻</button>
         </div>
       </header>
+      <!-- Shown while the bar is tucked away: a grab handle at the top edge.
+           Tapping it (or pressing it with a keyboard) brings the bar back. -->
+      <button id="bar-handle" class="bar-handle" type="button" aria-label="Show menu" title="Show menu"><span></span></button>
       <main class="surface-wrap">
         <div id="controls-surface" class="controls-surface" role="group" aria-label="Game controller"></div>
         <div id="empty-layout" class="empty-layout" hidden>
@@ -171,6 +174,55 @@ export function renderControllerScreen(
   /// editor -- where the element that had focus no longer exists. It stays
   /// off for in-place refreshes so a profile change can't yank focus out of
   /// the picker the user is still using.
+  // ---- Top bar: slim, and out of the way while playing ----
+  //
+  // In "auto" mode the bar floats over the top of the pad instead of taking
+  // a row of its own, so the pad gets the whole screen and showing or hiding
+  // the bar never resizes it (a resize would release held inputs). It slides
+  // away a few seconds after it was last used, or as soon as the pad itself
+  // is touched, and a small handle at the top edge brings it back. It never
+  // hides while editing or while the connection needs attention.
+  const screenEl = container.querySelector<HTMLElement>(".controller-screen")!;
+  const topbar = container.querySelector<HTMLElement>(".topbar")!;
+  const barHandle = container.querySelector<HTMLButtonElement>("#bar-handle")!;
+  const BAR_LINGER_MS = 3200;
+  let barTimer: number | null = null;
+  let connState: ConnectionState = "connected";
+  // The off-screen heading lives in the bar and takes focus on arrival, for
+  // screen readers; that is not someone using the bar.
+  const usingBar = () => {
+    const active = document.activeElement;
+    return !!active && active !== heading && topbar.contains(active);
+  };
+  const barCanHide = () => settings.topBar === "auto" && !editing && connState === "connected" && !usingBar();
+  const hideBar = () => {
+    if (barTimer !== null) window.clearTimeout(barTimer);
+    barTimer = null;
+    if (barCanHide()) screenEl.classList.add("bar-hidden");
+  };
+  const showBar = (linger = true) => {
+    screenEl.classList.remove("bar-hidden");
+    if (barTimer !== null) window.clearTimeout(barTimer);
+    barTimer = linger && barCanHide() ? window.setTimeout(hideBar, BAR_LINGER_MS) : null;
+  };
+  const syncBar = () => {
+    // Floating only in play mode: the editor needs its toolbar in the flow.
+    screenEl.classList.toggle("bar-auto", settings.topBar === "auto" && !editing);
+    if (barCanHide()) showBar();
+    else showBar(false);
+  };
+  barHandle.addEventListener("click", () => {
+    haptic("ui");
+    showBar();
+  });
+  topbar.addEventListener("pointerdown", () => showBar());
+  topbar.addEventListener("focusin", (e) => {
+    if (e.target !== heading) showBar(false);
+  });
+  topbar.addEventListener("focusout", () => window.setTimeout(() => showBar(), 0));
+  // Capture phase: the controls stop their own pointer events.
+  surfaceWrap.addEventListener("pointerdown", hideBar, { capture: true });
+
   const showPlayMode = (focusHeading = false) => {
     releaseSurface();
     editing = false;
@@ -184,13 +236,16 @@ export function renderControllerScreen(
     disconnectBtn.hidden = false;
     fullscreenBtn.hidden = !fullscreenSupported();
     profilePicker.hidden = listProfiles().length < 2;
-    editBtn.textContent = "Edit layout";
+    editBtn.textContent = "✎";
+    editBtn.classList.add("icon-btn");
+    editBtn.setAttribute("aria-label", "Edit layout");
     doneBtn.hidden = true;
     syncProfiles();
     container.querySelector<HTMLElement>("#empty-layout")!.hidden = layout.controls.length > 0;
     teardownSurface = renderControls(surface, layout, () => settings, flushNeutralFrame);
     heading.textContent = "Game controller";
     document.title = "Playing — Phone Controller";
+    syncBar();
     if (focusHeading) heading.focus();
   };
 
@@ -208,10 +263,13 @@ export function renderControllerScreen(
     fullscreenBtn.hidden = true;
     profilePicker.hidden = true;
     editBtn.textContent = "Discard";
+    editBtn.classList.remove("icon-btn");
+    editBtn.removeAttribute("aria-label");
     doneBtn.hidden = false;
     container.querySelector<HTMLElement>("#empty-layout")!.hidden = true;
     heading.textContent = "Layout editor";
     document.title = "Editing layout — Phone Controller";
+    syncBar();
     const handle = renderEditor(surface, editToolbar, layout, {
       getSettings: () => settings,
       onSettingsChanged: () => saveSettings(settings),
@@ -286,6 +344,8 @@ export function renderControllerScreen(
 
   const handleState = (state: ConnectionState) => {
     statusEl.dataset.state = state;
+    connState = state;
+    syncBar();
     statusText.textContent = STATUS_LABEL[state];
     // "lost" auto-reconnects (see connection.ts); the send loop keeps
     // running and simply no-ops until the socket is OPEN again. The backoff
@@ -350,6 +410,7 @@ export function renderControllerScreen(
 
   const cleanup = () => {
     window.clearInterval(sendTimer);
+    if (barTimer !== null) window.clearTimeout(barTimer);
     onInputChange(null);
     if (pendingSend !== null) window.clearTimeout(pendingSend);
     document.removeEventListener("visibilitychange", onWake);
@@ -449,6 +510,7 @@ export function renderControllerScreen(
         // take effect, but only in play mode -- and always through
         // releaseSurface() so we never stack a second ResizeObserver.
         if (!editing) renderPlaySurface();
+        syncBar();
       },
       onProfilesChanged: () => {
         resetAll();

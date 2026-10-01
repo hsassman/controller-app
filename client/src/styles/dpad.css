@@ -1,0 +1,339 @@
+/* ============================================================
+   D-PAD, REBUILT
+   ============================================================
+   Every style is now a hard-edged, flat-topped moulding -- no round dish,
+   no domed centre, no bubble gloss -- because that is what real d-pads
+   are. Structure (controls.ts buildDpad) is unchanged:
+
+     .dpad-control > .dpad-well
+                   > .dpad-cross > .dpad-arm.{up,right,down,left} > .dpad-arrow
+                                 > .dpad-hub
+
+   One-piece styles (cross, faceted) paint the whole plus as a single
+   surface on .dpad-cross::before, clipped to its outline; the edge bevel
+   and cast shadow come from drop-shadow filters on .dpad-cross, which
+   follow the clipped shape where a box-shadow would draw a rectangle.
+   The arms are then only the lit overlays for the pressed direction.
+
+   Everything is scoped :not(.high-contrast); high contrast keeps its own
+   flat black-and-white keys from style.css. */
+
+:root:not(.high-contrast) .dpad-well,
+:root:not(.high-contrast) .dpad-hub {
+  display: none;
+}
+
+:root:not(.high-contrast) .dpad-control {
+  /* Arm half-width and tip chamfer, shared by the outline and the lit
+     overlays so they always line up. */
+  --dp-a: 33%;
+  --dp-b: 67%;
+  --dp-c: 4%;
+}
+
+:root:not(.high-contrast)[data-dpad-style="faceted"] .dpad-control {
+  --dp-a: 34%;
+  --dp-b: 66%;
+  --dp-c: 11%;
+}
+
+/* ---- One-piece cross: cross & faceted ---- */
+
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-cross {
+  filter:
+    drop-shadow(0 -1px 0 rgba(255, 255, 255, 0.16))
+    drop-shadow(0 1.5px 0 rgba(0, 0, 0, 0.55))
+    drop-shadow(0 4px 5px rgba(0, 0, 0, calc(0.5 * var(--mat-depth, 1))));
+}
+
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-cross::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(
+    calc(var(--dp-a) + var(--dp-c)) 0,
+    calc(var(--dp-b) - var(--dp-c)) 0,
+    var(--dp-b) var(--dp-c),
+    var(--dp-b) var(--dp-a),
+    calc(100% - var(--dp-c)) var(--dp-a),
+    100% calc(var(--dp-a) + var(--dp-c)),
+    100% calc(var(--dp-b) - var(--dp-c)),
+    calc(100% - var(--dp-c)) var(--dp-b),
+    var(--dp-b) var(--dp-b),
+    var(--dp-b) calc(100% - var(--dp-c)),
+    calc(var(--dp-b) - var(--dp-c)) 100%,
+    calc(var(--dp-a) + var(--dp-c)) 100%,
+    var(--dp-a) calc(100% - var(--dp-c)),
+    var(--dp-a) var(--dp-b),
+    var(--dp-c) var(--dp-b),
+    0 calc(var(--dp-b) - var(--dp-c)),
+    0 calc(var(--dp-a) + var(--dp-c)),
+    var(--dp-c) var(--dp-a),
+    var(--dp-a) var(--dp-a),
+    var(--dp-a) var(--dp-c)
+  );
+  /* Flat top lit from above, with a faint dished centre -- the shallow
+     thumb rest real crosses have -- drawn as a soft square, not a circle. */
+  background:
+    var(--mat-tex),
+    linear-gradient(90deg, rgba(0, 0, 0, 0) 38%, rgba(0, 0, 0, 0.1) 50%, rgba(0, 0, 0, 0) 62%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0) 38%, rgba(0, 0, 0, 0.1) 50%, rgba(0, 0, 0, 0) 62%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02) 45%, rgba(0, 0, 0, 0.16)),
+    var(--dpad-shell),
+    var(--control-bg);
+  pointer-events: none;
+}
+
+/* Faceted: each arm is a shallow pyramid, so the four quarters split along
+   the diagonals and take the light differently -- top brightest, bottom
+   darkest -- which is what gives the Series pad its cut-crystal look. */
+:root:not(.high-contrast)[data-dpad-style="faceted"] .dpad-cross::before {
+  background:
+    var(--mat-tex),
+    conic-gradient(
+      from -45deg at 50% 50%,
+      rgba(255, 255, 255, 0.16) 0deg 90deg,
+      rgba(0, 0, 0, 0.1) 90deg 180deg,
+      rgba(0, 0, 0, 0.26) 180deg 270deg,
+      rgba(255, 255, 255, 0.05) 270deg 360deg
+    ),
+    var(--dpad-shell),
+    var(--control-bg);
+}
+
+/* The arms carry no paint of their own in a one-piece cross. */
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-arm {
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-arm::before {
+  display: none;
+}
+
+/* Arm boxes match the outline exactly, so the lit overlay never spills
+   past the chamfered tips. */
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-arm.up {
+  left: var(--dp-a);
+  right: calc(100% - var(--dp-b));
+  top: 0;
+  height: 42%;
+}
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-arm.down {
+  left: var(--dp-a);
+  right: calc(100% - var(--dp-b));
+  bottom: 0;
+  height: 42%;
+}
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-arm.left {
+  top: var(--dp-a);
+  bottom: calc(100% - var(--dp-b));
+  left: 0;
+  width: 42%;
+}
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-arm.right {
+  top: var(--dp-a);
+  bottom: calc(100% - var(--dp-b));
+  right: 0;
+  width: 42%;
+}
+
+/* Lit overlay: a flat wash of the accent, cut to the arm's chamfered tip.
+   The polygons are in the arm's own box, sized to match each style's
+   chamfer on the outline. */
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-arm::after {
+  border-radius: 0;
+  box-shadow: none;
+}
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-arm.up::after {
+  clip-path: polygon(11% 0, 89% 0, 100% 10%, 100% 100%, 0 100%, 0 10%);
+}
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-arm.down::after {
+  clip-path: polygon(0 0, 100% 0, 100% 90%, 89% 100%, 11% 100%, 0 90%);
+}
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-arm.left::after {
+  clip-path: polygon(10% 0, 100% 0, 100% 100%, 10% 100%, 0 89%, 0 11%);
+}
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-arm.right::after {
+  clip-path: polygon(0 0, 90% 0, 100% 11%, 100% 89%, 90% 100%, 0 100%);
+}
+:root:not(.high-contrast)[data-dpad-style="faceted"] .dpad-arm.up::after {
+  clip-path: polygon(34% 0, 66% 0, 100% 26%, 100% 100%, 0 100%, 0 26%);
+}
+:root:not(.high-contrast)[data-dpad-style="faceted"] .dpad-arm.down::after {
+  clip-path: polygon(0 0, 100% 0, 100% 74%, 66% 100%, 34% 100%, 0 74%);
+}
+:root:not(.high-contrast)[data-dpad-style="faceted"] .dpad-arm.left::after {
+  clip-path: polygon(26% 0, 100% 0, 100% 100%, 26% 100%, 0 66%, 0 34%);
+}
+:root:not(.high-contrast)[data-dpad-style="faceted"] .dpad-arm.right::after {
+  clip-path: polygon(0 0, 74% 0, 100% 34%, 100% 66%, 74% 100%, 0 100%);
+}
+
+/* A one-piece pad doesn't have an arm that travels on its own; the whole
+   piece rocks (style.css) and the lit arm just darkens slightly. */
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-control[data-direction] .dpad-arm {
+  transform: none;
+}
+
+/* ---- Split keys (PlayStation) ----
+   Four separate flat keys, each an arrow pointing at the centre. The key
+   face is the arm's ::before, clipped; the arm itself carries the bevel and
+   shadow as filters so they follow the arrow shape. */
+
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-arm {
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+  clip-path: none;
+  filter:
+    drop-shadow(0 -1px 0 rgba(255, 255, 255, 0.16))
+    drop-shadow(0 1.5px 0 rgba(0, 0, 0, 0.55))
+    drop-shadow(0 3px 4px rgba(0, 0, 0, calc(0.45 * var(--mat-depth, 1))));
+}
+
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-arm.up {
+  left: 34%;
+  right: 34%;
+  top: 2%;
+  height: 33%;
+}
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-arm.down {
+  left: 34%;
+  right: 34%;
+  bottom: 2%;
+  height: 33%;
+}
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-arm.left {
+  top: 34%;
+  bottom: 34%;
+  left: 2%;
+  width: 33%;
+}
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-arm.right {
+  top: 34%;
+  bottom: 34%;
+  right: 2%;
+  width: 33%;
+}
+
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-arm::before,
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-arm::after {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-arm::before {
+  opacity: 1;
+  background:
+    var(--mat-tex),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02) 45%, rgba(0, 0, 0, 0.18)),
+    var(--dpad-shell),
+    var(--control-bg);
+}
+
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-arm.up::before,
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-arm.up::after {
+  clip-path: polygon(4% 0, 96% 0, 100% 4%, 100% 66%, 50% 100%, 0 66%, 0 4%);
+}
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-arm.down::before,
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-arm.down::after {
+  clip-path: polygon(50% 0, 100% 34%, 100% 96%, 96% 100%, 4% 100%, 0 96%, 0 34%);
+}
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-arm.left::before,
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-arm.left::after {
+  clip-path: polygon(0 4%, 4% 0, 66% 0, 100% 50%, 66% 100%, 4% 100%, 0 96%);
+}
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-arm.right::before,
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-arm.right::after {
+  clip-path: polygon(34% 0, 96% 0, 100% 4%, 100% 96%, 96% 100%, 34% 100%, 0 50%);
+}
+
+/* The arrow sits in the square part of each key, away from the point. */
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-arm .dpad-arrow {
+  width: 30%;
+  height: 30%;
+  translate: none;
+}
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-arm.up .dpad-arrow {
+  top: 22%;
+  left: 35%;
+}
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-arm.down .dpad-arrow {
+  top: auto;
+  bottom: 22%;
+  left: 35%;
+}
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-arm.left .dpad-arrow {
+  left: 22%;
+  top: 35%;
+}
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-arm.right .dpad-arrow {
+  left: auto;
+  right: 22%;
+  top: 35%;
+}
+
+/* ---- Legends ----
+   Small and moulded-in, not bright glyphs floating on top. */
+:root:not(.high-contrast) .dpad-arrow {
+  opacity: 0.55;
+  --arrow-color: color-mix(in srgb, var(--cap-fg) 55%, transparent);
+}
+
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-arm.up .dpad-arrow,
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-arm.down .dpad-arrow {
+  left: 36%;
+  width: 28%;
+  height: 18%;
+}
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-arm.up .dpad-arrow {
+  top: 30%;
+}
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-arm.down .dpad-arrow {
+  bottom: 30%;
+}
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-arm.left .dpad-arrow,
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-arm.right .dpad-arrow {
+  top: 36%;
+  height: 28%;
+  width: 18%;
+}
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-arm.left .dpad-arrow {
+  left: 30%;
+}
+:root:not(.high-contrast):not([data-dpad-style="split"]) .dpad-arm.right .dpad-arrow {
+  right: 30%;
+}
+
+/* Lit state: a flat accent wash rather than a glowing bubble. */
+:root:not(.high-contrast) .dpad-arm.up::after {
+  --arm-lit: linear-gradient(180deg, rgba(var(--dpad-rgb), 0.85), rgba(var(--dpad-rgb), 0.45));
+}
+:root:not(.high-contrast) .dpad-arm.down::after {
+  --arm-lit: linear-gradient(0deg, rgba(var(--dpad-rgb), 0.85), rgba(var(--dpad-rgb), 0.45));
+}
+:root:not(.high-contrast) .dpad-arm.left::after {
+  --arm-lit: linear-gradient(90deg, rgba(var(--dpad-rgb), 0.85), rgba(var(--dpad-rgb), 0.45));
+}
+:root:not(.high-contrast) .dpad-arm.right::after {
+  --arm-lit: linear-gradient(270deg, rgba(var(--dpad-rgb), 0.85), rgba(var(--dpad-rgb), 0.45));
+}
+
+/* The rock on press is subtler on a stiff one-piece pad. */
+:root:not(.high-contrast) .dpad-control[data-direction="up"] .dpad-cross {
+  transform: rotateX(6deg);
+}
+:root:not(.high-contrast) .dpad-control[data-direction="down"] .dpad-cross {
+  transform: rotateX(-6deg);
+}
+:root:not(.high-contrast) .dpad-control[data-direction="left"] .dpad-cross {
+  transform: rotateY(-6deg);
+}
+:root:not(.high-contrast) .dpad-control[data-direction="right"] .dpad-cross {
+  transform: rotateY(6deg);
+}
+:root:not(.high-contrast)[data-dpad-style="split"] .dpad-control[data-direction] .dpad-cross {
+  transform: none;
+}

@@ -88,10 +88,10 @@ Pick a real controller under **Settings → Look → Controller style** and the 
 
 | Style | What you get |
 | --- | --- |
-| **Xbox 360** *(default)* | Offset sticks, the classic cross d-pad, jewel A/B/X/Y, Back / Guide / Start, and the Guide button's ring of light showing your player number |
-| **Xbox Series** | The same layout with the faceted hybrid d-pad and View / Menu |
+| **Xbox 360** *(default)* | Offset sticks, the one-piece cross d-pad, jewel A/B/X/Y, round ◀ Back / ▶ Start beside the Guide button, and its ring of light showing your player number |
+| **Xbox Series** | The same layout with the faceted d-pad and View ⧉ / Menu ≡ |
 | **PlayStation** | Symmetric sticks, a split d-pad, the touchpad, Create / Options, the PS button, and △ ○ ✕ □ in their own colours |
-| **Nintendo** | Pro Controller layout: B/A/Y/X, L/R, ZL/ZR, − / + and Home |
+| **Nintendo** | Pro Controller layout: B/A/Y/X, L/R, ZL/ZR, − / + up top and a smaller Home below |
 
 Your PC still sees an Xbox controller, so every game works the same: buttons match by **position**, the way Steam maps other pads (the bottom face button always sends A, whether it says A, ✕ or B). Each style becomes its own profile the first time you pick it, so your existing layouts are never overwritten.
 
@@ -122,6 +122,14 @@ Start from a layout that already suits the game instead of dragging fifteen cont
 | **Minimal** | D-pad and two buttons, for retro games |
 | **Left-handed** | The Xbox 360 layout mirrored |
 
+### A top bar that gets out of the way
+
+The bar is a slim strip of icons — status, player number and ping in one chip, then fullscreen, edit, settings and disconnect — and once you start playing it slides away, leaving the whole screen to the pad. Tap the handle at the top edge to bring it back. It stays put in the editor or when the connection needs attention, and **Settings → Look → Top bar → Always show** keeps it on screen.
+
+<p align="center">
+  <img src="screenshots/18-top-bar.png" alt="The slim top bar: a status chip with player and ping, the profile picker, and four icon buttons" width="100%">
+</p>
+
 ### Profiles
 
 Each profile is a complete layout. Keep a shooter layout and a racing layout side by side and switch between them from the bar at the top. Profiles can be renamed, duplicated, exported to a file and imported back.
@@ -136,7 +144,11 @@ Build the pad the way a custom-controller designer would:
 - **Face buttons** — classic coloured letters, translucent jewel caps, mono, or all in your accent; letters, PlayStation glyphs or dots. Colours follow what a button *sends*, so remapping a button recolours it.
 - **Legends** — printed, engraved into the cap, or backlit.
 - **Thumbsticks** — concave, domed or pro-grip caps, in accent, body or black.
-- **D-pad** — a crisp moulded cross, a faceted Xbox Series-style cross in a dish, or four separate PlayStation-style keys.
+- **D-pad** — three hard-edged, flat-topped mouldings like the real ones: the one-piece Xbox 360 cross, the Xbox Series cross with its four lit facets, or four separate PlayStation arrow keys.
+
+<p align="center">
+  <img src="screenshots/17-dpads.png" alt="The three d-pads: Xbox 360 cross, Xbox Series faceted cross, PlayStation split keys" width="70%">
+</p>
 
 On top of that: eight themes, a free accent colour, size, opacity, press glow, labels, a per-profile background photo, and **Dim when idle**. Save any combination as a **skin** and reapply it to any profile — or hit **Remix** for a random one.
 

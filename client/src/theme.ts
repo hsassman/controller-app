@@ -55,7 +55,7 @@ export const BUTTON_MATERIALS: { id: ButtonMaterial; name: string }[] = [
 export const DPAD_STYLES: { id: DpadStyle; name: string }[] = [
   { id: "cross", name: "Cross" },
   { id: "split", name: "Split" },
-  { id: "faceted", name: "Faceted dish" },
+  { id: "faceted", name: "Faceted" },
 ];
 
 export const FACE_STYLES: { id: FaceStyle; name: string }[] = [
