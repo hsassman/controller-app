@@ -25,6 +25,12 @@ const RUN_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
 #[cfg(windows)]
 const RUN_VALUE: &str = "PhoneControllerHost";
 
+/// Private address ranges (IPv4 private, carrier-grade NAT, link-local,
+/// IPv6 unique-local and link-local) -- the firewall rule's allowed remotes.
+#[cfg(windows)]
+const PRIVATE_RANGES: &str =
+    "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,169.254.0.0/16,fc00::/7,fe80::/10";
+
 const VIGEM_RELEASES_URL: &str = "https://github.com/nefarius/ViGEmBus/releases/latest";
 #[cfg(windows)]
 const VIGEM_INSTALLER_URL: &str =
@@ -536,7 +542,13 @@ try {
 /// pressing Cancel on that prompt silently creates *block* rules (which beat
 /// any allow rule), and a home network marked "Public" -- the Windows
 /// default for a newly joined Wi-Fi -- is not covered by the prompt's
-/// default "Private" tick. `remoteip=localsubnet` keeps it LAN-only.
+/// default "Private" tick.
+///
+/// Remote addresses are limited to the private ranges home and office
+/// networks use, which keeps the internet out. Not `localsubnet`: that only
+/// matches the PC's own subnet, and plenty of homes put the phone on a
+/// different one (mesh systems, extenders, a PC wired to another router) --
+/// the page then never loads on the phone, with nothing to say why.
 #[tauri::command]
 pub async fn fix_firewall(app: AppHandle) -> Result<String, String> {
     let result = fix_firewall_inner().await;
@@ -560,7 +572,7 @@ $exe = $env:PC_EXE
 $rule = 'Phone Controller Host'
 $cmd = "/c netsh advfirewall firewall delete rule name=all program=`"$exe`" & " +
        "netsh advfirewall firewall add rule name=`"$rule`" dir=in action=allow " +
-       "program=`"$exe`" enable=yes profile=any remoteip=localsubnet"
+       "program=`"$exe`" enable=yes profile=any remoteip=$env:PC_REMOTE_RANGES"
 try {
   $p = Start-Process -FilePath 'cmd.exe' -ArgumentList $cmd -Verb RunAs -WindowStyle Hidden -Wait -PassThru
   exit $p.ExitCode
@@ -569,6 +581,7 @@ try {
         let output = tauri::async_runtime::spawn_blocking(move || {
             let mut command = hidden_powershell(script);
             command.env("PC_EXE", exe);
+            command.env("PC_REMOTE_RANGES", PRIVATE_RANGES);
             command.output()
         })
         .await
