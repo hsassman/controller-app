@@ -5,7 +5,7 @@
 #       it. Double-click and go -- its window offers to install the gamepad
 #       driver and fix the firewall with one click each.
 #
-#   release\Phone Controller_<version>_x64-setup.exe
+#   release\PhoneController-Setup.exe
 #       Installer. Adds Start menu / desktop shortcuts, opens the firewall to
 #       the local network and installs the ViGEmBus driver, all behind one
 #       Windows permission prompt.
@@ -52,7 +52,8 @@ Write-Host "==> Collecting into $outDir ..." -ForegroundColor Cyan
 if (Test-Path $outDir) { Remove-Item $outDir -Recurse -Force }
 New-Item -ItemType Directory -Path $outDir | Out-Null
 Copy-Item "$root\host\src-tauri\target\release\controller-host.exe" "$outDir\PhoneController.exe"
-Copy-Item "$root\host\src-tauri\target\release\bundle\nsis\*.exe" $outDir
+$setup = Get-ChildItem "$root\host\src-tauri\target\release\bundle\nsis\*.exe" | Select-Object -First 1
+Copy-Item $setup.FullName "$outDir\PhoneController-Setup.exe"
 
 Write-Host ""
 Write-Host "Done." -ForegroundColor Green
