@@ -73,7 +73,7 @@ export function renderConnectScreen(
             id="host-input"
             type="text"
             inputmode="decimal"
-            placeholder="e.g. 192.168.0.10:8787"
+            placeholder="Address shown on your PC"
             autocomplete="off"
             autocapitalize="off"
             spellcheck="false"

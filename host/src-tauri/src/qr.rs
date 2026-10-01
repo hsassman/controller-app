@@ -46,7 +46,7 @@ mod tests {
 
     #[test]
     fn renders_an_svg_for_a_typical_lan_url() {
-        let svg = svg_for("http://192.168.1.42:8788").expect("should encode");
+        let svg = svg_for("http://my-pc.local:8788").expect("should encode");
         // Must be the bare element: the window injects this into HTML, where
         // a leading XML declaration would be parsed as a bogus comment.
         assert!(svg.starts_with("<svg"), "got: {}", &svg[..svg.len().min(80)]);
