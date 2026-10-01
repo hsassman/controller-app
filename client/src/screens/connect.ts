@@ -1,6 +1,7 @@
 import { HostConnection, type ConnectionState } from "../connection.ts";
 import { haptic } from "../haptics.ts";
 import { readQrFromPhoto, controllerAddressFromScan } from "../qrScan.ts";
+import { ICONS } from "../icons.ts";
 
 const RECENT_KEY = "controller-recent-hosts";
 const MAX_RECENT = 4;
@@ -71,7 +72,7 @@ export function renderConnectScreen(
         <!-- Opens the camera over the app and reads the code from the photo,
              so a fullscreen Home Screen app never has to be left. -->
         <button id="scan-btn" type="button" class="scan-btn">
-          <span aria-hidden="true">⌗</span> Scan the code on your PC
+          ${ICONS.camera}<span>Scan the code on your PC</span>
         </button>
         <input id="scan-input" type="file" accept="image/*" capture="environment" hidden />
         <p id="scan-help" class="hint">Opens your camera — point it at the QR code in the Phone Controller window.</p>

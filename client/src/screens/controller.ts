@@ -12,6 +12,7 @@ import { renderEditor, type EditorHandle } from "./editor.ts";
 import { confirmDialog } from "../dialog.ts";
 import { showFirstRunHint } from "../onboarding.ts";
 import { maybeOfferShortcut } from "../install.ts";
+import { ICONS } from "../icons.ts";
 
 /// Input is pushed the moment it changes, capped at one frame per
 /// MIN_FRAME_GAP_MS (250 Hz) so a fast stick sweep can't flood the link.
@@ -57,11 +58,11 @@ export function renderControllerScreen(
         </label>
         <div id="edit-toolbar" class="edit-toolbar" hidden></div>
         <div class="topbar-actions">
-          <button id="fullscreen-btn" class="icon-btn" type="button" aria-label="Enter fullscreen" title="Fullscreen">⛶</button>
-          <button id="edit-btn" class="icon-btn" type="button" aria-label="Edit layout" title="Edit layout">✎</button>
+          <button id="fullscreen-btn" class="icon-btn" type="button" aria-label="Enter fullscreen" title="Fullscreen">${ICONS.fullscreen}</button>
+          <button id="edit-btn" class="icon-btn" type="button" aria-label="Edit layout" title="Edit layout">${ICONS.edit}</button>
           <button id="done-editing" class="primary" type="button" hidden>Done</button>
-          <button id="settings-btn" class="icon-btn" type="button" aria-label="Settings" title="Settings">⚙</button>
-          <button id="disconnect-btn" class="icon-btn" type="button" aria-label="Disconnect" title="Disconnect">⏻</button>
+          <button id="settings-btn" class="icon-btn" type="button" aria-label="Settings" title="Settings">${ICONS.settings}</button>
+          <button id="disconnect-btn" class="icon-btn" type="button" aria-label="Disconnect" title="Disconnect">${ICONS.power}</button>
         </div>
       </header>
       <!-- Shown while the bar is tucked away: a grab handle at the top edge.
@@ -236,7 +237,7 @@ export function renderControllerScreen(
     disconnectBtn.hidden = false;
     fullscreenBtn.hidden = !fullscreenSupported();
     profilePicker.hidden = listProfiles().length < 2;
-    editBtn.textContent = "✎";
+    editBtn.innerHTML = ICONS.edit;
     editBtn.classList.add("icon-btn");
     editBtn.setAttribute("aria-label", "Edit layout");
     doneBtn.hidden = true;

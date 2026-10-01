@@ -54,6 +54,9 @@ pub struct Status {
     pub page_requests: u64,
     /// Whether this app's firewall rule exists (Windows only; None = unknown).
     pub firewall_rule: Option<bool>,
+    /// Windows Firewall is set to block all incoming connections, which
+    /// overrides every allow rule, this app's included.
+    pub firewall_blocks_all: bool,
 }
 
 #[derive(Clone, serde::Serialize)]

@@ -30,6 +30,7 @@ All downloads: [latest release](https://github.com/hsassman/controller-app/relea
 | Problem | Fix |
 | --- | --- |
 | Scanning the code opens nothing, or the page never loads | Put the phone on the same Wi-Fi as the PC (not mobile data or a guest network), click **Allow through firewall** in the PC window, and turn off any VPN. If the PC has several network adapters, pick another one under the QR code and scan again. |
+| Still nothing loads | Your router may keep devices apart ("AP isolation" or "client isolation"), as most work, school, hotel and guest Wi-Fi does. To check, turn on the phone's **Personal Hotspot**, connect the PC to it and scan the new code. If that works, turn off isolation in the router's settings. |
 | Connected, but nothing moves in the game | The gamepad driver is missing: click **Install driver** in the PC window. |
 | Windows' "Game Controllers" panel (joy.cpl) shows no movement | Normal for Xbox controllers. Check the live drawing in the PC window instead; games read the pad correctly. |
 | No vibration on iPhone | iPhone browsers can't vibrate. The screen edges pulse with the game's rumble instead. |

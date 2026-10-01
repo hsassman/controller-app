@@ -42,8 +42,12 @@
 }
 
 .topbar-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0.22rem 0.65rem;
   font-size: 0.76rem;
+  line-height: 1;
   min-height: 1.75rem;
 }
 
@@ -56,6 +60,13 @@
   place-items: center;
   font-size: 0.92rem;
   line-height: 1;
+}
+
+/* SVG icons (icons.ts): a fixed box, so every icon sits dead centre. */
+.icon-btn .icon {
+  display: block;
+  width: 1.05rem;
+  height: 1.05rem;
 }
 
 #settings-btn {

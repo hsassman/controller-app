@@ -25,6 +25,10 @@ const MAX_FILE_BYTES: u64 = 16 * 1024 * 1024;
 /// cap -- 8 KB at that rate would take 68 hours.
 const HEAD_TIMEOUT: Duration = Duration::from_secs(10);
 
+/// A fatal TLS alert record: handshake_failure (40), TLS 1.0 framing, which
+/// every TLS version accepts as the reply to a ClientHello.
+const TLS_HANDSHAKE_FAILURE: [u8; 7] = [0x15, 0x03, 0x01, 0x00, 0x02, 0x02, 0x28];
+
 /// Upper bound on simultaneous HTTP connections.
 const MAX_CONNECTIONS: usize = 64;
 
@@ -446,6 +450,17 @@ async fn read_head(stream: &mut TcpStream) -> std::io::Result<Option<String>> {
         let read = stream.read(&mut chunk).await?;
         if read == 0 {
             return Ok(None); // peer closed before sending a full request
+        }
+        // A TLS handshake (record type 0x16) instead of an HTTP request:
+        // iPhone Safari tries https:// first, even for a typed or scanned
+        // http:// address on the local network, and only falls back to
+        // http:// once the secure attempt fails. Waiting out HEAD_TIMEOUT
+        // here left the page blank for so long it looked dead, so refuse
+        // at once with a TLS "handshake failure" alert.
+        if buffer.is_empty() && chunk[0] == 0x16 {
+            let _ = stream.write_all(&TLS_HANDSHAKE_FAILURE).await;
+            let _ = stream.shutdown().await;
+            return Ok(None);
         }
         let scan_from = buffer.len().saturating_sub(3);
         buffer.extend_from_slice(&chunk[..read]);

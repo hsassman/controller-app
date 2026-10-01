@@ -31,6 +31,12 @@ const RUN_VALUE: &str = "PhoneControllerHost";
 const PRIVATE_RANGES: &str =
     "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,169.254.0.0/16,fc00::/7,fe80::/10";
 
+/// The controller and page ports, plus the spare ones ports.rs falls back
+/// to when they're taken. Opened by port as well as by program, so the rule
+/// still matches if Windows doesn't tie the connection to this exe's path.
+#[cfg(windows)]
+const APP_PORTS: &str = "8787-8799";
+
 const VIGEM_RELEASES_URL: &str = "https://github.com/nefarius/ViGEmBus/releases/latest";
 #[cfg(windows)]
 const VIGEM_INSTALLER_URL: &str =
@@ -155,8 +161,20 @@ pub fn check_firewall(app: &AppHandle) {
                 .output()
                 .map(|out| out.status.success())
                 .ok();
+            // "Block all incoming connections, including those in the list
+            // of allowed apps" (a checkbox in Windows Security, or set by an
+            // administrator) shows as BlockInboundAlways and beats any rule.
+            let blocks_all = std::process::Command::new("netsh")
+                .args(["advfirewall", "show", "currentprofile"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .output()
+                .map(|out| String::from_utf8_lossy(&out.stdout).contains("BlockInboundAlways"))
+                .unwrap_or(false);
             if let Some(state) = app.try_state::<SharedStatus>() {
-                state.update(|s| s.firewall_rule = found);
+                state.update(|s| {
+                    s.firewall_rule = found;
+                    s.firewall_blocks_all = blocks_all;
+                });
             }
             let _ = app.emit("firewall-checked", found);
         });
@@ -571,8 +589,11 @@ async fn fix_firewall_inner() -> Result<String, String> {
 $exe = $env:PC_EXE
 $rule = 'Phone Controller Host'
 $cmd = "/c netsh advfirewall firewall delete rule name=all program=`"$exe`" & " +
+       "netsh advfirewall firewall delete rule name=`"$rule`" & " +
        "netsh advfirewall firewall add rule name=`"$rule`" dir=in action=allow " +
-       "program=`"$exe`" enable=yes profile=any remoteip=$env:PC_REMOTE_RANGES"
+       "program=`"$exe`" enable=yes profile=any remoteip=$env:PC_REMOTE_RANGES & " +
+       "netsh advfirewall firewall add rule name=`"$rule`" dir=in action=allow " +
+       "protocol=TCP localport=$env:PC_PORTS enable=yes profile=any remoteip=$env:PC_REMOTE_RANGES"
 try {
   $p = Start-Process -FilePath 'cmd.exe' -ArgumentList $cmd -Verb RunAs -WindowStyle Hidden -Wait -PassThru
   exit $p.ExitCode
@@ -582,6 +603,7 @@ try {
             let mut command = hidden_powershell(script);
             command.env("PC_EXE", exe);
             command.env("PC_REMOTE_RANGES", PRIVATE_RANGES);
+            command.env("PC_PORTS", APP_PORTS);
             command.output()
         })
         .await

@@ -724,6 +724,12 @@
         </div>
       </section>
 
+      <!-- "Block all incoming connections" beats every allow rule. -->
+      <section id="block-all-card" class="alert warn-card" hidden>
+        <h2>Windows Firewall is blocking all incoming connections</h2>
+        <p>Phones can't reach this PC while that's on. Open <strong>Windows Security → Firewall &amp; network protection</strong>, click your active network and untick <strong>Block all incoming connections</strong>. On a work or school PC this may be set by your administrator.</p>
+      </section>
+
       <!-- Shown when the QR has been up a while and nothing has arrived. -->
       <section id="no-phone-card" class="alert warn-card" hidden>
         <h2 id="no-phone-title">Scanned the code but nothing loads?</h2>
@@ -731,7 +737,8 @@
           <li>Put the phone on the <strong>same Wi-Fi</strong> as this PC — not mobile data or a guest network.</li>
           <li>Click <strong>Allow through firewall</strong> below, then scan again.</li>
           <li id="no-phone-alt" hidden>Try <strong>another address</strong> under the QR code: this PC has more than one network adapter, and a VPN or virtual adapter may have been picked first.</li>
-          <li>Turn off any VPN on the PC or phone.</li>
+          <li>Turn off any VPN on the PC or phone, and any third-party antivirus firewall for a moment.</li>
+          <li>Some routers keep devices apart (“AP isolation” or “client isolation”), as do most work, school, hotel and guest networks. To check, turn on the phone's <strong>Personal Hotspot</strong>, join it from this PC, and scan the new code.</li>
         </ul>
         <div class="actions">
           <button id="no-phone-firewall" class="btn" type="button">Allow through firewall</button>
@@ -1175,6 +1182,7 @@
       function updateHelp(s) {
         firewallRule = s.firewallRule ?? firewallRule;
         el("firewall-card").hidden = firewallRule !== false;
+        el("block-all-card").hidden = !s.firewallBlocksAll;
         const waiting = !(s.pageRequests > 0) && !(s.clients > 0);
         el("no-phone-card").hidden = !(waiting && s.webUrl && Date.now() - shownAt > 25000);
       }
