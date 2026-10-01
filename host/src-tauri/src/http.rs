@@ -114,14 +114,23 @@ pub async fn run_http_server(
     // the first try, and a network that silently drops mDNS would turn the
     // one action the whole setup depends on into a dead end. The phone is
     // offered the permanent address afterwards, once it can test it.
-    let qr_svg = crate::qr::svg_for(&url);
+    // The QR carries the controller port too when it isn't the usual one,
+    // for the in-app scanner (qrScan.ts), which connects straight to it.
+    let qr_text = |url: &str| {
+        if ws_port == crate::server::PORT {
+            url.to_string()
+        } else {
+            format!("{url}/?ws={ws_port}")
+        }
+    };
+    let qr_svg = crate::qr::svg_for(&qr_text(&url));
     let canonical_port = port == HTTP_PORT;
     let options: Vec<crate::status::AddressOption> = addresses
         .iter()
         .map(|address| {
             let url = format!("http://{}:{port}", address.ip);
             crate::status::AddressOption {
-                qr_svg: crate::qr::svg_for(&url),
+                qr_svg: crate::qr::svg_for(&qr_text(&url)),
                 url,
                 adapter: address.adapter.clone(),
             }

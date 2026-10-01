@@ -161,3 +161,43 @@ button.full-width,
   background: var(--accent);
   color: #000;
 }
+
+/* ---- Scan the PC's QR code from inside the app (connect screen) ---- */
+.scan-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.7rem 1rem;
+  border-radius: 0.8rem;
+  border: 0;
+  background: linear-gradient(180deg, var(--accent-active), var(--accent));
+  color: var(--accent-fg);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 16px -8px rgba(var(--accent-rgb), 0.8);
+}
+
+.scan-btn span {
+  font-size: 1.2rem;
+}
+
+.scan-btn:disabled {
+  opacity: 0.6;
+}
+
+.scan-btn:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+:root.high-contrast .scan-btn {
+  background: var(--accent);
+  color: #000;
+  border: 2px solid #fff;
+  box-shadow: none;
+}

@@ -19,7 +19,7 @@ Your phone shows a touch gamepad in its browser; the PC app turns it into a real
 
 That's it. The app starts with Windows and waits in the system tray, so next time just open the page on your phone.
 
-**Tip:** add the page to your Home Screen for fullscreen play (iPhone: **Share → Add to Home Screen**; Android: **⋮ → Install app**). The app offers to do this the first time you connect.
+**Tip:** add the page to your Home Screen for fullscreen play (iPhone: **Share → Add to Home Screen**; Android: **⋮ → Install app**). The app offers to do this the first time you connect. From then on, open it from the Home Screen: it connects by itself, and if it ever needs the code again, tap **Scan the code on your PC** — the camera opens over the app and you stay in fullscreen.
 
 **No install?** Download the portable [PhoneController.exe](https://github.com/hsassman/controller-app/releases/latest/download/PhoneController.exe) instead and double-click it. If its window says the driver is missing, click **Install driver**.
 

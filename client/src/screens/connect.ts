@@ -1,5 +1,6 @@
 import { HostConnection, type ConnectionState } from "../connection.ts";
 import { haptic } from "../haptics.ts";
+import { readQrFromPhoto, controllerAddressFromScan } from "../qrScan.ts";
 
 const RECENT_KEY = "controller-recent-hosts";
 const MAX_RECENT = 4;
@@ -67,13 +68,20 @@ export function renderConnectScreen(
       </div>
 
       <div class="connect-card">
-        <label for="host-input">Host address</label>
+        <!-- Opens the camera over the app and reads the code from the photo,
+             so a fullscreen Home Screen app never has to be left. -->
+        <button id="scan-btn" type="button" class="scan-btn">
+          <span aria-hidden="true">⌗</span> Scan the code on your PC
+        </button>
+        <input id="scan-input" type="file" accept="image/*" capture="environment" hidden />
+        <p id="scan-help" class="hint">Opens your camera — point it at the QR code in the Phone Controller window.</p>
+        <label for="host-input">Or type the address</label>
         <div class="input-row">
           <input
             id="host-input"
             type="text"
             inputmode="decimal"
-            placeholder="Address shown on your PC"
+            placeholder="PC address"
             autocomplete="off"
             autocapitalize="off"
             spellcheck="false"
@@ -82,7 +90,7 @@ export function renderConnectScreen(
           <button id="connect-btn" type="button">Connect</button>
         </div>
         <p id="host-help" class="hint">
-          Shown in the Controller Host window on your PC. Both devices must be on the same Wi-Fi.
+          Shown in the Phone Controller window on your PC. Both devices must be on the same Wi-Fi.
         </p>
         <div id="recent-hosts" class="recent-hosts" hidden>
           <span class="recent-label">Recent</span>
@@ -245,6 +253,49 @@ export function renderConnectScreen(
   };
 
   connectBtn.addEventListener("click", connect);
+
+  const scanBtn = container.querySelector<HTMLButtonElement>("#scan-btn")!;
+  const scanInput = container.querySelector<HTMLInputElement>("#scan-input")!;
+  const scanHelp = container.querySelector<HTMLParagraphElement>("#scan-help")!;
+  scanBtn.addEventListener("click", () => {
+    cancelAuto();
+    haptic("ui");
+    scanInput.value = "";
+    scanInput.click();
+  });
+  scanInput.addEventListener("change", async () => {
+    const file = scanInput.files?.[0];
+    if (!file) return;
+    scanBtn.disabled = true;
+    scanHelp.textContent = "Reading the code…";
+    let target: string | null = null;
+    try {
+      const text = await readQrFromPhoto(file);
+      target = text ? controllerAddressFromScan(text) : null;
+    } catch {
+      target = null;
+    }
+    scanBtn.disabled = false;
+    if (!target) {
+      scanHelp.textContent =
+        "Couldn't find the code in that photo. Try again with the QR code filling most of the picture.";
+      haptic("release");
+      return;
+    }
+    scanHelp.textContent = "Found your PC — connecting…";
+    haptic("press");
+    // Straight to the scanned PC: the page may have come from a different
+    // address (an older shortcut), and it doesn't matter -- only the
+    // controller connection has to reach the PC, and it can go anywhere.
+    connection?.disconnect();
+    connection = null;
+    attemptToken++;
+    statusEl.dataset.state = "connecting";
+    statusText.textContent = "Connecting…";
+    connectBtn.disabled = true;
+    cancelBtn.hidden = false;
+    attemptConnect(target);
+  });
   cancelBtn.addEventListener("click", cancelAttempt);
   hostInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") connect();
