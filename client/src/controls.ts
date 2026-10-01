@@ -140,8 +140,33 @@ function buildButton(
   const shown = displayLabel(cfg.bit, cfg.label, getSettings().iconPack);
   el.setAttribute("aria-label", cfg.label);
   el.tabIndex = 0;
-  el.textContent = shown;
   el.dataset.controlId = cfg.id;
+  // Face colours follow what the button *sends*, not what it is called: a
+  // control remapped to A turns green, and a former A remapped to LB stops
+  // being green. Keying off the id got both of those wrong.
+  const face = FACE_OF_BIT[cfg.bit];
+  if (face) el.dataset.face = face;
+  if (cfg.bit === ButtonBit.GUIDE) {
+    // The guide button carries a ring of light, like the real one, whose
+    // quadrants show which player slot Windows gave this pad (driven by
+    // `data-player` on the root -- see controller.ts).
+    el.classList.add("guide-control");
+    const ring = document.createElement("span");
+    ring.className = "guide-ring";
+    ring.setAttribute("aria-hidden", "true");
+    for (let i = 0; i < 4; i++) {
+      const q = document.createElement("i");
+      q.dataset.q = String(i);
+      ring.appendChild(q);
+    }
+    el.appendChild(ring);
+    const glyph = document.createElement("span");
+    glyph.className = "guide-glyph";
+    glyph.textContent = shown;
+    el.appendChild(glyph);
+  } else {
+    el.textContent = shown;
+  }
   const bw = cfg.width ?? cfg.size;
   const bh = cfg.height ?? cfg.size;
   // Shape is explicit now (see ButtonConfig.shape); the width != height
@@ -217,6 +242,13 @@ function buildButton(
 
   return el;
 }
+
+const FACE_OF_BIT: Partial<Record<number, string>> = {
+  [ButtonBit.A]: "a",
+  [ButtonBit.B]: "b",
+  [ButtonBit.X]: "x",
+  [ButtonBit.Y]: "y",
+};
 
 const DPAD_BITS: number[] = [ButtonBit.DPAD_UP, ButtonBit.DPAD_RIGHT, ButtonBit.DPAD_DOWN, ButtonBit.DPAD_LEFT];
 const DPAD_KEY_BITS: Record<string, number> = {

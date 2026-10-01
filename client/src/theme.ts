@@ -9,16 +9,46 @@ export type ThemeId =
   | "mono";
 
 /// How the moulded surface of every control catches light. Purely visual;
-/// the geometry and hit areas are identical across all four.
-export type ButtonMaterial = "matte" | "gloss" | "metal" | "neon";
+/// the geometry and hit areas are identical across every finish.
+export type ButtonMaterial =
+  | "matte"
+  | "soft"
+  | "gloss"
+  | "metal"
+  | "chrome"
+  | "carbon"
+  | "crystal"
+  | "pearl"
+  | "neon";
 
 /// The d-pad's silhouette. All three report the same eight directions.
 export type DpadStyle = "cross" | "split" | "disc";
 
+/// How A/B/X/Y are coloured.
+export type FaceStyle = "classic" | "jewel" | "mono" | "accent";
+
+/// The thumbstick cap's shape.
+export type StickStyle = "concave" | "dome" | "pro";
+
+/// What colour the thumbstick caps are moulded in.
+export type StickColor = "accent" | "body" | "black";
+
+/// How button legends are applied.
+export type LabelStyle = "printed" | "engraved" | "backlit";
+
+/// What the play area behind the controls looks like: the theme's dark
+/// backdrop, or the controller body itself, edge to edge.
+export type SurfaceStyle = "backdrop" | "shell";
+
 export const BUTTON_MATERIALS: { id: ButtonMaterial; name: string }[] = [
   { id: "matte", name: "Matte" },
+  { id: "soft", name: "Soft-touch" },
   { id: "gloss", name: "Gloss" },
-  { id: "metal", name: "Metal" },
+  { id: "metal", name: "Brushed metal" },
+  { id: "chrome", name: "Chrome" },
+  { id: "carbon", name: "Carbon fibre" },
+  { id: "crystal", name: "Crystal" },
+  { id: "pearl", name: "Pearl" },
   { id: "neon", name: "Neon" },
 ];
 
@@ -28,9 +58,59 @@ export const DPAD_STYLES: { id: DpadStyle; name: string }[] = [
   { id: "disc", name: "Disc" },
 ];
 
+export const FACE_STYLES: { id: FaceStyle; name: string }[] = [
+  { id: "classic", name: "Classic" },
+  { id: "jewel", name: "Jewel" },
+  { id: "mono", name: "Mono" },
+  { id: "accent", name: "Accent" },
+];
+
+export const STICK_STYLES: { id: StickStyle; name: string }[] = [
+  { id: "concave", name: "Concave" },
+  { id: "dome", name: "Dome" },
+  { id: "pro", name: "Pro grip" },
+];
+
+export const STICK_COLORS: { id: StickColor; name: string }[] = [
+  { id: "accent", name: "Accent" },
+  { id: "body", name: "Body" },
+  { id: "black", name: "Black" },
+];
+
+export const LABEL_STYLES: { id: LabelStyle; name: string }[] = [
+  { id: "printed", name: "Printed" },
+  { id: "engraved", name: "Engraved" },
+  { id: "backlit", name: "Backlit" },
+];
+
+export const SURFACE_STYLES: { id: SurfaceStyle; name: string }[] = [
+  { id: "backdrop", name: "Backdrop" },
+  { id: "shell", name: "Controller body" },
+];
+
+/// Body colours offered as one-tap swatches, named the way controller
+/// colourways are. "" (the first) means "follow the theme".
+export const SHELL_PRESETS: { value: string; name: string }[] = [
+  { value: "", name: "Theme" },
+  { value: "#e9e9ea", name: "Robot White" },
+  { value: "#1d1e21", name: "Carbon Black" },
+  { value: "#2c5fd6", name: "Shock Blue" },
+  { value: "#c62832", name: "Pulse Red" },
+  { value: "#c8e03a", name: "Electric Volt" },
+  { value: "#e55aa5", name: "Deep Pink" },
+  { value: "#4a3a8c", name: "Midnight Purple" },
+  { value: "#6d7a55", name: "Olive Camo" },
+  { value: "#e0b048", name: "Gold Rush" },
+  { value: "#9fd4e8", name: "Glacier Blue" },
+];
 export interface ThemeMeta {
   id: ThemeId;
   name: string;
+  /// The theme's controller-body colour (the middle of its --shell
+  /// gradient). Finishes that need the body as a plain colour -- crystal's
+  /// tinted glass, the edge-to-edge body surface -- start from this when
+  /// the user hasn't picked a body colour of their own.
+  shell: string;
   /// Suggested accent, applied when the user picks the theme. They can
   /// still override it afterwards; this just makes each theme land looking
   /// intentional rather than inheriting the previous theme's accent.
@@ -40,14 +120,14 @@ export interface ThemeMeta {
 }
 
 export const THEMES: ThemeMeta[] = [
-  { id: "midnight", name: "Midnight", accent: "#4c8bff", swatch: ["#0d0f14", "#4c8bff"] },
-  { id: "carbon", name: "Carbon", accent: "#e8e8ea", swatch: ["#0a0a0b", "#9a9aa2"] },
-  { id: "nebula", name: "Nebula", accent: "#b57bff", swatch: ["#120d1c", "#b57bff"] },
-  { id: "sunset", name: "Sunset", accent: "#ff8a4c", swatch: ["#1a0f0c", "#ff8a4c"] },
-  { id: "mint", name: "Mint", accent: "#3fd9a4", swatch: ["#08150f", "#3fd9a4"] },
-  { id: "aurora", name: "Aurora", accent: "#2fe0c8", swatch: ["#04161a", "#2fe0c8"] },
-  { id: "crimson", name: "Crimson", accent: "#ff5d6e", swatch: ["#170709", "#ff5d6e"] },
-  { id: "mono", name: "Mono", accent: "#d7d9de", swatch: ["#0c0c0d", "#d7d9de"] },
+  { id: "midnight", shell: "#262b37", name: "Midnight", accent: "#4c8bff", swatch: ["#0d0f14", "#4c8bff"] },
+  { id: "carbon", shell: "#2a2a2f", name: "Carbon", accent: "#e8e8ea", swatch: ["#0a0a0b", "#9a9aa2"] },
+  { id: "nebula", shell: "#322a4b", name: "Nebula", accent: "#b57bff", swatch: ["#120d1c", "#b57bff"] },
+  { id: "sunset", shell: "#422f26", name: "Sunset", accent: "#ff8a4c", swatch: ["#1a0f0c", "#ff8a4c"] },
+  { id: "mint", shell: "#234036", name: "Mint", accent: "#3fd9a4", swatch: ["#08150f", "#3fd9a4"] },
+  { id: "aurora", shell: "#1f444c", name: "Aurora", accent: "#2fe0c8", swatch: ["#04161a", "#2fe0c8"] },
+  { id: "crimson", shell: "#45242b", name: "Crimson", accent: "#ff5d6e", swatch: ["#170709", "#ff5d6e"] },
+  { id: "mono", shell: "#313135", name: "Mono", accent: "#d7d9de", swatch: ["#0c0c0d", "#d7d9de"] },
 ];
 
 /// Accents offered as one-tap swatches. Free-form picking is also available
@@ -272,7 +352,55 @@ export function stopIdleDim(): void {
   document.documentElement.classList.remove("idle-dim");
 }
 
-export function applyAppearance(s: {
+/// Paints the controller body in `hex`, or hands it back to the theme when
+/// `hex` is empty. Every shell gradient is derived from the one colour so
+/// the finishes, the d-pad and the triggers all stay one moulding.
+export function applyShell(hex: string, theme: ThemeId, highContrast: boolean): void {
+  const root = document.documentElement;
+  const tokens = ["--shell", "--dpad-shell", "--shell-rgb", "--cap-fg", "--cap-emboss", "--shell-light"];
+  if (highContrast) {
+    // High contrast owns a flat black-and-white palette; a body colour
+    // would bring back exactly the low-contrast surfaces it removes.
+    for (const t of tokens) root.style.removeProperty(t);
+    root.classList.remove("shell-light");
+    return;
+  }
+
+  const custom = /^#[0-9a-f]{6}$/i.test(hex);
+  const base = parseHex(custom ? hex : (THEMES.find((t) => t.id === theme)?.shell ?? "#262b37"));
+  root.style.setProperty("--shell-rgb", `${Math.round(base.r)}, ${Math.round(base.g)}, ${Math.round(base.b)}`);
+
+  // Legends have to read on the cap they're printed on: whichever of dark
+  // or light ink contrasts more with the body. A plain brightness cut-off
+  // got mid-tones wrong -- pink and gold bodies took white ink at ~3:1.
+  const lum = luminance(base);
+  const light = contrastRatio(lum, 0) > contrastRatio(lum, 1);
+  root.style.setProperty("--cap-fg", light ? "#16181d" : "#f0f1f4");
+  root.style.setProperty("--cap-emboss", light ? "0 1px 0 rgba(255, 255, 255, 0.55)" : "0 1px 0 rgba(0, 0, 0, 0.65)");
+  root.classList.toggle("shell-light", light);
+
+  if (!custom) {
+    root.style.removeProperty("--shell");
+    root.style.removeProperty("--dpad-shell");
+    return;
+  }
+  // Light from above: a lifted top, the true colour across the middle, and
+  // a falloff into shadow toward the base -- the same four stops the theme
+  // shells use, so a custom body reads as the same moulding.
+  const top = toHex(mix(base, WHITE, light ? 0.35 : 0.16));
+  const low = toHex(mix(base, BLACK, light ? 0.18 : 0.3));
+  const base2 = toHex(mix(base, BLACK, light ? 0.3 : 0.45));
+  root.style.setProperty(
+    "--shell",
+    `linear-gradient(177deg, ${top} 0%, ${toHex(base)} 42%, ${low} 78%, ${base2} 100%)`,
+  );
+  root.style.setProperty(
+    "--dpad-shell",
+    `linear-gradient(177deg, ${toHex(mix(base, WHITE, light ? 0.4 : 0.2))} 0%, ${toHex(mix(base, WHITE, 0.05))} 46%, ${low} 100%)`,
+  );
+}
+
+export interface AppearanceSettings {
   theme: ThemeId;
   accent: string;
   highContrast: boolean;
@@ -283,21 +411,38 @@ export function applyAppearance(s: {
   dpadStyle: DpadStyle;
   glowIntensity: number;
   idleDimSeconds: number;
-}): void {
+  shellColor: string;
+  faceStyle: FaceStyle;
+  stickStyle: StickStyle;
+  stickColor: StickColor;
+  labelStyle: LabelStyle;
+  surfaceStyle: SurfaceStyle;
+}
+
+/// Writes `value` to `data-<name>` on the root if it is one of `allowed`,
+/// else `fallback`. Re-validated here as well as in sanitize(): this is the
+/// last point before the value reaches the DOM, and an unknown id would leave
+/// every rule for it unmatched rather than falling back to the default look.
+function setChoice<T extends string>(name: string, value: T, allowed: { id: T }[], fallback: T): void {
+  document.documentElement.dataset[name] = allowed.some((o) => o.id === value) ? value : fallback;
+}
+
+export function applyAppearance(s: AppearanceSettings): void {
   const root = document.documentElement;
   applyTheme(s.theme);
   applyAccent(s.accent, s.highContrast);
+  applyShell(s.shellColor, s.theme, s.highContrast);
   root.style.setProperty("--control-opacity", String(s.controlOpacity));
   root.classList.toggle("reduce-motion", s.reduceMotion);
   root.classList.toggle("no-surface-glow", !s.surfaceGlow);
 
-  // Re-validated here as well as in sanitize(): this is the last point before
-  // the value reaches the DOM, and an unknown id would leave every material
-  // rule unmatched rather than falling back to the default look.
-  root.dataset.material = BUTTON_MATERIALS.some((m) => m.id === s.buttonMaterial)
-    ? s.buttonMaterial
-    : "gloss";
-  root.dataset.dpadStyle = DPAD_STYLES.some((d) => d.id === s.dpadStyle) ? s.dpadStyle : "cross";
+  setChoice("material", s.buttonMaterial, BUTTON_MATERIALS, "gloss");
+  setChoice("dpadStyle", s.dpadStyle, DPAD_STYLES, "cross");
+  setChoice("faceStyle", s.faceStyle, FACE_STYLES, "classic");
+  setChoice("stickStyle", s.stickStyle, STICK_STYLES, "concave");
+  setChoice("stickColor", s.stickColor, STICK_COLORS, "accent");
+  setChoice("labelStyle", s.labelStyle, LABEL_STYLES, "printed");
+  setChoice("surface", s.surfaceStyle, SURFACE_STYLES, "backdrop");
 
   const glow = Number.isFinite(s.glowIntensity) ? Math.min(1.5, Math.max(0, s.glowIntensity)) : 1;
   root.style.setProperty("--glow-intensity", String(glow));

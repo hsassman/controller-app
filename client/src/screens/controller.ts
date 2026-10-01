@@ -4,7 +4,7 @@ import { snapshot, resetAll } from "../inputState.ts";
 import { encodeInputFrame } from "../../../protocol/frame.ts";
 import { loadSettings, saveSettings, applyHighContrast } from "../settings.ts";
 import { applyAppearance, applyBackground } from "../theme.ts";
-import { configureHaptics, haptic } from "../haptics.ts";
+import { configureHaptics, configureRumble, haptic, setRumble, stopRumble } from "../haptics.ts";
 import { fullscreenSupported, isFullscreen, toggleFullscreen, keepAwakeWhileVisible, releaseWakeLock } from "../session.ts";
 import { renderSettingsPanel } from "./settings-panel.ts";
 import { loadLayout, listProfiles, setActiveProfile, activeProfileId } from "../profile.ts";
@@ -32,6 +32,12 @@ export function renderControllerScreen(
         <div id="status" class="status" data-state="connected">
           <span id="status-dot" aria-hidden="true"></span>
           <span id="status-text" role="status">Connected</span>
+          <!-- The XInput slot Windows gave this pad, drawn as the quadrant
+               of a ring of light the way the real controller shows it. -->
+          <span id="status-player" class="status-player" hidden>
+            <span class="player-ring" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <span id="status-player-text"></span>
+          </span>
           <!-- Outside the live region: the ping is rewritten every couple of
                seconds, and announcing it forever is unusable. -->
           <span id="status-latency" class="status-latency" aria-hidden="true" hidden></span>
@@ -85,12 +91,15 @@ export function renderControllerScreen(
   const reconnectBtn = container.querySelector<HTMLButtonElement>("#reconnect-btn")!;
   const changeHostBtn = container.querySelector<HTMLButtonElement>("#change-host-btn")!;
   const surfaceWrap = container.querySelector<HTMLElement>(".surface-wrap")!;
+  const statusPlayer = container.querySelector<HTMLSpanElement>("#status-player")!;
+  const statusPlayerText = container.querySelector<HTMLSpanElement>("#status-player-text")!;
 
   const settings = loadSettings();
   const applySettings = () => {
     applyHighContrast(settings.highContrast);
     applyAppearance(settings);
     configureHaptics(settings.haptics, settings.hapticStrength);
+    configureRumble(settings.gameRumble, settings.rumbleStrength);
   };
   applySettings();
 
@@ -267,6 +276,36 @@ export function renderControllerScreen(
   };
   connection.setStateHandler(handleState);
 
+  // Game rumble: buzz the phone (where the browser allows it) and pulse the
+  // pad's edges, so even a phone that cannot vibrate -- every iPhone --
+  // still shows the game shaking the controller.
+  const root = document.documentElement;
+  connection.setRumbleHandler(({ large, small, player }) => {
+    const level = setRumble(large, small);
+    const visual = settings.rumbleVisual && settings.gameRumble ? Math.min(1, Math.max(large, small)) : 0;
+    surfaceWrap.style.setProperty("--rumble", visual.toFixed(2));
+    surfaceWrap.classList.toggle("rumbling", visual > 0.02);
+    surfaceWrap.classList.toggle("rumbling-hard", visual > 0.02 && large > 0.55 && level > 0);
+    if (player === null) {
+      delete root.dataset.player;
+      statusPlayer.hidden = true;
+    } else {
+      root.dataset.player = String(player);
+      statusPlayer.hidden = false;
+      statusPlayerText.textContent = `P${player + 1}`;
+      statusPlayer.title = `Player ${player + 1}`;
+    }
+  });
+
+  // A phone waking up, or rejoining Wi-Fi, is exactly when the host is most
+  // likely reachable again -- try straight away rather than sitting out the
+  // rest of a backoff.
+  const onWake = () => {
+    if (document.visibilityState === "visible") connection.reconnectNow();
+  };
+  document.addEventListener("visibilitychange", onWake);
+  window.addEventListener("online", onWake);
+
   // Round-trip time from the heartbeat. Worth surfacing because "the
   // controller feels laggy" is otherwise unattributable -- this says
   // plainly whether the delay is the network or the game.
@@ -290,6 +329,11 @@ export function renderControllerScreen(
 
   const cleanup = () => {
     window.clearInterval(sendTimer);
+    document.removeEventListener("visibilitychange", onWake);
+    window.removeEventListener("online", onWake);
+    stopRumble();
+    surfaceWrap.classList.remove("rumbling", "rumbling-hard");
+    delete root.dataset.player;
     window.removeEventListener("beforeunload", onBeforeUnload);
     document.removeEventListener("fullscreenchange", syncFullscreenBtn);
     releaseWakeLock();
@@ -393,21 +437,25 @@ export function renderControllerScreen(
   });
 }
 
-/// Shows a dismissible banner when the PC has no virtual pad to drive.
+/// Shows a banner when the PC has no virtual pad to drive, and takes it
+/// down again by itself once the PC reports the driver is working -- the
+/// host now picks a freshly installed driver up without a restart, so the
+/// banner should not outlive the problem.
 ///
 /// Only ever *adds* information: if the endpoint is missing, unreachable or
 /// from an older host that doesn't report `padReady`, nothing is shown. A
 /// false alarm here would be worse than silence.
 async function warnIfPadUnavailable(host: HTMLElement): Promise<void> {
-  let ready: unknown;
-  try {
-    const res = await fetch("/host-info.json", { cache: "no-store" });
-    if (!res.ok) return;
-    ({ padReady: ready } = (await res.json()) as { padReady?: unknown });
-  } catch {
-    return; // page opened from somewhere other than the host
-  }
-  if (ready !== false) return;
+  const padReady = async (): Promise<unknown> => {
+    try {
+      const res = await fetch("/host-info.json", { cache: "no-store" });
+      if (!res.ok) return undefined;
+      return ((await res.json()) as { padReady?: unknown }).padReady;
+    } catch {
+      return undefined; // page opened from somewhere other than the host
+    }
+  };
+  if ((await padReady()) !== false) return;
 
   const banner = document.createElement("div");
   banner.className = "pad-warning";
@@ -415,19 +463,36 @@ async function warnIfPadUnavailable(host: HTMLElement): Promise<void> {
 
   const text = document.createElement("p");
   text.innerHTML =
-    "<strong>The PC can't create a controller yet.</strong> " +
-    "The ViGEmBus driver isn't installed, so your presses arrive but go nowhere. " +
-    "Install it on the PC from the link in the Controller Host window, then restart that app.";
+    "<strong>One more step on the PC.</strong> " +
+    "The gamepad driver isn't installed yet, so your presses arrive but go nowhere. " +
+    "Click <strong>Install driver</strong> in the Phone Controller window on your PC — " +
+    "this message clears by itself once it's done.";
   banner.appendChild(text);
+
+  let timer: number | null = null;
+  const remove = () => {
+    if (timer !== null) window.clearInterval(timer);
+    banner.remove();
+  };
 
   const dismiss = document.createElement("button");
   dismiss.type = "button";
   dismiss.className = "pad-warning-dismiss";
   dismiss.textContent = "Dismiss";
-  dismiss.addEventListener("click", () => banner.remove());
+  dismiss.addEventListener("click", remove);
   banner.appendChild(dismiss);
 
   host.appendChild(banner);
+
+  timer = window.setInterval(() => {
+    if (!banner.isConnected) {
+      remove();
+      return;
+    }
+    void padReady().then((ready) => {
+      if (ready === true) remove();
+    });
+  }, 3000);
 }
 
 /// The address this session connected to, for "Reconnect now". The connect

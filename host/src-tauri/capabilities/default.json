@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Lets the host window listen for live updates (input, connections, rumble). Without a capability, Tauri 2 rejects every event listener, so the window would only ever show its startup snapshot.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

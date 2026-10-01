@@ -24,6 +24,7 @@ export const BUTTON_MAPPINGS: ButtonMapping[] = [
   { bit: ButtonBit.DPAD_RIGHT, label: "→", name: "D-pad right", group: "D-pad" },
   { bit: ButtonBit.START, label: "Start", name: "Start", group: "System" },
   { bit: ButtonBit.SELECT, label: "Select", name: "Select / Back", group: "System" },
+  { bit: ButtonBit.GUIDE, label: "⊗", name: "Guide (Xbox button)", group: "System" },
 ];
 
 export function mappingFor(bit: number): ButtonMapping | undefined {

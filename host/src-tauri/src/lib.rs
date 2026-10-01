@@ -1,3 +1,4 @@
+mod desktop;
 mod frame;
 #[cfg(windows)]
 mod gamepad;
@@ -8,7 +9,7 @@ mod server;
 mod stable;
 mod status;
 
-use tauri::Manager;
+use tauri::{Manager, WindowEvent};
 
 use status::{report_error, SharedStatus};
 
@@ -29,21 +30,62 @@ pub fn run() {
             // window that's already doing the job instead of leaving the
             // user staring at nothing, which is what "do nothing" would
             // look like.
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.unminimize();
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
+            desktop::show_main_window(app);
         }))
-        .invoke_handler(tauri::generate_handler![status::get_status])
+        .invoke_handler(tauri::generate_handler![
+            status::get_status,
+            desktop::set_autostart,
+            desktop::set_close_to_tray,
+            desktop::install_driver,
+            desktop::open_driver_page,
+            desktop::fix_firewall,
+            desktop::test_rumble,
+            desktop::quit_app,
+        ])
+        // Closing the window keeps the host running in the tray: quitting
+        // unplugs the controller and takes the phone page down with it, so
+        // it is a deliberate menu choice rather than a stray click on the X.
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                if desktop::close_to_tray(window.app_handle()) {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+        })
         .setup(|app| {
             let app_handle = app.handle().clone();
             // Startup facts are decided here, before the window's script has
             // loaded, so events announcing them reach nobody. The window
             // reads this snapshot on load instead.
-            app.manage(SharedStatus::new());
+            let status = SharedStatus::new();
+            status.update(|s| s.version = env!("CARGO_PKG_VERSION").to_string());
+            app.manage(status);
+            desktop::startup(&app_handle);
+
+            if let Err(err) = desktop::setup_tray(&app_handle) {
+                // Without a tray, hiding the window would strand the app
+                // with no way back, so closing quits instead.
+                eprintln!("tray icon unavailable: {err}");
+                if let Some(prefs) = app_handle.try_state::<desktop::PrefsState>() {
+                    if let Ok(mut p) = prefs.0.lock() {
+                        p.close_to_tray = false;
+                    }
+                }
+            }
+
+            // Launched at login: stay in the tray. Any other launch shows
+            // the window -- it starts hidden only so it never flashes up
+            // half-drawn.
+            let background = std::env::args().any(|a| a == desktop::BACKGROUND_ARG);
+            if !background {
+                desktop::show_main_window(&app_handle);
+            }
 
             let pad = server::create_pad(&app_handle);
+            app.manage(pad.clone());
+            tauri::async_runtime::spawn(server::retry_until_ready(pad.clone(), app_handle.clone()));
+            desktop::refresh_tray(&app_handle);
 
             // The LAN address is resolved once and shared: the gamepad
             // server prints it, and the page server needs the same one to

@@ -1,0 +1,716 @@
+/* ============================================================
+   FINISHES & CUSTOMISATION
+   ============================================================
+   Loaded last, so equal-specificity rules here win over style.css without
+   inflated selectors. Everything is driven by data attributes on :root
+   (see applyAppearance in theme.ts):
+
+     data-material     how surfaces catch light (9 finishes)
+     data-face-style   how A/B/X/Y are coloured
+     data-stick-style  thumbstick cap shape
+     data-stick-color  thumbstick cap colour
+     data-label-style  printed / engraved / backlit legends
+     data-surface      dark backdrop, or the controller body edge to edge
+     data-player       XInput slot, lights the guide button's ring
+
+   and by --shell-rgb / --cap-fg / --cap-emboss, which theme.ts derives from
+   the chosen body colour. Rules that change a control's *resting* paint
+   carry :not(.active), so the pressed state in style.css always wins. */
+
+:root {
+  --shell-rgb: 38, 43, 55;
+  --cap-fg: var(--fg);
+  --cap-emboss: var(--label-emboss);
+  --ring-color: var(--accent);
+}
+
+/* ---- Legends follow the body colour ----
+   Light bodies (Robot White, Electric Volt...) get dark ink, so the label
+   is never white-on-white. */
+.button-control:not(.active),
+.trigger-label {
+  color: var(--cap-fg);
+  text-shadow: var(--cap-emboss);
+}
+
+/* Classic face buttons keep their coloured letters, mixed with the ink so
+   they still read on a light body. */
+.button-control[data-face]:not(.active) {
+  color: color-mix(in srgb, rgb(var(--tint)) 60%, var(--cap-fg));
+}
+
+.dpad-arrow {
+  --arrow-color: color-mix(in srgb, var(--cap-fg) 76%, transparent);
+}
+
+:root.shell-light .control {
+  --control-border: rgba(0, 0, 0, 0.32);
+}
+
+/* The accent-dark end of the stick cap and trigger fill used to be a fixed
+   blue, so every accent but blue had a blue bottom edge. */
+.stick-knob {
+  background:
+    var(--mat-tex),
+    radial-gradient(circle at 50% 120%, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 52%),
+    linear-gradient(172deg, var(--accent-active) 0%, var(--accent) 50%, color-mix(in srgb, var(--accent) 52%, #000) 100%);
+}
+
+.trigger-fill {
+  background: linear-gradient(180deg, var(--accent-active), var(--accent) 45%, color-mix(in srgb, var(--accent) 55%, #000));
+}
+
+/* Triggers are part of the same moulding: give them the finish too. */
+.trigger-control {
+  background: var(--mat-tex), var(--shell-inner), var(--shell), var(--control-bg);
+}
+
+/* Two side ticks at the actuation point -- where most games call the
+   trigger "pressed", and where the buzz fires (controls.ts ACTUATION).
+   Ticks rather than a full line, so they never cross the label. */
+.trigger-control::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 50%;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--cap-fg) 35%, transparent) 0 11%,
+    transparent 11% 89%,
+    color-mix(in srgb, var(--cap-fg) 35%, transparent) 89% 100%
+  );
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* The recess the d-pad sits in fades out inside its own box. Sized off the
+   farthest corner, it was still visibly dark at the box edge, which drew a
+   grey square around the pad on light bodies. */
+.dpad-well {
+  background: radial-gradient(
+    circle closest-side at 50% 48%,
+    rgba(0, 0, 0, 0.42),
+    rgba(0, 0, 0, 0.2) 55%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
+:root.shell-light .dpad-well {
+  background: radial-gradient(
+    circle closest-side at 50% 48%,
+    rgba(0, 0, 0, 0.2),
+    rgba(0, 0, 0, 0.08) 55%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
+/* Stick wells are the body moulding dished inward, not black holes: shade
+   the body colour rather than painting a fixed near-black. */
+.stick-control {
+  background:
+    radial-gradient(circle at 50% 120%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 48%),
+    radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.4) 76%, rgba(0, 0, 0, 0.1) 100%),
+    radial-gradient(circle at 50% 14%, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.22) 56%, rgba(255, 255, 255, 0.05) 100%),
+    linear-gradient(180deg, color-mix(in srgb, rgb(var(--shell-rgb)) 42%, #000), color-mix(in srgb, rgb(var(--shell-rgb)) 22%, #000));
+}
+
+/* On a light body a near-black dish looks like a hole punched through it;
+   a real white pad's wells are a darker shade of the same plastic. */
+:root.shell-light .stick-control {
+  background:
+    radial-gradient(circle at 50% 120%, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0) 48%),
+    radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.28) 76%, rgba(0, 0, 0, 0.08) 100%),
+    radial-gradient(circle at 50% 14%, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.14) 56%, rgba(255, 255, 255, 0.08) 100%),
+    linear-gradient(180deg, color-mix(in srgb, rgb(var(--shell-rgb)) 62%, #000), color-mix(in srgb, rgb(var(--shell-rgb)) 45%, #000));
+}
+
+/* ============================================================
+   MATERIALS
+   ============================================================ */
+
+/* Matte: dry injection-moulded ABS with a faint grain. */
+:root[data-material="matte"] {
+  --gloss-op: 0.16;
+  --mat-tex:
+    repeating-conic-gradient(rgba(255, 255, 255, 0.022) 0 25%, rgba(0, 0, 0, 0.03) 0 50%) 0 0 / 3px 3px,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.18));
+  --mat-edge: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  --mat-depth: 0.9;
+}
+
+/* Soft-touch: rubberised coating. Light is swallowed rather than reflected,
+   edges are soft, and there is almost no specular at all. */
+:root[data-material="soft"] {
+  --gloss-op: 0.05;
+  --mat-tex:
+    radial-gradient(90% 60% at 50% 0%, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0) 70%),
+    repeating-conic-gradient(rgba(255, 255, 255, 0.015) 0 25%, rgba(0, 0, 0, 0.04) 0 50%) 0 0 / 2px 2px,
+    linear-gradient(180deg, rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.26));
+  --mat-edge: inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+  --mat-depth: 0.82;
+  --rim:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -4px 9px rgba(0, 0, 0, 0.42),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+}
+
+/* Gloss: lacquered plastic -- a hard cap highlight plus the soft bounce light
+   a glossy dome picks up from the surface it sits on. */
+:root[data-material="gloss"] {
+  --gloss-op: 1;
+  --mat-tex:
+    radial-gradient(85% 40% at 50% 104%, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 72%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0) 40%);
+  --mat-edge: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --mat-depth: 1;
+}
+
+/* Brushed metal, spun: concentric machining rings with the two opposing
+   anisotropic highlights real spun aluminium shows. */
+:root[data-material="metal"] {
+  --gloss-op: 0.6;
+  --mat-tex:
+    conic-gradient(
+      from 20deg,
+      rgba(255, 255, 255, 0) 0deg,
+      rgba(255, 255, 255, 0.26) 30deg,
+      rgba(255, 255, 255, 0) 70deg,
+      rgba(0, 0, 0, 0.12) 120deg,
+      rgba(255, 255, 255, 0) 170deg,
+      rgba(255, 255, 255, 0.2) 210deg,
+      rgba(255, 255, 255, 0) 250deg,
+      rgba(0, 0, 0, 0.12) 300deg,
+      rgba(255, 255, 255, 0) 360deg
+    ),
+    repeating-radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.055) 0 1px, rgba(0, 0, 0, 0.07) 1px 2.4px);
+  --mat-edge:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  --mat-depth: 1.05;
+  /* A whole body panel is brushed in straight lines, not spun. */
+  --surface-tex:
+    linear-gradient(100deg, rgba(255, 255, 255, 0) 20%, rgba(255, 255, 255, 0.14) 45%, rgba(255, 255, 255, 0) 70%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0 1px, rgba(0, 0, 0, 0.06) 1px 3px);
+}
+
+/* Chrome: a mirror. What it shows is a reflected horizon -- bright sky,
+   a dark ground line just below the middle, a lit floor -- tinted by the
+   body colour beneath. */
+:root[data-material="chrome"] {
+  --gloss-op: 0.9;
+  --mat-tex:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.62) 0%,
+      rgba(255, 255, 255, 0.16) 30%,
+      rgba(255, 255, 255, 0.04) 46%,
+      rgba(0, 0, 0, 0.55) 52%,
+      rgba(0, 0, 0, 0.2) 60%,
+      rgba(255, 255, 255, 0.22) 78%,
+      rgba(255, 255, 255, 0.42) 100%
+    ),
+    linear-gradient(100deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, 0.25) 48%, rgba(255, 255, 255, 0) 60%);
+  --mat-edge:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+    inset 0 0 0 2px rgba(0, 0, 0, 0.25);
+  --mat-depth: 1.1;
+  /* Across a whole panel a sharp horizon line reads as a rendering fault;
+     a broad soft reflection reads as polished metal. */
+  --surface-tex:
+    linear-gradient(170deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.06) 40%, rgba(0, 0, 0, 0.2) 62%, rgba(255, 255, 255, 0.14) 100%),
+    linear-gradient(100deg, rgba(255, 255, 255, 0) 35%, rgba(255, 255, 255, 0.16) 50%, rgba(255, 255, 255, 0) 65%);
+}
+
+/* Carbon fibre: a 2x2 twill weave under a thick clear coat. */
+:root[data-material="carbon"] {
+  --gloss-op: 0.75;
+  --mat-tex:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 45%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 50%, rgba(0, 0, 0, 0.22) 50% 100%) 0 0 / 6px 3px,
+    linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0 50%, rgba(0, 0, 0, 0.22) 50% 100%) 3px 3px / 3px 6px,
+    linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.5));
+  --mat-edge: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --mat-depth: 1;
+  /* The weave catches the light in a broad diagonal band under the coat. */
+  --surface-tex:
+    linear-gradient(115deg, rgba(255, 255, 255, 0) 25%, rgba(255, 255, 255, 0.08) 45%, rgba(255, 255, 255, 0) 65%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0 50%, rgba(0, 0, 0, 0.2) 50% 100%) 0 0 / 8px 4px,
+    linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0 50%, rgba(0, 0, 0, 0.2) 50% 100%) 4px 4px / 4px 8px;
+}
+
+/* Crystal: smoked translucent plastic -- the body colour as tinted glass,
+   a bright refracted edge and a caustic hot spot opposite the light. */
+:root[data-material="crystal"] {
+  --gloss-op: 0.95;
+  --mat-tex:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0) 42%),
+    radial-gradient(60% 45% at 62% 82%, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 70%);
+  --shell-glass: linear-gradient(177deg, rgba(var(--shell-rgb), 0.32), rgba(var(--shell-rgb), 0.62));
+  --mat-edge:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.4),
+    inset 0 0 10px rgba(255, 255, 255, 0.12);
+  --mat-depth: 0.75;
+}
+
+:root[data-material="crystal"] .button-control:not(.active),
+:root[data-material="crystal"] .trigger-control {
+  background: var(--mat-tex), var(--shell-glass);
+}
+
+:root[data-material="crystal"] .dpad-arm {
+  background: var(--mat-tex), var(--arm-shade), var(--shell-glass);
+}
+
+:root[data-material="crystal"] .dpad-hub {
+  /* Nearly opaque: the hub covers the seam where the arms meet, and clear
+     glass there just shows that seam. */
+  background: var(--mat-tex), linear-gradient(177deg, rgba(var(--shell-rgb), 0.85), rgba(var(--shell-rgb), 0.95));
+}
+
+/* Pearl: an iridescent pearlescent coat that shifts hue across the dome. */
+:root[data-material="pearl"] {
+  --gloss-op: 0.85;
+  --mat-tex:
+    conic-gradient(
+      from 200deg at 35% 25%,
+      rgba(255, 170, 220, 0.24),
+      rgba(160, 210, 255, 0.24),
+      rgba(170, 255, 215, 0.2),
+      rgba(255, 238, 170, 0.22),
+      rgba(255, 170, 220, 0.24)
+    ),
+    radial-gradient(80% 60% at 50% 20%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 70%);
+  --mat-edge: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  --mat-depth: 0.95;
+}
+
+/* Neon: a near-black body with an emissive edge and lit legends in each
+   control's own colour. */
+:root[data-material="neon"] {
+  --gloss-op: 0.3;
+  --mat-tex: linear-gradient(180deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7));
+  --mat-edge:
+    inset 0 0 0 1.5px rgba(var(--tint, var(--accent-rgb)), calc(0.75 * var(--glow-intensity))),
+    inset 0 0 14px -2px rgba(var(--tint, var(--accent-rgb)), calc(0.5 * var(--glow-intensity))),
+    0 0 18px -6px rgba(var(--tint, var(--accent-rgb)), calc(0.9 * var(--glow-intensity)));
+  --mat-depth: 1.1;
+}
+
+:root[data-material="neon"] .button-control:not(.active),
+:root[data-material="neon"] .trigger-label {
+  color: rgb(var(--tint, var(--accent-rgb)));
+  text-shadow: 0 0 calc(6px * var(--glow-intensity)) rgba(var(--tint, var(--accent-rgb)), 0.9);
+}
+
+:root[data-material="neon"] .trigger-control {
+  box-shadow: var(--mat-edge), var(--rim), var(--raise);
+}
+
+/* ============================================================
+   FACE BUTTON STYLES
+   ============================================================ */
+
+/* Jewel: translucent coloured caps lit from inside, the way the original
+   360 pad's face buttons look. */
+:root[data-face-style="jewel"] .button-control[data-face]:not(.active) {
+  background:
+    radial-gradient(62% 48% at 50% 26%, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0) 72%),
+    radial-gradient(circle at 50% 70%, rgba(var(--tint), 0.98), rgba(var(--tint), 0.62) 68%, rgba(0, 0, 0, 0.45) 100%);
+  border-color: rgba(var(--tint), 0.95);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+
+:root[data-face-style="jewel"] .button-control[data-face].active {
+  background:
+    radial-gradient(circle at 50% 60%, rgba(255, 255, 255, 0.4), rgba(var(--tint), 1) 55%, rgba(var(--tint), 0.75));
+}
+
+/* Mono: one colour for everything, the way an all-black or all-white
+   special edition looks. The press still lights in the accent. */
+:root[data-face-style="mono"] .button-control[data-face] {
+  --tint: var(--accent-rgb);
+}
+
+:root[data-face-style="mono"] .button-control[data-face]:not(.active) {
+  border-color: var(--control-border);
+  color: var(--cap-fg);
+}
+
+/* Accent: every face button in the player's accent colour. */
+:root[data-face-style="accent"] .button-control[data-face] {
+  --tint: var(--accent-rgb);
+}
+
+/* ============================================================
+   LEGENDS
+   ============================================================ */
+
+/* Engraved: cut into the cap -- the light catches the lower lip of each
+   stroke and the upper lip falls into shadow. */
+:root[data-label-style="engraved"] .button-control:not(.active),
+:root[data-label-style="engraved"] .trigger-label {
+  color: color-mix(in srgb, var(--cap-fg) 80%, rgb(var(--shell-rgb)));
+  text-shadow:
+    0 -1px 0 rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Backlit: legends lit from behind, in the button's own colour. */
+:root[data-label-style="backlit"] .button-control:not(.active),
+:root[data-label-style="backlit"] .trigger-label {
+  color: color-mix(in srgb, rgb(var(--tint, var(--accent-rgb))) 70%, #fff);
+  text-shadow:
+    0 0 calc(4px * var(--glow-intensity)) rgba(var(--tint, var(--accent-rgb)), 0.95),
+    0 0 calc(11px * var(--glow-intensity)) rgba(var(--tint, var(--accent-rgb)), 0.6);
+}
+
+:root[data-label-style="backlit"] .dpad-arrow {
+  --arrow-color: color-mix(in srgb, var(--accent) 70%, #fff);
+  opacity: 0.9;
+  filter: drop-shadow(0 0 3px rgba(var(--accent-rgb), 0.9));
+}
+
+/* ============================================================
+   THUMBSTICKS
+   ============================================================ */
+
+:root[data-stick-color="body"] .stick-control:not(.tinted) .stick-knob {
+  background:
+    var(--mat-tex),
+    radial-gradient(circle at 50% 120%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 52%),
+    var(--shell);
+}
+
+:root[data-stick-color="black"] .stick-control:not(.tinted) .stick-knob {
+  background:
+    var(--mat-tex),
+    radial-gradient(circle at 50% 120%, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 52%),
+    linear-gradient(172deg, #3b3e46 0%, #1e2025 55%, #0f1013 100%);
+}
+
+/* Dome: a convex cap, like a PlayStation stick, instead of a dished one. */
+:root[data-stick-style="dome"] .stick-knob::before {
+  inset: 9%;
+  background:
+    radial-gradient(circle at 50% 24%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 52%),
+    radial-gradient(circle at 50% 82%, rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0) 60%);
+  box-shadow:
+    inset 0 -3px 6px rgba(0, 0, 0, 0.38),
+    0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+:root[data-stick-style="dome"] .stick-knob::after {
+  opacity: 0.25;
+}
+
+/* Pro grip: a dished top with a stippled grip pattern and a metal collar
+   ring, after the "elite" style of stick. */
+:root[data-stick-style="pro"] .stick-knob {
+  box-shadow:
+    0 0 0 1.5px rgba(255, 255, 255, 0.4),
+    0 0 0 3px rgba(0, 0, 0, 0.55),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -8px 13px rgba(0, 0, 0, 0.45),
+    0 8px 16px -4px rgba(0, 0, 0, 0.72);
+}
+
+:root[data-stick-style="pro"] .stick-knob::before {
+  background:
+    radial-gradient(circle, rgba(0, 0, 0, 0.32) 0.9px, rgba(0, 0, 0, 0) 1.2px) 0 0 / 4px 4px,
+    radial-gradient(circle at 50% 128%, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0) 55%),
+    radial-gradient(circle at 50% 8%, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.06) 62%);
+}
+
+:root[data-stick-style="pro"] .stick-knob::after {
+  background: repeating-conic-gradient(from 0deg, rgba(0, 0, 0, 0.4) 0deg 2deg, rgba(255, 255, 255, 0.16) 2deg 4deg);
+  opacity: 0.8;
+}
+
+/* ============================================================
+   PLAY SURFACE: the controller body, edge to edge
+   ============================================================ */
+
+:root[data-surface="shell"] .controls-surface {
+  background:
+    var(--surface-tex, var(--mat-tex)),
+    radial-gradient(120% 85% at 50% -10%, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 60%),
+    var(--shell);
+}
+
+/* A moulded body is curved: the edges roll away from the light. */
+:root[data-surface="shell"] .controls-surface::before {
+  opacity: 1;
+  background:
+    radial-gradient(140% 120% at 50% 40%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.42) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 18%);
+}
+
+/* Glass would show nothing behind it here; the body is drawn as frosted
+   instead so it stays a surface. */
+:root[data-surface="shell"][data-material="crystal"] .controls-surface {
+  background:
+    var(--mat-tex),
+    linear-gradient(177deg, rgba(var(--shell-rgb), 0.55), rgba(var(--shell-rgb), 0.85)),
+    var(--bg);
+}
+
+:root.high-contrast[data-surface="shell"] .controls-surface {
+  background: var(--bg);
+}
+
+/* ============================================================
+   GUIDE BUTTON & RING OF LIGHT
+   ============================================================ */
+
+.guide-control {
+  border-radius: 50%;
+}
+
+.guide-ring {
+  position: absolute;
+  inset: 7%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Four quadrants of a ring, each a conic wedge masked to a thin band. Lit
+   when the player slot matches -- quadrant order as on the real pad:
+   1 top-left, 2 top-right, 3 bottom-left, 4 bottom-right. */
+.guide-ring i {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  --q-color: color-mix(in srgb, var(--cap-fg) 22%, transparent);
+  -webkit-mask: radial-gradient(circle closest-side, transparent 74%, #000 77%, #000 92%, transparent 95%);
+  mask: radial-gradient(circle closest-side, transparent 74%, #000 77%, #000 92%, transparent 95%);
+  transition: filter 0.2s ease-out;
+}
+
+.guide-ring i[data-q="0"] {
+  background: conic-gradient(from 285deg, var(--q-color) 0 60deg, transparent 0);
+}
+.guide-ring i[data-q="1"] {
+  background: conic-gradient(from 15deg, var(--q-color) 0 60deg, transparent 0);
+}
+.guide-ring i[data-q="2"] {
+  background: conic-gradient(from 195deg, var(--q-color) 0 60deg, transparent 0);
+}
+.guide-ring i[data-q="3"] {
+  background: conic-gradient(from 105deg, var(--q-color) 0 60deg, transparent 0);
+}
+
+:root[data-player="0"] .guide-ring i[data-q="0"],
+:root[data-player="1"] .guide-ring i[data-q="1"],
+:root[data-player="2"] .guide-ring i[data-q="2"],
+:root[data-player="3"] .guide-ring i[data-q="3"] {
+  --q-color: var(--ring-color);
+  filter: drop-shadow(0 0 calc(4px * var(--glow-intensity)) rgba(var(--accent-rgb), 0.95));
+}
+
+/* No slot yet (still connecting, or an older host): the whole ring breathes,
+   the way the real one cycles while it searches. */
+:root:not([data-player]) .guide-ring {
+  animation: ring-search 2.4s ease-in-out infinite;
+}
+
+@keyframes ring-search {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.guide-glyph {
+  position: relative;
+  z-index: 2;
+  font-size: 1.15em;
+  line-height: 1;
+}
+
+:root.high-contrast .guide-ring {
+  display: none;
+}
+
+/* ---- Player chip in the top bar ---- */
+
+.status-player {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.15rem;
+  padding-left: 0.5rem;
+  border-left: 1px solid var(--border);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.status-player[hidden] {
+  display: none;
+}
+
+.player-ring {
+  position: relative;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 285deg,
+    var(--q0, rgba(255, 255, 255, 0.22)) 0 60deg,
+    transparent 0 90deg,
+    var(--q1, rgba(255, 255, 255, 0.22)) 0 150deg,
+    transparent 0 180deg,
+    var(--q3, rgba(255, 255, 255, 0.22)) 0 240deg,
+    transparent 0 270deg,
+    var(--q2, rgba(255, 255, 255, 0.22)) 0 330deg,
+    transparent 0
+  );
+  -webkit-mask: radial-gradient(circle closest-side, transparent 58%, #000 64%);
+  mask: radial-gradient(circle closest-side, transparent 58%, #000 64%);
+}
+
+.player-ring i {
+  display: none;
+}
+
+:root[data-player="0"] .player-ring {
+  --q0: var(--accent);
+}
+:root[data-player="1"] .player-ring {
+  --q1: var(--accent);
+}
+:root[data-player="2"] .player-ring {
+  --q2: var(--accent);
+}
+:root[data-player="3"] .player-ring {
+  --q3: var(--accent);
+}
+
+/* ============================================================
+   RUMBLE
+   ============================================================ */
+
+/* The pad's edges pulse with the game's rumble, scaled by --rumble (0-1).
+   This is what a phone that cannot vibrate shows instead, and it reads as
+   the controller shaking even with the sound off. */
+.surface-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0;
+  box-shadow:
+    inset 0 0 calc(18px + 48px * var(--rumble, 0)) calc(2px + 8px * var(--rumble, 0))
+    rgba(var(--accent-rgb), calc(0.18 + 0.5 * var(--rumble, 0)));
+  transition: opacity 0.12s ease-out;
+}
+
+.surface-wrap.rumbling::after {
+  opacity: 1;
+  animation: rumble-pulse 0.11s ease-in-out infinite alternate;
+}
+
+@keyframes rumble-pulse {
+  from {
+    opacity: 0.65;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Heavy-motor rumble also shakes the pad by a pixel or two. Small enough
+   that a thumb never misses a control because of it. */
+.surface-wrap.rumbling-hard .controls-surface {
+  animation: rumble-shake 0.08s linear infinite;
+}
+
+@keyframes rumble-shake {
+  0% {
+    translate: 0 0;
+  }
+  25% {
+    translate: calc(1.5px * var(--rumble, 0)) calc(-1px * var(--rumble, 0));
+  }
+  50% {
+    translate: calc(-1px * var(--rumble, 0)) calc(1.5px * var(--rumble, 0));
+  }
+  75% {
+    translate: calc(1px * var(--rumble, 0)) calc(1px * var(--rumble, 0));
+  }
+  100% {
+    translate: 0 0;
+  }
+}
+
+:root.reduce-motion .surface-wrap.rumbling-hard .controls-surface,
+:root.reduce-motion .surface-wrap.rumbling::after,
+:root.reduce-motion:not([data-player]) .guide-ring {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .surface-wrap.rumbling-hard .controls-surface,
+  .surface-wrap.rumbling::after,
+  :root:not([data-player]) .guide-ring {
+    animation: none;
+  }
+}
+
+:root.high-contrast .surface-wrap::after {
+  box-shadow: inset 0 0 0 calc(4px * var(--rumble, 0)) #fff;
+}
+
+/* ============================================================
+   SETTINGS: body colour swatches
+   ============================================================ */
+
+.body-swatch {
+  box-shadow:
+    inset 0 -4px 6px rgba(0, 0, 0, 0.35),
+    inset 0 2px 3px rgba(255, 255, 255, 0.35),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.45);
+}
+
+/* "Follow the theme" is drawn as the theme's own shell, split with its
+   accent, so it previews what picking it does. */
+.body-swatch-theme {
+  background:
+    linear-gradient(135deg, transparent 50%, var(--accent) 50%),
+    var(--shell);
+}
+
+/* ============================================================
+   HIGH CONTRAST: none of the above survives
+   ============================================================
+   Must stay last: same specificity as the material blocks, order wins. */
+:root.high-contrast {
+  --mat-tex: none;
+  --mat-edge: 0 0 rgba(0, 0, 0, 0);
+  --shell-glass: none;
+  --cap-fg: #fff;
+  --cap-emboss: none;
+}
+
+:root.high-contrast[data-face-style] .button-control[data-face]:not(.active),
+:root.high-contrast[data-material] .button-control:not(.active) {
+  background: #000;
+  color: #fff;
+  text-shadow: none;
+}
+
+:root.high-contrast[data-label-style] .button-control,
+:root.high-contrast[data-label-style] .trigger-label {
+  text-shadow: none;
+}
+
+:root.high-contrast[data-label-style] .dpad-arrow {
+  filter: none;
+}

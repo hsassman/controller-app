@@ -5,6 +5,7 @@ import "./style.css";
 import "./styles/dialogs.css";
 import "./styles/shell.css";
 import "./styles/settings-extra.css";
+import "./styles/finish.css";
 import { renderConnectScreen } from "./screens/connect.ts";
 import { renderControllerScreen } from "./screens/controller.ts";
 import { loadSettings, applyHighContrast } from "./settings.ts";

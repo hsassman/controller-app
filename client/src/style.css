@@ -230,13 +230,13 @@
 }
 
 /* Face-button tint rings would be sub-contrast greys here. */
-:root.high-contrast .button-control[data-control-id^="face-"] {
+:root.high-contrast .button-control[data-face] {
   border-color: #fff;
   color: #fff;
 }
 
 :root.high-contrast .button-control.active,
-:root.high-contrast .button-control[data-control-id^="face-"].active {
+:root.high-contrast .button-control[data-face].active {
   background: var(--control-active-bg);
   border-color: #fff;
   color: #000;
@@ -817,20 +817,20 @@ button:disabled {
 }
 
 /* Per-button tint ring, in the colour language of a real gamepad. */
-.button-control[data-control-id="face-a"] {
+.button-control[data-face="a"] {
   --tint: var(--ok-rgb);
 }
-.button-control[data-control-id="face-b"] {
+.button-control[data-face="b"] {
   --tint: var(--danger-rgb);
 }
-.button-control[data-control-id="face-x"] {
+.button-control[data-face="x"] {
   --tint: var(--accent-rgb);
 }
-.button-control[data-control-id="face-y"] {
+.button-control[data-face="y"] {
   --tint: var(--warn-rgb);
 }
 
-.button-control[data-control-id^="face-"] {
+.button-control[data-face] {
   border-color: rgba(var(--tint), 0.5);
   color: color-mix(in srgb, rgb(var(--tint)) 55%, var(--fg));
 }
@@ -872,7 +872,7 @@ button:disabled {
     inset 0 3px 8px rgba(0, 0, 0, 0.5);
 }
 
-.button-control[data-control-id^="face-"].active {
+.button-control[data-face].active {
   background:
     linear-gradient(180deg, rgba(var(--tint), 0.85), rgba(var(--tint), 0.5)),
     var(--control-active-bg);

@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 use futures_util::{FutureExt, SinkExt, StreamExt};
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::net::TcpListener;
+use tokio::sync::broadcast;
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use tokio_tungstenite::tungstenite::Message;
 
@@ -45,7 +46,21 @@ const MAX_MALFORMED_LOGS: u32 = 5;
 /// is already a dead link.
 const IDLE_TIMEOUT: Duration = Duration::from_secs(6);
 
-use crate::frame::{pong_for, InputFrame, FRAME_TYPE_INPUT};
+use crate::frame::{
+    pong_for, rumble_frame, InputFrame, FRAME_TYPE_INPUT, NO_PLAYER, RUMBLE_FRAME_SIZE,
+};
+
+/// What the game last asked of the pad: motor speeds plus player slot, as
+/// the frame the phone is sent.
+pub type FeedbackFrame = [u8; RUMBLE_FRAME_SIZE];
+
+/// The rumble/LED state as shown in the host window.
+#[derive(Clone, Copy, serde::Serialize)]
+struct FeedbackPayload {
+    large: u8,
+    small: u8,
+    player: Option<u8>,
+}
 
 /// Public so the HTTP server can report it to the phone in
 /// /host-info.json, which is what lets the page connect itself.
@@ -133,13 +148,23 @@ pub struct PadState {
     /// Live client connections. Used to decide who owns the pad's state:
     /// the pad is only reset to neutral when the *last* client goes away.
     active_clients: AtomicUsize,
+    /// Rumble / player-LED changes, fanned out to every connected phone.
+    feedback: broadcast::Sender<FeedbackFrame>,
+    /// The newest feedback, so a phone that connects mid-game (or one that
+    /// fell behind the broadcast) starts from the real state.
+    last_feedback: Mutex<FeedbackFrame>,
 }
 
 impl PadState {
     fn new(pad: PadSlot) -> SharedPad {
+        // Small: a phone that cannot keep up only ever needs the newest
+        // state, which `last_feedback` holds regardless.
+        let (feedback, _) = broadcast::channel(16);
         Arc::new(PadState {
             pad: Mutex::new(pad),
             active_clients: AtomicUsize::new(0),
+            feedback,
+            last_feedback: Mutex::new(rumble_frame(0, 0, NO_PLAYER)),
         })
     }
 
@@ -153,39 +178,59 @@ impl PadState {
             poisoned.into_inner()
         })
     }
+
+    #[cfg_attr(not(windows), allow(dead_code))]
+    pub fn is_ready(&self) -> bool {
+        self.lock().is_some()
+    }
+
+    fn last_feedback(&self) -> FeedbackFrame {
+        *self.last_feedback.lock().unwrap_or_else(|p| p.into_inner())
+    }
+
+    /// Records new motor/LED state and pushes it to every phone and to the
+    /// host window. Callable from any thread.
+    pub fn publish_feedback(&self, app: &AppHandle, large: u8, small: u8, player: u8) {
+        let frame = rumble_frame(large, small, player);
+        *self.last_feedback.lock().unwrap_or_else(|p| p.into_inner()) = frame;
+        // An error only means no phone is connected right now.
+        let _ = self.feedback.send(frame);
+        let player = (player < 4).then_some(player);
+        let _ = app.emit(
+            "rumble",
+            FeedbackPayload {
+                large,
+                small,
+                player,
+            },
+        );
+        if let Some(state) = app.try_state::<crate::status::SharedStatus>() {
+            state.update(|s| s.player = player);
+        }
+    }
+
+    /// Re-sends the current player slot with the motors set as given, for the
+    /// host window's "Test rumble" button.
+    pub fn publish_test_rumble(&self, app: &AppHandle, large: u8, small: u8) {
+        let player = self.last_feedback()[3];
+        self.publish_feedback(app, large, small, player);
+    }
 }
 
 pub type SharedPad = Arc<PadState>;
 
+/// Creates the shared pad state and tries once to plug in the virtual
+/// controller. A failure is not final: see `retry_until_ready`.
 pub fn create_pad(app_handle: &AppHandle) -> SharedPad {
+    let pad = PadState::new(None);
     #[cfg(windows)]
     {
-        match crate::gamepad::VirtualGamepad::connect() {
-            Ok(mut pad) => {
-                match pad.user_index() {
-                    Some(idx) => println!(
-                        "virtual Xbox 360 controller plugged in (XInput slot {idx}) \
-                         -- it stays plugged in until this app exits"
-                    ),
-                    None => println!(
-                        "virtual Xbox 360 controller plugged in (XInput slot unknown) \
-                         -- it stays plugged in until this app exits"
-                    ),
-                }
-                let _ = app_handle.emit("pad-ready", true);
-                if let Some(state) = app_handle.try_state::<crate::status::SharedStatus>() {
-                    state.update(|s| s.pad_ready = true);
-                }
-                PadState::new(Some(pad))
-            }
-            Err(err) => {
-                eprintln!("FAILED to create virtual gamepad: {err}");
-                eprintln!("input will be received and logged, but no controller will be driven.");
-                let _ = app_handle.emit("vigembus-missing", ());
-                if let Some(state) = app_handle.try_state::<crate::status::SharedStatus>() {
-                    state.update(|s| s.vigembus_missing = true);
-                }
-                PadState::new(None)
+        if let Err(err) = try_plug(&pad, app_handle) {
+            eprintln!("FAILED to create virtual gamepad: {err}");
+            eprintln!("input will be received and logged, but no controller will be driven.");
+            let _ = app_handle.emit("vigembus-missing", ());
+            if let Some(state) = app_handle.try_state::<crate::status::SharedStatus>() {
+                state.update(|s| s.vigembus_missing = true);
             }
         }
     }
@@ -193,7 +238,81 @@ pub fn create_pad(app_handle: &AppHandle) -> SharedPad {
     {
         let _ = app_handle;
         eprintln!("virtual gamepad injection is Windows-only for now");
-        PadState::new(None)
+    }
+    pad
+}
+
+/// Plugs the virtual controller in and starts listening for rumble. On
+/// success the window and phone are told the pad is live.
+#[cfg(windows)]
+pub fn try_plug(
+    pad: &SharedPad,
+    app_handle: &AppHandle,
+) -> Result<(), crate::gamepad::GamepadError> {
+    let mut virtual_pad = crate::gamepad::VirtualGamepad::connect()?;
+    let slot = virtual_pad
+        .user_index()
+        .filter(|idx| *idx < 4)
+        .map(|idx| idx as u8);
+    match slot {
+        Some(idx) => println!(
+            "virtual Xbox 360 controller plugged in (XInput slot {idx}) \
+             -- it stays plugged in until this app exits"
+        ),
+        None => println!(
+            "virtual Xbox 360 controller plugged in (XInput slot unknown) \
+             -- it stays plugged in until this app exits"
+        ),
+    }
+
+    // Weak, not Arc: the feedback thread must not keep the pad state alive
+    // on its own, and it has nothing to do once the app is shutting down.
+    let weak = Arc::downgrade(pad);
+    let feedback_app = app_handle.clone();
+    if let Err(err) = virtual_pad.watch_feedback(move |large, small, player| {
+        if let Some(pad) = weak.upgrade() {
+            pad.publish_feedback(&feedback_app, large, small, player);
+        }
+    }) {
+        // Rumble is a bonus; a pad that cannot report it still plays.
+        eprintln!("rumble forwarding unavailable: {err}");
+    }
+
+    *pad.lock() = Some(virtual_pad);
+    pad.publish_feedback(app_handle, 0, 0, slot.unwrap_or(NO_PLAYER));
+    let _ = app_handle.emit("pad-ready", true);
+    if let Some(state) = app_handle.try_state::<crate::status::SharedStatus>() {
+        state.update(|s| {
+            s.pad_ready = true;
+            s.vigembus_missing = false;
+        });
+    }
+    crate::desktop::refresh_tray(app_handle);
+    Ok(())
+}
+
+/// Keeps trying to plug the pad in while the driver is missing, so
+/// installing ViGEmBus with this app open is enough -- no restart, and the
+/// phone's warning clears by itself.
+pub async fn retry_until_ready(pad: SharedPad, app_handle: AppHandle) {
+    #[cfg(windows)]
+    loop {
+        if pad.is_ready() {
+            return;
+        }
+        tokio::time::sleep(Duration::from_secs(3)).await;
+        let attempt_pad = Arc::clone(&pad);
+        let attempt_app = app_handle.clone();
+        let result =
+            tokio::task::spawn_blocking(move || try_plug(&attempt_pad, &attempt_app)).await;
+        if let Ok(Ok(())) = result {
+            println!("ViGEmBus is available now -- controller plugged in");
+            return;
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (pad, app_handle);
     }
 }
 
@@ -282,21 +401,62 @@ async fn handle_connection(
     let mut lease = ClientLease::acquire(&pad, peer_addr, app_handle.clone());
     let (mut write, mut read) = ws_stream.split();
     let mut throttle = EmitThrottle::new();
+    // Subscribed before the initial send below, so no change can fall in the
+    // gap between reading the current state and listening for the next.
+    let mut feedback_rx = pad.feedback.subscribe();
 
     let mut ended_with: Result<(), tokio_tungstenite::tungstenite::Error> = Ok(());
     let mut last_pong_at: Option<Instant> = None;
     let mut malformed_logged: u32 = 0;
 
+    // Tells the phone its player number straight away (and any rumble a
+    // game is already holding), rather than waiting for the next change.
+    if write
+        .send(Message::Binary(pad.last_feedback().to_vec()))
+        .await
+        .is_err()
+    {
+        return Ok(());
+    }
+
+    let idle = tokio::time::sleep(IDLE_TIMEOUT);
+    tokio::pin!(idle);
+
     loop {
-        let msg = match tokio::time::timeout(IDLE_TIMEOUT, read.next()).await {
-            Ok(Some(Ok(msg))) => msg,
-            Ok(Some(Err(err))) => {
-                ended_with = Err(err);
-                break;
+        let msg = tokio::select! {
+            // Input first: a rumble burst must never delay a button press.
+            biased;
+            next = read.next() => {
+                idle.as_mut().reset(tokio::time::Instant::now() + IDLE_TIMEOUT);
+                match next {
+                    Some(Ok(msg)) => msg,
+                    Some(Err(err)) => {
+                        ended_with = Err(err);
+                        break;
+                    }
+                    // Stream ended cleanly.
+                    None => break,
+                }
             }
-            // Stream ended cleanly.
-            Ok(None) => break,
-            Err(_) => {
+            feedback = feedback_rx.recv() => {
+                let frame = match feedback {
+                    Ok(frame) => frame,
+                    // Fell behind: only the newest state matters anyway.
+                    Err(broadcast::error::RecvError::Lagged(_)) => pad.last_feedback(),
+                    // Cannot happen while `pad` holds the sender; resubscribe
+                    // rather than spin on a closed channel if it ever does.
+                    Err(broadcast::error::RecvError::Closed) => {
+                        feedback_rx = pad.feedback.subscribe();
+                        continue;
+                    }
+                };
+                if let Err(err) = write.send(Message::Binary(frame.to_vec())).await {
+                    ended_with = Err(err);
+                    break;
+                }
+                continue;
+            }
+            _ = &mut idle => {
                 eprintln!(
                     "no traffic from {peer_addr} for {}s -- treating the link as dead and \
                      releasing the pad",
@@ -450,6 +610,7 @@ impl ClientLease {
     fn acquire(pad: &SharedPad, peer_addr: std::net::SocketAddr, app_handle: AppHandle) -> Self {
         let clients = pad.active_clients.fetch_add(1, Ordering::SeqCst) + 1;
         println!("client connected: {peer_addr} ({clients} connected)");
+        record_clients(&app_handle, clients);
         let _ = app_handle.emit(
             "client-state",
             ConnectionPayload {
@@ -486,6 +647,7 @@ impl Drop for ClientLease {
             "client disconnected: {} ({} frames applied, {remaining} still connected)",
             self.peer_addr, self.frames_applied
         );
+        record_clients(&self.app_handle, remaining);
 
         let _ = self.app_handle.emit(
             "client-state",
@@ -512,6 +674,16 @@ impl Drop for ClientLease {
             );
         }
     }
+}
+
+/// Mirrors the connection count into the status snapshot and the tray, so
+/// a window opened (or reloaded) mid-session shows the truth instead of
+/// "waiting" until the next connect/disconnect event happens to fire.
+fn record_clients(app: &AppHandle, clients: usize) {
+    if let Some(state) = app.try_state::<crate::status::SharedStatus>() {
+        state.update(|s| s.clients = clients);
+    }
+    crate::desktop::refresh_tray(app);
 }
 
 fn parse_frame(bytes: &[u8]) -> Option<InputFrame> {

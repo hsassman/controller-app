@@ -18,20 +18,24 @@ Every phone-as-gamepad tool asks you to install an app on the phone, sign in, or
 
 ## Getting started
 
-### Just want to play? (recommended — works on any Windows PC, nothing to install but one driver)
+### Just want to play? (recommended)
 
-The app ships as a **portable build**: one `.exe` and a folder of static files. No Node.js, no Rust, no build step, on the PC you're actually going to play on.
+Download one of these from the [latest release](../../releases/latest) — or from the **Actions → Windows build** run of any commit, which builds them for you:
 
-1. Install [ViGEmBus](https://github.com/ViGEm/ViGEmBus/releases) (the driver that creates the virtual controller — this is the only thing that has to be installed, and only once per PC).
-2. Download `PhoneController-Portable.zip` from the [latest release](../../releases/latest) and copy it to the PC you want to play on.
-3. Unzip it anywhere, double-click **`controller-host.exe`**.
-   - Windows will likely show a **"Windows protected your PC"** SmartScreen prompt the first time, because the exe isn't code-signed. Click **More info → Run anyway**. That's expected for an app shared this way, not a sign anything is wrong.
-4. A window opens showing a **QR code**. Point your phone's camera at it.
+| File | What it is |
+| --- | --- |
+| **`Phone Controller_<version>_x64-setup.exe`** | The installer. One Windows permission prompt, and it does every setup step: installs the app with Start menu and desktop shortcuts, installs the ViGEmBus gamepad driver if it's missing, and lets phones on your network through Windows Firewall. |
+| **`PhoneController.exe`** | Portable — a single file, nothing to unzip (the phone page is built into it). Put it anywhere and double-click it. |
 
-That's it — no typing an IP on a phone keypad, and the page connects itself once it opens. The address is printed under the code if you'd rather type it.
+Then:
 
-> Both devices must be on the same Wi-Fi. If Windows Firewall prompts on the first run, allow it on **private networks**.
-> To type the address manually instead, the host window shows that too.
+1. Start **Phone Controller**. Windows may show **"Windows protected your PC"** the first time, because the exe isn't code-signed — click **More info → Run anyway**.
+   - Used the portable exe and don't have the driver yet? The window says so and has an **Install driver** button: approve the prompt, click through the installer, and the controller plugs itself in — no restart.
+2. Point your phone's camera at the **QR code** in the window. The page opens and connects by itself.
+
+That's the whole setup. The app also **starts with Windows** and sits in the system tray (both switchable in its window), so from then on you just open the page — or the Home Screen icon — on your phone and play. Closing the window keeps it running in the tray; **Quit** in the window or the tray menu stops it.
+
+> Both devices must be on the same Wi-Fi. If the phone can't connect, click **Fix firewall** in the window — it replaces whatever Windows decided on its first-run prompt (pressing *Cancel* there silently blocks the app) with a rule that lets in devices on your own network only.
 
 ### Play fullscreen: add it to your Home Screen
 
@@ -47,20 +51,20 @@ If your network blocks mDNS — some guest networks and access points with clien
 
 > Offline caching needs a secure origin, which a plain `http://` LAN address isn't, so the app always loads fresh over Wi-Fi rather than from a cache. Harmless here — your phone is on the same network as the host by definition.
 
-**Building the portable zip yourself** (needs Node.js + Rust on the *building* machine only — not on the machine you'll play on):
+**Building the downloads yourself** (needs Node.js + Rust on the *building* machine only — not on the machine you'll play on):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\Package-Release.ps1
 ```
 
-This produces `PhoneController-Portable.zip` in the repo root. Copy that one file to any Windows PC, and steps 2–4 above are all that PC ever needs.
+This puts `PhoneController.exe` and the installer in `release\`. Pushing to GitHub does the same in the cloud: the **Windows build** workflow uploads both as an artifact on every push to `main`, and attaches them to a GitHub Release when you push a tag like `v0.2.0`.
 
 ### Building from source and running directly (for developers)
 
-If you have Node.js and Rust installed and want to build-and-run in place rather than produce a portable zip:
+If you have Node.js and Rust installed and want to build-and-run in place rather than produce the downloads:
 
-1. Install [ViGEmBus](https://github.com/ViGEm/ViGEmBus/releases).
-2. Double-click **`Start-Controller.bat`**.
+1. Double-click **`Start-Controller.bat`**.
+2. If the window says the driver is missing, click **Install driver**.
 
 The first run builds the client and the host (a few minutes); every run after that just launches. If this reports Node.js or Rust as "not found" right after you installed them, see [Troubleshooting](#troubleshooting) below — it's almost always a stale PATH, not a bad install.
 
@@ -70,7 +74,7 @@ The first run builds the client and the host (a few minutes); every run after th
 
 ### Every control is editable
 
-Tap **Edit layout**, then tap any control to open its properties. Move it, resize it, recolour it, change its shape — and **remap it to any of the 14 gamepad inputs**. Sticks get their own dead zone, so movement can stay forgiving while aim stays tight.
+Tap **Edit layout**, then tap any control to open its properties. Move it, resize it, recolour it, change its shape — and **remap it to any of the 15 gamepad inputs, Guide included**. Sticks get their own dead zone, so movement can stay forgiving while aim stays tight.
 
 <p align="center">
   <img src="screenshots/03-editor.png" alt="The layout editor with a control's properties panel open" width="100%">
@@ -80,7 +84,7 @@ The editor has undo/redo (`Ctrl+Z`), snap-to-grid, duplicate (`Ctrl+D`), and a *
 
 ### Seven layout presets
 
-Start from a layout that already suits the game instead of dragging thirteen controls into place.
+Start from a layout that already suits the game instead of dragging fourteen controls into place.
 
 <p align="center">
   <img src="screenshots/04-presets.png" alt="The layout presets menu" width="100%">
@@ -100,11 +104,28 @@ Start from a layout that already suits the game instead of dragging thirteen con
 
 Each profile is a complete layout. Keep a shooter layout and a racing layout side by side and switch between them from the bar at the top. Profiles can be renamed, duplicated, exported to a file and imported back.
 
-### Themes and feel
+### Make it yours: body colour, finish, buttons, sticks
 
-Eight themes, a free-form accent colour, and control size, opacity and labels all adjustable. Vibration strength, stick dead zone and sensitivity curve are yours to tune.
+Build the pad the way a custom-controller designer would:
 
-Beyond colour, the pad's **material** changes how every control catches light — matte, gloss, brushed metal or neon — and the **d-pad** can be a moulded cross, four separate keys, or a round rocker disc. Press glow is a slider, down to off. **Dim when idle** fades the controls after a chosen pause and brings them straight back on the next touch, which is what you want when the phone is next to you between rounds or you're recording the screen.
+- **Controller body** — named colourways (Robot White, Carbon Black, Shock Blue, Pulse Red, Electric Volt, Deep Pink, Midnight Purple, Olive Camo, Gold Rush, Glacier Blue) or any colour at all. Legends switch to dark ink on light bodies automatically, so they stay readable.
+- **Finish** — nine of them, each lit differently: matte, soft-touch rubber, gloss, spun brushed metal, chrome, carbon fibre twill, smoked crystal, pearlescent and neon.
+- **Play surface** — keep the theme's dark backdrop, or paint the *whole screen* as the controller body, so the phone looks like the pad itself.
+- **Face buttons** — classic coloured letters, translucent jewel caps, mono, or all in your accent; letters, PlayStation glyphs or dots. Colours follow what a button *sends*, so remapping a button recolours it.
+- **Legends** — printed, engraved into the cap, or backlit.
+- **Thumbsticks** — concave, domed or pro-grip caps, in accent, body or black.
+- **D-pad** — a moulded cross, four separate keys, or a round rocker disc.
+
+On top of that: eight themes, a free accent colour, size, opacity, press glow, labels, a per-profile background photo, and **Dim when idle**. Save any combination as a **skin** and reapply it to any profile — or hit **Remix** for a random one.
+
+<p align="center">
+  <img src="screenshots/09-body-robot-white.png" alt="Robot White body, gloss finish, jewel face buttons, with A pressed and the edges pulsing from game rumble" width="100%">
+</p>
+
+<p align="center">
+  <img src="screenshots/10-finish-chrome.png" alt="Shock Blue body in chrome with engraved legends" width="49%">
+  <img src="screenshots/11-finish-carbon.png" alt="Carbon fibre finish with pro-grip black sticks" width="49%">
+</p>
 
 <p align="center">
   <img src="screenshots/05-settings.png" alt="The settings panel" width="70%">
@@ -131,9 +152,12 @@ Beyond colour, the pad's **material** changes how every control catches light �
 
 ### Details that matter in a game
 
+- **Game rumble on your phone.** When a game rumbles the controller, the phone vibrates with it, at the strength the game asked for. iPhones can't vibrate from a web page, so the pad's edges pulse with the rumble too — on by default, and it reads as the controller shaking even with the sound off.
+- **Player lights.** The Guide button has a ring of light that shows which player slot Windows gave the pad, just like the real one, and the top bar shows P1–P4.
+- **The Guide (Xbox) button** works — it reaches Steam's Big Picture and the Xbox Game Bar.
 - **100 Hz input**, sent as a fixed 15-byte binary frame — no JSON parsing in the hot path.
 - **Live latency readout** in the top bar, so "it feels laggy" has an actual number attached.
-- **Heartbeat detection.** A phone that walks out of Wi-Fi range produces no TCP reset, so the socket would sit open and the UI would keep claiming "Connected". A ping/pong heartbeat catches that and reconnects.
+- **Heartbeat detection.** A phone that walks out of Wi-Fi range produces no TCP reset, so the socket would sit open and the UI would keep claiming "Connected". A ping/pong heartbeat catches that and reconnects — at once when the phone wakes up or rejoins Wi-Fi, and within five seconds otherwise.
 - **Nothing gets stuck.** Rotating the phone, opening settings, switching profiles or disconnecting all release held inputs and flush a neutral frame first — because the host keeps applying the last frame it received, so "stop sending" is not the same as "release".
 - **A dead link releases the pad.** A phone that sleeps or leaves Wi-Fi sends no TCP close, so the host would otherwise sit on its last frame until Windows' keepalive noticed — hours later, with your character still running forward. The host drops a client that goes quiet for six seconds and returns the pad to neutral.
 - **Screen wake lock**, so the phone doesn't dim mid-game.
@@ -143,7 +167,11 @@ Beyond colour, the pad's **material** changes how every control catches light �
 
 ## Checking that it works
 
-The host window has a live input monitor — press something on the phone and the buttons light up, the stick dots move, the trigger bars fill. The window walks you through this on first run, and says plainly when the ViGEmBus driver is missing, which is the one failure that otherwise looks like a working connection: the phone connects, reports "Connected", and every press is silently discarded.
+<p align="center">
+  <img src="screenshots/12-host-window.png" alt="The Phone Controller window on the PC: QR code, address, and the live controller drawing with A lit" width="70%">
+</p>
+
+The window on the PC has a live drawing of the controller — press something on the phone and that button lights up, the sticks move, the triggers fill, and the game's rumble shows on two meters. **Test rumble** buzzes every connected phone, to check vibration without a game. The window walks you through this on first run, and says plainly when the ViGEmBus driver is missing, which is the one failure that otherwise looks like a working connection: the phone connects, reports "Connected", and every press is silently discarded.
 
 > **Windows' own "Game controllers" panel (`joy.cpl`) will not show it moving.** That panel reads the legacy DirectInput API, which Xbox-type controllers — real ones included — don't report through. It is not a sign that anything is wrong. Games and Steam read XInput and see the pad correctly.
 
@@ -151,9 +179,9 @@ The host window has a live input monitor — press something on the phone and th
 
 ## Requirements
 
-**To play** (the portable build): Windows with [ViGEmBus](https://github.com/ViGEm/ViGEmBus/releases) installed. Nothing else.
+**To play:** Windows 10 or 11. The installer adds the one driver it needs ([ViGEmBus](https://github.com/nefarius/ViGEmBus/releases)); the portable exe offers to install it with one click. The window itself uses Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already include.
 
-**To build** (either the portable zip or running from source): [Node.js](https://nodejs.org) and [Rust](https://rustup.rs), only on the machine doing the building. Never on the machine you're playing on.
+**To build** (the downloads, or running from source): [Node.js](https://nodejs.org) and [Rust](https://rustup.rs), only on the machine doing the building. Never on the machine you're playing on.
 
 ---
 
@@ -175,7 +203,7 @@ Rust on Windows needs the **Desktop development with C++** workload from the Vis
 
 ### None of this should matter for the person actually playing
 
-If you're setting this up for someone else, don't make them deal with any of the above — build `PhoneController-Portable.zip` yourself (see [Getting started](#getting-started)) and just send them that. It needs nothing but ViGEmBus.
+If you're setting this up for someone else, don't make them deal with any of the above — send them the installer from a release (or build it with `Package-Release.ps1`). It sets up everything, driver included.
 
 ### The address or QR code seems to change, or a typed address won't connect
 
@@ -195,7 +223,8 @@ If you're hitting this on a build from before it was fixed: close every "Control
  │                │  @ 100 Hz      │         │          │
  │                │                │         ▼          │
  │                │  ◀──────       │  ViGEmBus driver   │
- │                │  page + pong   │         │          │
+ │                │  page, pong,   │         │          │
+ │                │  game rumble   │         │          │
  └────────────────┘                │         ▼          │
                                    │  Virtual Xbox 360  │
                                    │   pad → your game  │
@@ -211,7 +240,8 @@ client/                phone PWA — Vite + TypeScript, no UI framework
 host/                  Windows host — Tauri + Rust: gamepad injection and page server
 protocol/              the binary frame layout both sides implement
 Start-Controller.bat    build-and-run from source (developers)
-Package-Release.ps1     build the portable zip (see Getting started)
+Package-Release.ps1     build the portable exe + installer into release\
+.github/workflows/      the same build, in the cloud, on every push
 ```
 
 ### Developing

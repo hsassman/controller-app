@@ -1,0 +1,76 @@
+# Builds the Windows app on GitHub's machines, so nobody needs Node.js or
+# Rust installed to get a working exe:
+#   - PhoneController.exe        portable, single file (phone page built in)
+#   - Phone Controller_*_setup.exe  installer: shortcuts, firewall rule and
+#                                   the ViGEmBus driver in one go
+# Every run uploads both as a downloadable artifact; pushing a tag like
+# v0.2.0 also attaches them to a GitHub Release.
+name: Windows build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: host/src-tauri
+
+      - name: Build the phone app
+        working-directory: client
+        run: |
+          npm ci
+          npm run build
+
+      - name: Test the host
+        working-directory: host/src-tauri
+        run: cargo test --locked
+
+      - name: Download the ViGEmBus driver installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force host/src-tauri/drivers | Out-Null
+          Invoke-WebRequest -UseBasicParsing `
+            -Uri "https://github.com/nefarius/ViGEmBus/releases/download/v1.22.0/ViGEmBus_1.22.0_x64_x86_arm64.exe" `
+            -OutFile host/src-tauri/drivers/ViGEmBus_Setup.exe
+
+      - name: Build the exe and installer
+        working-directory: host/src-tauri
+        run: npx --yes @tauri-apps/cli@2 build --bundles nsis
+
+      - name: Collect the downloads
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release | Out-Null
+          Copy-Item host/src-tauri/target/release/controller-host.exe release/PhoneController.exe
+          Copy-Item host/src-tauri/target/release/bundle/nsis/*.exe release/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PhoneController-windows
+          path: release/
+
+      - name: Attach to the GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*

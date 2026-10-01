@@ -16,3 +16,7 @@ host/src-tauri/gen/
 # Portable release output (produced by Package-Release.ps1)
 PhoneController-Portable/
 PhoneController-Portable.zip
+
+# Downloaded by Package-Release.ps1 / CI, bundled into the installer
+host/src-tauri/drivers/
+release/

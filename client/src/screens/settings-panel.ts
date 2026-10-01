@@ -1,6 +1,18 @@
 import type { Layout } from "../layout.ts";
 import type { Settings } from "../settings.ts";
-import { THEMES, ACCENT_PRESETS, BUTTON_MATERIALS, DPAD_STYLES, applyBackground } from "../theme.ts";
+import {
+  THEMES,
+  ACCENT_PRESETS,
+  BUTTON_MATERIALS,
+  DPAD_STYLES,
+  FACE_STYLES,
+  LABEL_STYLES,
+  SHELL_PRESETS,
+  STICK_COLORS,
+  STICK_STYLES,
+  SURFACE_STYLES,
+  applyBackground,
+} from "../theme.ts";
 import { promptDialog, confirmDialog, alertDialog } from "../dialog.ts";
 import { mappingName } from "../mappings.ts";
 import {
@@ -15,10 +27,10 @@ import {
   setProfileColor,
   setProfileBackground,
 } from "../profile.ts";
-import { haptic } from "../haptics.ts";
+import { canVibrate, haptic, setRumble, stopRumble } from "../haptics.ts";
 import { isStandalone, maybeOfferShortcut } from "../install.ts";
 import { ICON_PACKS } from "../iconPacks.ts";
-import { listSkins, saveSkin, deleteSkin, randomAppearance, type Skin, type SkinAppearance } from "../skins.ts";
+import { listSkins, saveSkin, deleteSkin, randomAppearance, appearanceOf, matchesSkin, type Skin } from "../skins.ts";
 import { buildShareUrl, renderQrCanvas } from "../share.ts";
 
 export interface SettingsPanelHost {
@@ -272,25 +284,38 @@ function renderAppearance(
   swatches.appendChild(custom);
   accentRow.appendChild(swatches);
 
-  sliderRow(body, "Control size", current.controlScale, 0.75, 1.4, 0.05, (v) => `${Math.round(v * 100)}%`, (v) =>
-    emit({ controlScale: v }),
-  );
-  sliderRow(body, "Control opacity", current.controlOpacity, 0.35, 1, 0.05, (v) => `${Math.round(v * 100)}%`, (v) =>
-    emit({ controlOpacity: v }),
-  );
+  renderBodySection(body, current, emit, host);
+
   choiceRow(
     body,
-    "Button material",
+    "Finish",
     BUTTON_MATERIALS.map((m) => ({ value: m.id, label: m.name })),
     current.buttonMaterial,
     (v) => emit({ buttonMaterial: v }),
   );
+  hint(body, "How every button, stick and the d-pad catch the light.");
   choiceRow(
     body,
-    "D-pad style",
-    DPAD_STYLES.map((d) => ({ value: d.id, label: d.name })),
-    current.dpadStyle,
-    (v) => emit({ dpadStyle: v }),
+    "Play surface",
+    SURFACE_STYLES.map((m) => ({ value: m.id, label: m.name })),
+    current.surfaceStyle,
+    (v) => emit({ surfaceStyle: v }),
+  );
+  hint(body, "Controller body paints the whole screen in your body colour and finish, so the phone looks like the pad itself.");
+
+  choiceRow(
+    body,
+    "Face buttons",
+    FACE_STYLES.map((m) => ({ value: m.id, label: m.name })),
+    current.faceStyle,
+    (v) => emit({ faceStyle: v }),
+  );
+  choiceRow(
+    body,
+    "Button legends",
+    LABEL_STYLES.map((m) => ({ value: m.id, label: m.name })),
+    current.labelStyle,
+    (v) => emit({ labelStyle: v }),
   );
   choiceRow(
     body,
@@ -301,6 +326,34 @@ function renderAppearance(
   );
   hint(body, "Purely cosmetic — A/B/X/Y still send Xbox input either way. A control you've relabelled yourself keeps its own text.");
 
+  choiceRow(
+    body,
+    "Thumbstick caps",
+    STICK_STYLES.map((m) => ({ value: m.id, label: m.name })),
+    current.stickStyle,
+    (v) => emit({ stickStyle: v }),
+  );
+  choiceRow(
+    body,
+    "Thumbstick colour",
+    STICK_COLORS.map((m) => ({ value: m.id, label: m.name })),
+    current.stickColor,
+    (v) => emit({ stickColor: v }),
+  );
+  choiceRow(
+    body,
+    "D-pad style",
+    DPAD_STYLES.map((d) => ({ value: d.id, label: d.name })),
+    current.dpadStyle,
+    (v) => emit({ dpadStyle: v }),
+  );
+
+  sliderRow(body, "Control size", current.controlScale, 0.75, 1.4, 0.05, (v) => `${Math.round(v * 100)}%`, (v) =>
+    emit({ controlScale: v }),
+  );
+  sliderRow(body, "Control opacity", current.controlOpacity, 0.35, 1, 0.05, (v) => `${Math.round(v * 100)}%`, (v) =>
+    emit({ controlOpacity: v }),
+  );
   sliderRow(body, "Press glow", current.glowIntensity, 0, 1.5, 0.05, (v) =>
     v === 0 ? "Off" : `${Math.round(v * 100)}%`, (v) => emit({ glowIntensity: v }),
   );
@@ -342,6 +395,48 @@ function renderAppearance(
     body.appendChild(shortcut);
     hint(body, "Removes the browser's address bar and toolbar, and pins an address that survives your PC changing IP.");
   }
+}
+
+/// The controller's body colour: named colourways plus a free picker, the
+/// way a custom-controller designer offers them.
+function renderBodySection(
+  body: HTMLElement,
+  current: Settings,
+  emit: (partial: Partial<Settings>) => void,
+  host: SettingsPanelHost,
+): void {
+  const row = section(body, "Controller body");
+  const swatches = document.createElement("div");
+  swatches.className = "swatches body-swatches";
+  const currentBody = current.shellColor.toLowerCase();
+  for (const preset of SHELL_PRESETS) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "swatch body-swatch";
+    if (preset.value) btn.style.background = preset.value;
+    else btn.classList.add("body-swatch-theme");
+    btn.setAttribute("aria-label", preset.name);
+    btn.title = preset.name;
+    const on = preset.value.toLowerCase() === currentBody;
+    btn.setAttribute("aria-pressed", String(on));
+    btn.classList.toggle("on", on);
+    btn.addEventListener("click", () => {
+      emit({ shellColor: preset.value });
+      renderReplace(body, () => renderAppearance(body, current, emit, host), ".body-swatch.on");
+    });
+    swatches.appendChild(btn);
+  }
+  const custom = document.createElement("input");
+  custom.type = "color";
+  custom.className = "swatch swatch-custom";
+  custom.value = current.shellColor || "#262b37";
+  custom.setAttribute("aria-label", "Custom body colour");
+  custom.title = "Any colour";
+  custom.addEventListener("input", () => emit({ shellColor: custom.value }));
+  swatches.appendChild(custom);
+  row.appendChild(swatches);
+  const name = SHELL_PRESETS.find((p) => p.value.toLowerCase() === currentBody)?.name ?? "Custom";
+  hint(row, `${name}. Legends switch to dark ink on light bodies so they stay readable.`);
 }
 
 /// Base64 inflates a file by roughly a third; capped comfortably under
@@ -458,7 +553,7 @@ function renderSkinsSection(
   host: SettingsPanelHost,
 ): void {
   const section_ = section(body, "My skins");
-  hint(section_, "Save the look you've built (theme, accent, material, d-pad, glow, icons) and reapply it to any profile.");
+  hint(section_, "Save the look you've built — theme, body colour, finish, buttons, sticks and all — and reapply it to any profile.");
 
   const refresh = () => renderReplace(body, () => renderAppearance(body, current, emit, host));
 
@@ -485,15 +580,7 @@ function renderSkinsSection(
       confirmLabel: "Save",
     });
     if (name === null) return;
-    const appearance: SkinAppearance = {
-      theme: current.theme,
-      accent: current.accent,
-      buttonMaterial: current.buttonMaterial,
-      dpadStyle: current.dpadStyle,
-      glowIntensity: current.glowIntensity,
-      iconPack: current.iconPack,
-    };
-    saveSkin(name, appearance);
+    saveSkin(name, appearanceOf(current));
     refresh();
   });
 
@@ -521,29 +608,22 @@ function skinRow(
 ): HTMLElement {
   const item = document.createElement("div");
   item.className = "profile-item";
-  const isActive =
-    current.theme === skin.theme &&
-    current.accent.toLowerCase() === skin.accent.toLowerCase() &&
-    current.buttonMaterial === skin.buttonMaterial &&
-    current.dpadStyle === skin.dpadStyle &&
-    current.iconPack === skin.iconPack;
-  if (isActive) item.classList.add("on");
+  if (matchesSkin(current, skin)) item.classList.add("on");
 
   const use = document.createElement("button");
   use.type = "button";
   use.className = "profile-use";
-  use.innerHTML = `<span class="profile-use-title"><span class="profile-dot" style="background:${skin.accent}"></span><strong></strong></span>`;
+  use.innerHTML = `<span class="profile-use-title"><span class="profile-dot"></span><strong></strong></span>`;
+  // Set through the style API, not the markup: the accent is stored data,
+  // and a crafted skin must not be able to inject attributes.
+  const dot = use.querySelector<HTMLElement>(".profile-dot")!;
+  dot.style.background = skin.shellColor
+    ? `linear-gradient(135deg, ${skin.shellColor} 0 55%, ${skin.accent} 55%)`
+    : skin.accent;
   use.querySelector("strong")!.textContent = skin.name;
   use.addEventListener("click", () => {
     haptic("ui");
-    emit({
-      theme: skin.theme,
-      accent: skin.accent,
-      buttonMaterial: skin.buttonMaterial,
-      dpadStyle: skin.dpadStyle,
-      glowIntensity: skin.glowIntensity,
-      iconPack: skin.iconPack,
-    });
+    emit(appearanceOf({ ...current, ...skin }));
     refresh();
   });
 
@@ -594,6 +674,28 @@ function renderFeel(
   // stale value from when the panel opened.
   testBtn.addEventListener("click", () => haptic("click"));
   strengthRow.appendChild(testBtn);
+  const rumble = section(body, "Game rumble");
+  switchRow(rumble, "Vibrate when the game rumbles", current.gameRumble, (v) => emit({ gameRumble: v }));
+  const rumbleRow = sliderRow(rumble, "Rumble strength", current.rumbleStrength, 0, 1, 0.05, (v) =>
+    v === 0 ? "Off" : `${Math.round(v * 100)}%`, (v) => emit({ rumbleStrength: v }),
+  );
+  const rumbleTest = document.createElement("button");
+  rumbleTest.type = "button";
+  rumbleTest.className = "small";
+  rumbleTest.textContent = "Test";
+  rumbleTest.addEventListener("click", () => {
+    setRumble(1, 0.6);
+    window.setTimeout(stopRumble, 500);
+  });
+  rumbleRow.appendChild(rumbleTest);
+  switchRow(rumble, "Show rumble on screen", current.rumbleVisual, (v) => emit({ rumbleVisual: v }));
+  hint(
+    rumble,
+    canVibrate()
+      ? "Games' controller rumble is passed through to this phone. The on-screen pulse works too, for silent play."
+      : "This browser can't vibrate (no iPhone browser can), so rumble shows as a pulse around the edge of the pad instead.",
+  );
+
   sliderRow(body, "Stick dead zone", current.deadZone, 0, 0.5, 0.01, (v) => `${Math.round(v * 100)}%`, (v) =>
     emit({ deadZone: v }),
   );

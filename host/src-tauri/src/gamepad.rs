@@ -17,6 +17,7 @@ mod wire_bit {
     pub const R3: u16 = 1 << 11;
     pub const START: u16 = 1 << 12;
     pub const SELECT: u16 = 1 << 13;
+    pub const GUIDE: u16 = 1 << 14;
 }
 
 #[derive(Debug)]
@@ -93,6 +94,26 @@ impl VirtualGamepad {
         self.target.get_user_index().ok()
     }
 
+    /// Starts forwarding what games ask of the pad -- rumble motor speeds and
+    /// the player LED -- to `on_change`, on a dedicated thread.
+    ///
+    /// The thread blocks inside the driver until the next request arrives,
+    /// and ends by itself when the pad is unplugged (the pending request is
+    /// aborted), so nothing here has to be stopped explicitly.
+    pub fn watch_feedback<F>(&mut self, mut on_change: F) -> Result<(), GamepadError>
+    where
+        F: FnMut(u8, u8, u8) + Send + 'static,
+    {
+        let request = self
+            .target
+            .request_notification()
+            .map_err(|e| GamepadError::Vigem(format!("feedback request failed: {e:?}")))?;
+        // Detached on purpose: see above for how it ends.
+        let _ =
+            request.spawn_thread(move |_, n| on_change(n.large_motor, n.small_motor, n.led_number));
+        Ok(())
+    }
+
     pub fn apply(&mut self, frame: &InputFrame) -> Result<(), GamepadError> {
         self.update(&Self::to_xgamepad(frame))
     }
@@ -115,7 +136,7 @@ impl VirtualGamepad {
         let mut buttons: u16 = 0;
         // Map our wire bits onto vigem-client's XButtons constants (which
         // are the standard XINPUT_GAMEPAD.wButtons values).
-        let map: [(u16, u16); 14] = [
+        let map: [(u16, u16); 15] = [
             (wire_bit::A, XButtons::A),
             (wire_bit::B, XButtons::B),
             (wire_bit::X, XButtons::X),
@@ -130,6 +151,7 @@ impl VirtualGamepad {
             (wire_bit::R3, XButtons::RTHUMB),
             (wire_bit::START, XButtons::START),
             (wire_bit::SELECT, XButtons::BACK),
+            (wire_bit::GUIDE, XButtons::GUIDE),
         ];
         for (wire, xinput) in map {
             if b & wire != 0 {

@@ -1,9 +1,13 @@
-import { encodePingFrame, decodePongSequence } from "../../protocol/frame.ts";
+import { encodePingFrame, decodePongSequence, decodeRumbleFrame, type RumbleFrameData } from "../../protocol/frame.ts";
 
 export type ConnectionState = "idle" | "connecting" | "connected" | "error" | "lost";
 
 const INITIAL_BACKOFF_MS = 1000;
-const MAX_BACKOFF_MS = 16000;
+/// Kept short on purpose. The usual reason a link drops is the PC sleeping
+/// or the host restarting, and the player is sitting there waiting for it
+/// to come back -- a 16s backoff meant up to 16s of staring at a PC that
+/// was already ready.
+const MAX_BACKOFF_MS = 5000;
 
 /// How often to send a heartbeat once connected.
 const PING_INTERVAL_MS = 2000;
@@ -14,6 +18,7 @@ export class HostConnection {
   private socketListeners: AbortController | null = null;
   private onStateChange: (state: ConnectionState) => void;
   private onLatency: ((ms: number | null) => void) | null = null;
+  private onRumble: ((rumble: RumbleFrameData) => void) | null = null;
   private hostIpPort = "";
   private manualDisconnect = false;
   private backoffMs = INITIAL_BACKOFF_MS;
@@ -37,6 +42,28 @@ export class HostConnection {
   /// connection has no usable measurement (not yet connected, or stale).
   setLatencyHandler(onLatency: (ms: number | null) => void): void {
     this.onLatency = onLatency;
+  }
+
+  /// Called whenever the host reports the game's rumble / player LED, and
+  /// with all-zero rumble when the link goes down, so a vibration can never
+  /// outlive the connection that started it.
+  setRumbleHandler(onRumble: (rumble: RumbleFrameData) => void): void {
+    this.onRumble = onRumble;
+  }
+
+  /// Skips the rest of a pending backoff and dials now. For moments where
+  /// the network has very likely just come back: the phone waking up, or
+  /// the browser reporting it is online again.
+  reconnectNow(): void {
+    if (this.manualDisconnect || !this.hostIpPort) return;
+    const state = this.socket?.readyState;
+    if (state === WebSocket.OPEN || state === WebSocket.CONNECTING) return;
+    if (this.reconnectTimer !== null) {
+      window.clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.backoffMs = INITIAL_BACKOFF_MS;
+    this.openSocket();
   }
 
   connect(hostIpPort: string): void {
@@ -78,6 +105,7 @@ export class HostConnection {
     socket.addEventListener("close", () => {
       this.stopHeartbeat();
       this.setLatency(null);
+      this.onRumble?.({ large: 0, small: 0, player: null });
       if (this.manualDisconnect) return;
       this.onStateChange("lost");
       this.scheduleReconnect();
@@ -87,6 +115,13 @@ export class HostConnection {
 
   private handleMessage(event: MessageEvent): void {
     if (!(event.data instanceof ArrayBuffer)) return;
+    const rumble = decodeRumbleFrame(event.data);
+    if (rumble) {
+      // Any traffic proves the link is alive, not only a pong.
+      this.lastPongAt = performance.now();
+      this.onRumble?.(rumble);
+      return;
+    }
     const sequence = decodePongSequence(event.data);
     if (sequence === null) return;
 
@@ -171,6 +206,8 @@ export class HostConnection {
     this.socketListeners = null;
     this.stopHeartbeat();
     if (!socket) return;
+    // Its close listener was just aborted, so it can't stop the rumble.
+    this.onRumble?.({ large: 0, small: 0, player: null });
     if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
       try {
         socket.close();
@@ -182,6 +219,7 @@ export class HostConnection {
 
   disconnect(): void {
     this.manualDisconnect = true;
+    this.onRumble?.({ large: 0, small: 0, player: null });
     if (this.reconnectTimer !== null) {
       window.clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;

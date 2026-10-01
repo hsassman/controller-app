@@ -28,7 +28,24 @@ const HEAD_TIMEOUT: Duration = Duration::from_secs(10);
 /// Upper bound on simultaneous HTTP connections.
 const MAX_CONNECTIONS: usize = 64;
 
-pub fn find_web_root() -> Option<PathBuf> {
+/// The phone page as compiled into this exe. Always present in a release
+/// build, which is what makes the portable download a single file; empty
+/// only when the host was built before the client ever was.
+static EMBEDDED_WEB: include_dir::Dir<'static> =
+    include_dir::include_dir!("$CARGO_MANIFEST_DIR/../../client/dist");
+
+/// Where the phone page is served from.
+#[derive(Clone)]
+pub enum WebRoot {
+    /// A folder on disk: a `web` folder beside the exe (lets a page be
+    /// swapped without rebuilding the host) or, for developers, the client's
+    /// own `dist` so `npm run build` takes effect without recompiling Rust.
+    Disk(PathBuf),
+    /// The copy compiled into the exe.
+    Embedded,
+}
+
+pub fn find_web_root() -> Option<WebRoot> {
     let mut candidates: Vec<PathBuf> = Vec::new();
 
     if let Ok(exe) = std::env::current_exe() {
@@ -42,10 +59,15 @@ pub fn find_web_root() -> Option<PathBuf> {
     // find_map, not find().and_then(): a candidate that exists but cannot
     // be canonicalized should fall through to the next one rather than
     // disabling the page server entirely.
-    candidates
+    let on_disk = candidates
         .into_iter()
         .filter(|path| path.join("index.html").is_file())
-        .find_map(|path| path.canonicalize().ok())
+        .find_map(|path| path.canonicalize().ok());
+    match on_disk {
+        Some(path) => Some(WebRoot::Disk(path)),
+        None if EMBEDDED_WEB.get_file("index.html").is_some() => Some(WebRoot::Embedded),
+        None => None,
+    }
 }
 
 pub async fn run_http_server(
@@ -72,7 +94,10 @@ pub async fn run_http_server(
     let listener = TcpListener::from_std(listener)?;
     let url = format!("http://{lan_ip}:{port}");
     println!("Phone page served at {url}  (open this on your phone)");
-    println!("serving client bundle from {}", root.display());
+    match &root {
+        WebRoot::Disk(path) => println!("serving client bundle from {}", path.display()),
+        WebRoot::Embedded => println!("serving the client bundle built into this exe"),
+    }
     // The name-based address, when mDNS can actually deliver it here. This
     // is what a Home Screen shortcut should be built on -- see stable.rs.
     let stable_url = crate::stable::url_for(port, &lan_ip);
@@ -143,7 +168,7 @@ pub async fn run_http_server(
 
 async fn serve_one(
     mut stream: TcpStream,
-    root: &Path,
+    root: &WebRoot,
     lan_ip: &str,
     ws_port: u16,
     app_handle: &AppHandle,
@@ -172,10 +197,7 @@ async fn serve_one(
     }
 
     // Strip the query/fragment before touching the filesystem.
-    let target = raw_target
-        .split(['?', '#'])
-        .next()
-        .unwrap_or("/");
+    let target = raw_target.split(['?', '#']).next().unwrap_or("/");
 
     // The one dynamic endpoint. The client fetches it on load: if it
     // answers, the page knows it was served by a host and can connect
@@ -204,8 +226,9 @@ async fn serve_one(
             .unwrap_or_else(|| "null".to_string());
         let body = format!(
             "{{\"ws\":\"{lan_ip}:{ws}\",\"host\":\"{lan_ip}\",\"wsPort\":{ws},\
-             \"padReady\":{pad_ready},\"stableUrl\":{stable}}}",
-            ws = ws_port
+             \"padReady\":{pad_ready},\"stableUrl\":{stable},\"version\":\"{version}\"}}",
+            ws = ws_port,
+            version = env!("CARGO_PKG_VERSION"),
         );
         return respond(
             &mut stream,
@@ -217,7 +240,24 @@ async fn serve_one(
         .await;
     }
 
-    let Some(path) = resolve_path(root, target) else {
+    let root_dir = match root {
+        WebRoot::Disk(dir) => dir,
+        WebRoot::Embedded => {
+            let Some((body, mime)) = resolve_embedded(target) else {
+                return respond(
+                    &mut stream,
+                    404,
+                    "text/plain; charset=utf-8",
+                    b"Not Found",
+                    method == "GET",
+                )
+                .await;
+            };
+            return respond(&mut stream, 200, mime, body, method == "GET").await;
+        }
+    };
+
+    let Some(path) = resolve_path(root_dir, target) else {
         return respond(
             &mut stream,
             404,
@@ -268,6 +308,31 @@ async fn serve_one(
     };
     let mime = content_type(&path);
     respond(&mut stream, 200, mime, &body, method == "GET").await
+}
+
+/// Looks a request up in the bundle compiled into the exe. Any `..` or
+/// absolute component is refused outright: there is no canonical root to
+/// compare against here, so the path has to be clean to begin with.
+fn resolve_embedded(target: &str) -> Option<(&'static [u8], &'static str)> {
+    let decoded = percent_decode(target);
+    let relative = decoded.trim_start_matches('/');
+    let relative = if relative.is_empty() {
+        "index.html"
+    } else {
+        relative
+    };
+    let path = Path::new(relative);
+    if path
+        .components()
+        .any(|c| !matches!(c, std::path::Component::Normal(_)))
+    {
+        return None;
+    }
+    let file = match EMBEDDED_WEB.get_file(path) {
+        Some(file) => file,
+        None => EMBEDDED_WEB.get_file(path.join("index.html"))?,
+    };
+    Some((file.contents(), content_type(file.path())))
 }
 
 fn resolve_path(root: &Path, target: &str) -> Option<PathBuf> {
@@ -388,5 +453,24 @@ fn content_type(path: &Path) -> &'static str {
         Some("woff2") => "font/woff2",
         Some("txt") => "text/plain; charset=utf-8",
         _ => "application/octet-stream",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn embedded_lookup_refuses_traversal() {
+        assert!(resolve_embedded("/../Cargo.toml").is_none());
+        assert!(resolve_embedded("/assets/../../secret").is_none());
+        assert!(resolve_embedded("/%2e%2e/secret").is_none());
+    }
+
+    #[test]
+    fn percent_decoding_handles_partial_escapes() {
+        assert_eq!(percent_decode("/a%20b"), "/a b");
+        assert_eq!(percent_decode("/100%"), "/100%");
+        assert_eq!(percent_decode("/%zz"), "/%zz");
     }
 }

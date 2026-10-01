@@ -43,8 +43,9 @@ function fps(): Layout {
     button("face-b", "B", ButtonBit.B, 62, 70, 44),
     button("face-x", "X", ButtonBit.X, 42, 70, 44),
     button("face-y", "Y", ButtonBit.Y, 52, 56, 44),
-    button("start", "Start", ButtonBit.START, 58, 8, 32, { width: 58, height: 32, shape: "pill" }),
-    button("select", "Select", ButtonBit.SELECT, 42, 8, 32, { width: 58, height: 32, shape: "pill" }),
+    button("start", "Start", ButtonBit.START, 61, 8, 32, { width: 58, height: 32, shape: "pill" }),
+    button("select", "Select", ButtonBit.SELECT, 39, 8, 32, { width: 58, height: 32, shape: "pill" }),
+    button("guide", "⊗", ButtonBit.GUIDE, 50, 10, 38),
   ];
   return { id: "fps", name: "Shooter", controls };
 }

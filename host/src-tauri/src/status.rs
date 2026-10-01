@@ -33,6 +33,18 @@ pub struct Status {
     /// verbatim in the window because there is no console in a release
     /// build to print them to.
     pub errors: Vec<String>,
+    /// Phones connected right now. Kept here as well as sent as an event so
+    /// a window opened mid-session starts from the truth.
+    pub clients: usize,
+    /// XInput player slot 0-3 Windows gave the virtual pad, once known.
+    pub player: Option<u8>,
+    /// The host relaunches itself when Windows starts.
+    pub autostart: bool,
+    /// Closing the window hides it to the tray instead of quitting.
+    pub close_to_tray: bool,
+    /// A driver install this app started is still in progress.
+    pub driver_installing: bool,
+    pub version: String,
 }
 
 pub struct SharedStatus(Mutex<Status>);
@@ -43,7 +55,9 @@ impl SharedStatus {
     }
 
     fn lock(&self) -> MutexGuard<'_, Status> {
-        self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+        self.0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
     pub fn snapshot(&self) -> Status {

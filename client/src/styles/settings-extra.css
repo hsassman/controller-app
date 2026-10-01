@@ -106,3 +106,58 @@ button.full-width,
 :root.idle-dim .controls-surface:has(.edit-control) {
   opacity: 1;
 }
+
+/* ---- Choice chips ----
+   The option groups in Settings (finish, d-pad style, icons, idle dim...)
+   were built as .choice-group/.choice-chip but nothing ever styled them, so
+   they rendered as bare grey browser buttons jammed together. */
+.choice-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.choice-chip {
+  min-height: 2rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--chip-bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    background 0.12s ease-out,
+    border-color 0.12s ease-out,
+    color 0.12s ease-out;
+}
+
+.choice-chip:hover {
+  border-color: var(--fg-muted);
+}
+
+.choice-chip.on {
+  background: rgba(var(--accent-rgb), 0.18);
+  border-color: var(--accent);
+  color: var(--accent-text, var(--accent));
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.choice-chip:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+:root.high-contrast .choice-chip {
+  background: #000;
+  border-color: #fff;
+  color: #fff;
+}
+
+:root.high-contrast .choice-chip.on {
+  background: var(--accent);
+  color: #000;
+}
