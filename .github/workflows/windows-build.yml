@@ -4,7 +4,7 @@
 #   - Phone Controller_*_setup.exe  installer: shortcuts, firewall rule and
 #                                   the ViGEmBus driver in one go
 # Every run uploads both as a downloadable artifact; pushing a tag like
-# v0.2.0 also attaches them to a GitHub Release.
+# v1.5.0 also attaches them to a GitHub Release.
 name: Windows build
 
 on:

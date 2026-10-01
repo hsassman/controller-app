@@ -57,7 +57,7 @@ If your network blocks mDNS — some guest networks and access points with clien
 powershell -ExecutionPolicy Bypass -File .\Package-Release.ps1
 ```
 
-This puts `PhoneController.exe` and the installer in `release\`. Pushing to GitHub does the same in the cloud: the **Windows build** workflow uploads both as an artifact on every push to `main`, and attaches them to a GitHub Release when you push a tag like `v0.2.0`.
+This puts `PhoneController.exe` and the installer in `release\`. Pushing to GitHub does the same in the cloud: the **Windows build** workflow uploads both as an artifact on every push to `main`, and attaches them to a GitHub Release when you push a tag like `v1.5.0`.
 
 ### Building from source and running directly (for developers)
 
