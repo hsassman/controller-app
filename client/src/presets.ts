@@ -1,5 +1,6 @@
 import type { ButtonConfig, ControlConfig, Layout } from "./layout.ts";
 import { defaultLayout } from "./layout.ts";
+import { PAD_STYLES } from "./padStyles.ts";
 import { ButtonBit } from "../../protocol/frame.ts";
 
 export interface PresetMeta {
@@ -113,12 +114,12 @@ function minimal(): Layout {
 }
 
 export const PRESETS: PresetMeta[] = [
-  {
-    id: "default",
-    name: "Standard",
-    description: "Full Xbox-style pad: both sticks, d-pad, four face buttons, bumpers and triggers.",
-    build: defaultLayout,
-  },
+  ...PAD_STYLES.map((style) => ({
+    id: style.id,
+    name: style.name,
+    description: style.description,
+    build: style.layout,
+  })),
   {
     id: "fps",
     name: "Shooter",

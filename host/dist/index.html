@@ -330,74 +330,125 @@
       }
       svg.pad {
         width: 100%;
-        max-width: 520px;
+        max-width: 560px;
         justify-self: center;
         height: auto;
         overflow: visible;
       }
       .pad .body {
         fill: url(#body-grad);
-        stroke: #3a3f4b;
-        stroke-width: 1.5;
+        stroke: #474d5b;
+        stroke-width: 1.2;
+      }
+      .pad .body-sheen {
+        fill: url(#sheen-grad);
+        pointer-events: none;
+      }
+      .pad .grip-shade {
+        fill: url(#grip-grad);
+        pointer-events: none;
       }
       .pad .well {
-        fill: #0c0e12;
-        stroke: #2b2f38;
+        fill: url(#well-grad);
+        stroke: #0a0b0e;
+        stroke-width: 1.5;
+      }
+      .pad .collar {
+        fill: none;
+        stroke: #545b6a;
+        stroke-width: 1.4;
       }
       .pad .key {
-        fill: #2a2e38;
-        stroke: #474d5a;
+        fill: url(#key-grad);
+        stroke: #5a6170;
         stroke-width: 1;
-        transition: fill 0.05s linear;
+        transition: fill 0.05s linear, filter 0.05s linear;
       }
-      .pad .key.on {
+      .pad .key.on,
+      .pad .cap.on .cap-rim {
         fill: var(--accent);
-        stroke: #b7f7cf;
+        stroke: #c9fbd9;
+        filter: drop-shadow(0 0 4px rgba(var(--accent-rgb), 0.85));
       }
       .pad text {
         font: 700 9px "Segoe UI", sans-serif;
-        fill: #c9cdd6;
+        fill: #d5d9e1;
         text-anchor: middle;
         dominant-baseline: central;
         pointer-events: none;
       }
-      .pad .on + text {
+      .pad .key.on + text {
         fill: #04210f;
       }
-      .pad .face-a {
-        stroke: #35d187;
+      .pad .face {
+        stroke-width: 1.2;
+        transition: filter 0.05s linear;
       }
-      .pad .face-b {
-        stroke: #ff5c5c;
+      .pad .face + text {
+        fill: #fff;
+        font-size: 11px;
+        paint-order: stroke;
+        stroke: rgba(0, 0, 0, 0.35);
+        stroke-width: 1.5px;
       }
-      .pad .face-x {
-        stroke: #4c8bff;
+      .pad .face-a { fill: url(#face-a); stroke: #9cf0bd; }
+      .pad .face-b { fill: url(#face-b); stroke: #ffaaa8; }
+      .pad .face-x { fill: url(#face-x); stroke: #a8c6ff; }
+      .pad .face-y { fill: url(#face-y); stroke: #ffe39a; }
+      .pad .face.on {
+        filter: brightness(1.45) drop-shadow(0 0 6px rgba(255, 255, 255, 0.75));
       }
-      .pad .face-y {
-        stroke: #ffc94a;
+      .pad .cap-rim {
+        fill: url(#cap-grad);
+        stroke: #6a7282;
+        transition: fill 0.05s linear;
       }
-      .pad .cap {
-        fill: #39404d;
-        stroke: #5a6272;
-      }
-      .pad .cap.on {
-        fill: var(--accent);
+      .pad .cap-dish {
+        fill: url(#dish-grad);
+        pointer-events: none;
       }
       .pad .trigger-bg {
-        fill: #1b1e25;
-        stroke: #3b404c;
+        fill: url(#key-grad);
+        stroke: #5a6170;
       }
       .pad .trigger-fill {
         fill: var(--accent);
+        opacity: 0.9;
+      }
+      .pad .guide {
+        fill: url(#guide-grad);
+        stroke: #8a93a5;
+      }
+      .pad .guide.on {
+        filter: brightness(1.4) drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.9));
+      }
+      .pad .guide-x {
+        stroke: #e9ecf2;
+        stroke-width: 2.6;
+        stroke-linecap: round;
+        fill: none;
+        pointer-events: none;
       }
       .pad .ring {
         fill: none;
         stroke: #2f343f;
         stroke-width: 4;
+        stroke-linecap: round;
       }
       .pad .ring.lit {
         stroke: var(--accent);
-        filter: drop-shadow(0 0 3px rgba(var(--accent-rgb), 0.9));
+        filter: drop-shadow(0 0 3px rgba(var(--accent-rgb), 0.95));
+      }
+      /* The body shakes with the game's rumble, scaled by --shake. */
+      svg.pad.rumbling .shell {
+        animation: pad-shake 0.07s linear infinite;
+      }
+      @keyframes pad-shake {
+        0% { transform: translate(0, 0); }
+        25% { transform: translate(calc(1.6px * var(--shake, 0)), calc(-1px * var(--shake, 0))); }
+        50% { transform: translate(calc(-1.2px * var(--shake, 0)), calc(1.4px * var(--shake, 0))); }
+        75% { transform: translate(calc(1px * var(--shake, 0)), calc(1px * var(--shake, 0))); }
+        100% { transform: translate(0, 0); }
       }
       .readouts {
         display: grid;
@@ -648,71 +699,131 @@
       <section class="card" aria-labelledby="live-h">
         <h2 id="live-h">Live controller</h2>
         <div class="pad-wrap">
-          <svg class="pad" viewBox="0 0 400 250" role="img" aria-labelledby="pad-desc">
-            <desc id="pad-desc">A live drawing of the virtual controller. Pressed buttons light up.</desc>
+          <svg class="pad" id="pad" viewBox="0 0 440 280" role="img" aria-labelledby="pad-desc">
+            <desc id="pad-desc">A live drawing of the virtual Xbox 360 controller. Pressed buttons light up, the sticks move and the triggers fill.</desc>
             <defs>
               <linearGradient id="body-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#2d323d" />
-                <stop offset="1" stop-color="#171a20" />
+                <stop offset="0" stop-color="#3a404d" />
+                <stop offset="0.45" stop-color="#262a33" />
+                <stop offset="1" stop-color="#15171c" />
               </linearGradient>
-              <clipPath id="lt-clip"><rect x="78" y="6" width="58" height="20" rx="7" /></clipPath>
-              <clipPath id="rt-clip"><rect x="264" y="6" width="58" height="20" rx="7" /></clipPath>
+              <radialGradient id="sheen-grad" cx="0.5" cy="0.05" r="0.7">
+                <stop offset="0" stop-color="#fff" stop-opacity="0.16" />
+                <stop offset="1" stop-color="#fff" stop-opacity="0" />
+              </radialGradient>
+              <linearGradient id="grip-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0.55" stop-color="#000" stop-opacity="0" />
+                <stop offset="1" stop-color="#000" stop-opacity="0.45" />
+              </linearGradient>
+              <radialGradient id="well-grad" cx="0.5" cy="0.35" r="0.65">
+                <stop offset="0" stop-color="#050608" />
+                <stop offset="0.8" stop-color="#11141a" />
+                <stop offset="1" stop-color="#252a33" />
+              </radialGradient>
+              <linearGradient id="key-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#4a505e" />
+                <stop offset="1" stop-color="#262a33" />
+              </linearGradient>
+              <radialGradient id="cap-grad" cx="0.5" cy="0.3" r="0.7">
+                <stop offset="0" stop-color="#555c6b" />
+                <stop offset="1" stop-color="#1d2027" />
+              </radialGradient>
+              <radialGradient id="dish-grad" cx="0.5" cy="0.85" r="0.75">
+                <stop offset="0" stop-color="#5b6272" />
+                <stop offset="0.7" stop-color="#22262e" />
+                <stop offset="1" stop-color="#16181e" />
+              </radialGradient>
+              <radialGradient id="guide-grad" cx="0.5" cy="0.35" r="0.65">
+                <stop offset="0" stop-color="#9aa3b5" />
+                <stop offset="1" stop-color="#3c4250" />
+              </radialGradient>
+              <radialGradient id="face-a" cx="0.45" cy="0.3" r="0.75">
+                <stop offset="0" stop-color="#8af0b0" /><stop offset="0.6" stop-color="#2fae62" /><stop offset="1" stop-color="#17602f" />
+              </radialGradient>
+              <radialGradient id="face-b" cx="0.45" cy="0.3" r="0.75">
+                <stop offset="0" stop-color="#ff9d97" /><stop offset="0.6" stop-color="#d93a3a" /><stop offset="1" stop-color="#7c1a1c" />
+              </radialGradient>
+              <radialGradient id="face-x" cx="0.45" cy="0.3" r="0.75">
+                <stop offset="0" stop-color="#9cc0ff" /><stop offset="0.6" stop-color="#3a74e0" /><stop offset="1" stop-color="#1b3c86" />
+              </radialGradient>
+              <radialGradient id="face-y" cx="0.45" cy="0.3" r="0.75">
+                <stop offset="0" stop-color="#ffe7a0" /><stop offset="0.6" stop-color="#e9b22c" /><stop offset="1" stop-color="#8a6312" />
+              </radialGradient>
+              <clipPath id="lt-clip"><rect x="94" y="8" width="68" height="24" rx="9" /></clipPath>
+              <clipPath id="rt-clip"><rect x="278" y="8" width="68" height="24" rx="9" /></clipPath>
             </defs>
 
-            <!-- triggers, filled left-to-right as they are pulled -->
-            <rect class="trigger-bg" x="78" y="6" width="58" height="20" rx="7" />
-            <rect id="lt-fill" class="trigger-fill" x="78" y="6" width="0" height="20" clip-path="url(#lt-clip)" />
-            <text x="107" y="16">LT</text>
-            <rect class="trigger-bg" x="264" y="6" width="58" height="20" rx="7" />
-            <rect id="rt-fill" class="trigger-fill" x="264" y="6" width="0" height="20" clip-path="url(#rt-clip)" />
-            <text x="293" y="16">RT</text>
+            <!-- triggers, filled as they are pulled -->
+            <rect class="trigger-bg" x="94" y="8" width="68" height="24" rx="9" />
+            <rect id="lt-fill" class="trigger-fill" x="94" y="8" width="0" height="24" clip-path="url(#lt-clip)" />
+            <text x="128" y="20">LT</text>
+            <rect class="trigger-bg" x="278" y="8" width="68" height="24" rx="9" />
+            <rect id="rt-fill" class="trigger-fill" x="278" y="8" width="0" height="24" clip-path="url(#rt-clip)" />
+            <text x="312" y="20">RT</text>
 
-            <!-- bumpers -->
-            <rect id="b8" class="key" x="70" y="32" width="74" height="15" rx="7" />
-            <text x="107" y="39.5">LB</text>
-            <rect id="b9" class="key" x="256" y="32" width="74" height="15" rx="7" />
-            <text x="293" y="39.5">RB</text>
+            <g class="shell">
+              <!-- bumpers, angled to follow the shoulders -->
+              <rect id="b8" class="key" x="84" y="39" width="88" height="16" rx="8" transform="rotate(-5 128 47)" />
+              <text x="128" y="47">LB</text>
+              <rect id="b9" class="key" x="268" y="39" width="88" height="16" rx="8" transform="rotate(5 312 47)" />
+              <text x="312" y="47">RB</text>
 
-            <path
-              class="body"
-              d="M118 48 C 78 48 58 60 44 92 C 24 138 8 200 28 228 C 44 248 72 240 92 214 C 106 196 120 186 142 186 L 258 186 C 280 186 294 196 308 214 C 328 240 356 248 372 228 C 392 200 376 138 356 92 C 342 60 322 48 282 48 Z"
-            />
+              <path
+                class="body"
+                d="M130 56 C 96 54 72 64 60 88 C 40 128 22 200 34 242 C 44 274 82 274 104 248 C 122 226 138 210 160 208 L 280 208 C 302 210 318 226 336 248 C 358 274 396 274 406 242 C 418 200 400 128 380 88 C 368 64 344 54 310 56 C 280 58 262 66 220 66 C 178 66 160 58 130 56 Z"
+              />
+              <path
+                class="grip-shade"
+                d="M130 56 C 96 54 72 64 60 88 C 40 128 22 200 34 242 C 44 274 82 274 104 248 C 122 226 138 210 160 208 L 280 208 C 302 210 318 226 336 248 C 358 274 396 274 406 242 C 418 200 400 128 380 88 C 368 64 344 54 310 56 C 280 58 262 66 220 66 C 178 66 160 58 130 56 Z"
+              />
+              <ellipse class="body-sheen" cx="220" cy="90" rx="150" ry="40" />
 
-            <!-- left stick -->
-            <circle class="well" cx="112" cy="100" r="27" />
-            <circle id="b10" class="cap" cx="112" cy="100" r="16" />
+              <!-- left stick: high on the left, as on the 360 -->
+              <circle class="well" cx="126" cy="112" r="30" />
+              <circle class="collar" cx="126" cy="112" r="33" />
+              <g id="b10" class="cap">
+                <circle class="cap-rim" cx="126" cy="112" r="19" />
+                <circle class="cap-dish" cx="126" cy="112" r="12.5" />
+              </g>
 
-            <!-- d-pad -->
-            <rect class="well" x="128" y="128" width="54" height="54" rx="10" />
-            <rect id="b4" class="key" x="146" y="132" width="18" height="18" rx="3" />
-            <rect id="b5" class="key" x="146" y="160" width="18" height="18" rx="3" />
-            <rect id="b6" class="key" x="132" y="146" width="18" height="18" rx="3" />
-            <rect id="b7" class="key" x="160" y="146" width="18" height="18" rx="3" />
+              <!-- d-pad: a cross in a round dish -->
+              <circle class="well" cx="172" cy="172" r="29" />
+              <rect class="key" x="163" y="163" width="18" height="18" />
+              <path id="b4" class="key" d="M163 163 L163 149 Q163 146 166 146 L178 146 Q181 146 181 149 L181 163 Z" />
+              <path id="b5" class="key" d="M163 181 L181 181 L181 195 Q181 198 178 198 L166 198 Q163 198 163 195 Z" />
+              <path id="b6" class="key" d="M163 163 L149 163 Q146 163 146 166 L146 178 Q146 181 149 181 L163 181 Z" />
+              <path id="b7" class="key" d="M181 163 L195 163 Q198 163 198 166 L198 178 Q198 181 195 181 L181 181 Z" />
 
-            <!-- right stick -->
-            <circle class="well" cx="248" cy="155" r="27" />
-            <circle id="b11" class="cap" cx="248" cy="155" r="16" />
+              <!-- right stick -->
+              <circle class="well" cx="268" cy="172" r="30" />
+              <circle class="collar" cx="268" cy="172" r="33" />
+              <g id="b11" class="cap">
+                <circle class="cap-rim" cx="268" cy="172" r="19" />
+                <circle class="cap-dish" cx="268" cy="172" r="12.5" />
+              </g>
 
-            <!-- back / guide / start; the ring lights the player slot -->
-            <circle id="b13" class="key" cx="168" cy="100" r="8" />
-            <text x="168" y="116" style="font-size: 7px">BACK</text>
-            <circle id="b12" class="key" cx="232" cy="100" r="8" />
-            <text x="232" y="116" style="font-size: 7px">START</text>
-            <circle id="b14" class="key" cx="200" cy="82" r="13" />
-            <path id="ring-0" class="ring" d="M 180.4 77.8 A 20 20 0 0 1 195.8 62.4" />
-            <path id="ring-1" class="ring" d="M 204.2 62.4 A 20 20 0 0 1 219.6 77.8" />
-            <path id="ring-2" class="ring" d="M 195.8 101.6 A 20 20 0 0 1 180.4 86.2" />
-            <path id="ring-3" class="ring" d="M 219.6 86.2 A 20 20 0 0 1 204.2 101.6" />
+              <!-- back / guide / start; the ring lights the player slot -->
+              <circle id="b13" class="key" cx="184" cy="114" r="8" />
+              <path d="M186.5 110 L180.5 114 L186.5 118 Z" fill="#d5d9e1" pointer-events="none" />
+              <circle id="b12" class="key" cx="256" cy="114" r="8" />
+              <path d="M253.5 110 L259.5 114 L253.5 118 Z" fill="#d5d9e1" pointer-events="none" />
+              <circle id="b14" class="guide" cx="220" cy="98" r="15" />
+              <path class="guide-x" d="M213.5 91.5 L226.5 104.5 M226.5 91.5 L213.5 104.5" />
+              <path id="ring-0" class="ring" d="M 199.5 93.3 A 21 21 0 0 1 215.3 77.5" />
+              <path id="ring-1" class="ring" d="M 224.7 77.5 A 21 21 0 0 1 240.5 93.3" />
+              <path id="ring-2" class="ring" d="M 215.3 118.5 A 21 21 0 0 1 199.5 102.7" />
+              <path id="ring-3" class="ring" d="M 240.5 102.7 A 21 21 0 0 1 224.7 118.5" />
 
-            <!-- face buttons -->
-            <circle id="b3" class="key face-y" cx="290" cy="76" r="11" />
-            <text x="290" y="76">Y</text>
-            <circle id="b2" class="key face-x" cx="268" cy="98" r="11" />
-            <text x="268" y="98">X</text>
-            <circle id="b1" class="key face-b" cx="312" cy="98" r="11" />
-            <text x="312" y="98">B</text>
-            <circle id="b0" class="key face-a" cx="290" cy="120" r="11" />
-            <text x="290" y="120">A</text>
+              <!-- face buttons -->
+              <circle id="b3" class="face face-y" cx="324" cy="88" r="12" />
+              <text x="324" y="88">Y</text>
+              <circle id="b2" class="face face-x" cx="300" cy="112" r="12" />
+              <text x="300" y="112">X</text>
+              <circle id="b1" class="face face-b" cx="348" cy="112" r="12" />
+              <text x="348" y="112">B</text>
+              <circle id="b0" class="face face-a" cx="324" cy="136" r="12" />
+              <text x="324" y="136">A</text>
+            </g>
           </svg>
 
           <div class="readouts">
@@ -810,6 +921,7 @@
       const rsVal = el("rs-val");
       const trVal = el("tr-val");
       const TRAVEL = 11; // px of stick travel in the drawing's coordinates
+      const TRIGGER_W = 68;
 
       const pct = (v) => Math.round((v / 32767) * 100);
 
@@ -822,8 +934,8 @@
         const ry = (-Math.max(-32767, s.right_stick_y) / 32767) * TRAVEL;
         capL.setAttribute("transform", `translate(${lx.toFixed(1)} ${ly.toFixed(1)})`);
         capR.setAttribute("transform", `translate(${rx.toFixed(1)} ${ry.toFixed(1)})`);
-        ltFill.setAttribute("width", ((s.left_trigger / 255) * 58).toFixed(1));
-        rtFill.setAttribute("width", ((s.right_trigger / 255) * 58).toFixed(1));
+        ltFill.setAttribute("width", ((s.left_trigger / 255) * TRIGGER_W).toFixed(1));
+        rtFill.setAttribute("width", ((s.right_trigger / 255) * TRIGGER_W).toFixed(1));
         lsVal.textContent = `${pct(s.left_stick_x)}%, ${pct(s.left_stick_y)}%`;
         rsVal.textContent = `${pct(s.right_stick_x)}%, ${pct(s.right_stick_y)}%`;
         trVal.textContent = `${Math.round((s.left_trigger / 255) * 100)}% / ${Math.round((s.right_trigger / 255) * 100)}%`;
@@ -834,7 +946,12 @@
         el("player-val").textContent = player === null || player === undefined ? "—" : `· Player ${player + 1}`;
       }
 
+      const padSvg = el("pad");
+      const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
       function showRumble(r) {
+        const shake = Math.max(r.large, r.small) / 255;
+        padSvg.style.setProperty("--shake", (shake * 1.6).toFixed(2));
+        padSvg.classList.toggle("rumbling", shake > 0.02 && !reduceMotion);
         el("rumble-large").style.width = `${(r.large / 255) * 100}%`;
         el("rumble-small").style.width = `${(r.small / 255) * 100}%`;
         showPlayer(r.player);

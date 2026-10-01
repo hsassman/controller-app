@@ -1,3 +1,4 @@
+import { ButtonBit } from "../../protocol/frame.ts";
 import type { Layout } from "./layout.ts";
 import { defaultLayout } from "./layout.ts";
 import { ACCENT_PRESETS } from "./theme.ts";
@@ -63,8 +64,10 @@ function writeStore(store: ProfileStore): void {
 const KNOWN_TYPES = new Set(["button", "dpad", "stick", "trigger"]);
 
 // `1 << bit` masks to 5 bits in JS, so an out-of-range value silently
-// becomes a different real button. Clamp instead.
-const MAX_BUTTON_BIT = 13;
+// becomes a different real button. Clamp instead. Derived from the protocol
+// rather than written out: a hard-coded 13 quietly turned every saved Guide
+// button (bit 14) into A when Guide was added.
+const MAX_BUTTON_BIT = Math.max(...Object.values(ButtonBit));
 
 function num(value: unknown, min: number, max: number, fallback: number): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback;

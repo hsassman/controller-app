@@ -22,7 +22,7 @@ export type ButtonMaterial =
   | "neon";
 
 /// The d-pad's silhouette. All three report the same eight directions.
-export type DpadStyle = "cross" | "split" | "disc";
+export type DpadStyle = "cross" | "split" | "faceted";
 
 /// How A/B/X/Y are coloured.
 export type FaceStyle = "classic" | "jewel" | "mono" | "accent";
@@ -55,7 +55,7 @@ export const BUTTON_MATERIALS: { id: ButtonMaterial; name: string }[] = [
 export const DPAD_STYLES: { id: DpadStyle; name: string }[] = [
   { id: "cross", name: "Cross" },
   { id: "split", name: "Split" },
-  { id: "disc", name: "Disc" },
+  { id: "faceted", name: "Faceted dish" },
 ];
 
 export const FACE_STYLES: { id: FaceStyle; name: string }[] = [
@@ -411,6 +411,7 @@ export interface AppearanceSettings {
   dpadStyle: DpadStyle;
   glowIntensity: number;
   idleDimSeconds: number;
+  padStyle: string;
   shellColor: string;
   faceStyle: FaceStyle;
   stickStyle: StickStyle;
@@ -436,6 +437,7 @@ export function applyAppearance(s: AppearanceSettings): void {
   root.classList.toggle("reduce-motion", s.reduceMotion);
   root.classList.toggle("no-surface-glow", !s.surfaceGlow);
 
+  root.dataset.padStyle = s.padStyle;
   setChoice("material", s.buttonMaterial, BUTTON_MATERIALS, "gloss");
   setChoice("dpadStyle", s.dpadStyle, DPAD_STYLES, "cross");
   setChoice("faceStyle", s.faceStyle, FACE_STYLES, "classic");

@@ -82,9 +82,31 @@ Tap **Edit layout**, then tap any control to open its properties. Move it, resiz
 
 The editor has undo/redo (`Ctrl+Z`), snap-to-grid, duplicate (`Ctrl+D`), and a **Mirror** button that flips the whole layout for left-handed play. It's WYSIWYG — controls render at exactly the size they'll be in play.
 
-### Seven layout presets
+### Controller styles: Xbox 360, Xbox Series, PlayStation, Nintendo
 
-Start from a layout that already suits the game instead of dragging fourteen controls into place.
+Pick a real controller under **Settings → Look → Controller style** and the pad is laid out like it — stick and d-pad positions, button names and glyphs, d-pad shape and face-button colours:
+
+| Style | What you get |
+| --- | --- |
+| **Xbox 360** *(default)* | Offset sticks, the classic cross d-pad, jewel A/B/X/Y, Back / Guide / Start, and the Guide button's ring of light showing your player number |
+| **Xbox Series** | The same layout with the faceted hybrid d-pad and View / Menu |
+| **PlayStation** | Symmetric sticks, a split d-pad, the touchpad, Create / Options, the PS button, and △ ○ ✕ □ in their own colours |
+| **Nintendo** | Pro Controller layout: B/A/Y/X, L/R, ZL/ZR, − / + and Home |
+
+Your PC still sees an Xbox controller, so every game works the same: buttons match by **position**, the way Steam maps other pads (the bottom face button always sends A, whether it says A, ✕ or B). Each style becomes its own profile the first time you pick it, so your existing layouts are never overwritten.
+
+<p align="center">
+  <img src="screenshots/13-style-playstation.png" alt="PlayStation style on a white body: split d-pad, touchpad, symmetric sticks and coloured shape buttons" width="100%">
+</p>
+
+<p align="center">
+  <img src="screenshots/14-style-xbox-series.png" alt="Xbox Series style with the faceted d-pad on a soft-touch black body" width="49%">
+  <img src="screenshots/15-style-nintendo.png" alt="Nintendo Pro Controller style" width="49%">
+</p>
+
+### Ten layout presets
+
+Start from a layout that already suits the game instead of dragging fifteen controls into place.
 
 <p align="center">
   <img src="screenshots/04-presets.png" alt="The layout presets menu" width="100%">
@@ -92,13 +114,13 @@ Start from a layout that already suits the game instead of dragging fourteen con
 
 | Preset | Built for |
 | --- | --- |
-| **Standard** | A full Xbox-style pad |
+| **Xbox 360 / Xbox Series / PlayStation / Nintendo** | Each real controller's layout (see above) |
 | **Shooter** | Oversized sticks, tall triggers, face cluster inboard |
 | **Racing** | Full-height gas and brake, wide steering stick |
 | **Platformer** | Large d-pad instead of an analog stick |
 | **Large targets** | Fewer, much bigger, widely spaced controls |
 | **Minimal** | D-pad and two buttons, for retro games |
-| **Left-handed** | The standard layout mirrored |
+| **Left-handed** | The Xbox 360 layout mirrored |
 
 ### Profiles
 
@@ -114,17 +136,17 @@ Build the pad the way a custom-controller designer would:
 - **Face buttons** — classic coloured letters, translucent jewel caps, mono, or all in your accent; letters, PlayStation glyphs or dots. Colours follow what a button *sends*, so remapping a button recolours it.
 - **Legends** — printed, engraved into the cap, or backlit.
 - **Thumbsticks** — concave, domed or pro-grip caps, in accent, body or black.
-- **D-pad** — a moulded cross, four separate keys, or a round rocker disc.
+- **D-pad** — a crisp moulded cross, a faceted Xbox Series-style cross in a dish, or four separate PlayStation-style keys.
 
 On top of that: eight themes, a free accent colour, size, opacity, press glow, labels, a per-profile background photo, and **Dim when idle**. Save any combination as a **skin** and reapply it to any profile — or hit **Remix** for a random one.
 
 <p align="center">
-  <img src="screenshots/09-body-robot-white.png" alt="Robot White body, gloss finish, jewel face buttons, with A pressed and the edges pulsing from game rumble" width="100%">
+  <img src="screenshots/09-body-robot-white.png" alt="Xbox 360 layout on a Robot White body with jewel face buttons and the ring of light on Guide" width="100%">
 </p>
 
 <p align="center">
-  <img src="screenshots/10-finish-chrome.png" alt="Shock Blue body in chrome with engraved legends" width="49%">
-  <img src="screenshots/11-finish-carbon.png" alt="Carbon fibre finish with pro-grip black sticks" width="49%">
+  <img src="screenshots/10-finish-chrome.png" alt="Pulse Red body in chrome with engraved legends and the faceted d-pad" width="49%">
+  <img src="screenshots/16-settings-styles.png" alt="Settings: the controller style picker" width="49%">
 </p>
 
 <p align="center">
@@ -155,7 +177,7 @@ On top of that: eight themes, a free accent colour, size, opacity, press glow, l
 - **Game rumble on your phone.** When a game rumbles the controller, the phone vibrates with it, at the strength the game asked for. iPhones can't vibrate from a web page, so the pad's edges pulse with the rumble too — on by default, and it reads as the controller shaking even with the sound off.
 - **Player lights.** The Guide button has a ring of light that shows which player slot Windows gave the pad, just like the real one, and the top bar shows P1–P4.
 - **The Guide (Xbox) button** works — it reaches Steam's Big Picture and the Xbox Game Bar.
-- **100 Hz input**, sent as a fixed 15-byte binary frame — no JSON parsing in the hot path.
+- **Input leaves the phone the instant it changes** (up to 250 frames a second), as a fixed 15-byte binary frame — no JSON parsing in the hot path. While nothing moves it drops to a 20 Hz refresh, a fifth of the old constant 100 Hz, which saves battery and Wi-Fi airtime.
 - **Live latency readout** in the top bar, so "it feels laggy" has an actual number attached.
 - **Heartbeat detection.** A phone that walks out of Wi-Fi range produces no TCP reset, so the socket would sit open and the UI would keep claiming "Connected". A ping/pong heartbeat catches that and reconnects — at once when the phone wakes up or rejoins Wi-Fi, and within five seconds otherwise.
 - **Nothing gets stuck.** Rotating the phone, opening settings, switching profiles or disconnecting all release held inputs and flush a neutral frame first — because the host keeps applying the last frame it received, so "stop sending" is not the same as "release".
@@ -168,7 +190,7 @@ On top of that: eight themes, a free accent colour, size, opacity, press glow, l
 ## Checking that it works
 
 <p align="center">
-  <img src="screenshots/12-host-window.png" alt="The Phone Controller window on the PC: QR code, address, and the live controller drawing with A lit" width="70%">
+  <img src="screenshots/12-host-window.png" alt="The Phone Controller window on the PC: address, and a live Xbox 360 drawing with A, RB, d-pad up and both triggers held, the player-1 light, and the rumble meters" width="70%">
 </p>
 
 The window on the PC has a live drawing of the controller — press something on the phone and that button lights up, the sticks move, the triggers fill, and the game's rumble shows on two meters. **Test rumble** buzzes every connected phone, to check vibration without a game. The window walks you through this on first run, and says plainly when the ViGEmBus driver is missing, which is the one failure that otherwise looks like a working connection: the phone connects, reports "Connected", and every press is silently discarded.
@@ -220,7 +242,7 @@ If you're hitting this on a build from before it was fixed: close every "Control
  ┌────────────────┐                ┌────────────────────┐
  │  Touch gamepad │  15-byte       │  WebSocket server  │
  │       PWA      │  frames  ──────▶       :8787        │
- │                │  @ 100 Hz      │         │          │
+ │                │  on change     │         │          │
  │                │                │         ▼          │
  │                │  ◀──────       │  ViGEmBus driver   │
  │                │  page, pong,   │         │          │

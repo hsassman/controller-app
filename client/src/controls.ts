@@ -317,8 +317,10 @@ function buildDpad(cfg: Extract<ControlConfig, { type: "dpad" }>, scale: number)
     el.setAttribute("aria-valuetext", names.length ? names.join(" ") : "centred");
   };
 
+  // Measured once per touch, not per move: reading layout on every
+  // pointermove forces a synchronous layout at input rate.
+  let rect = el.getBoundingClientRect();
   const fromPoint = (clientX: number, clientY: number) => {
-    const rect = el.getBoundingClientRect();
     const dx = clientX - (rect.left + rect.width / 2);
     const dy = clientY - (rect.top + rect.height / 2);
     const deadZonePx = rect.width * 0.15;
@@ -344,6 +346,7 @@ function buildDpad(cfg: Extract<ControlConfig, { type: "dpad" }>, scale: number)
     if (ownerId !== null) return;
     ownerId = e.pointerId;
     el.setPointerCapture(e.pointerId);
+    rect = el.getBoundingClientRect();
     fromPoint(e.clientX, e.clientY);
   });
   el.addEventListener("pointermove", (e) => {
@@ -456,8 +459,9 @@ function buildStick(
     el.setAttribute("aria-valuenow", String(Math.round(dx * 100)));
   };
 
+  // See the d-pad: measured at touch-down, reused for every move.
+  let rect = el.getBoundingClientRect();
   const update = (clientX: number, clientY: number) => {
-    const rect = el.getBoundingClientRect();
     const radius = rect.width / 2;
     applyVector((clientX - (rect.left + radius)) / radius, (clientY - (rect.top + radius)) / radius);
   };
@@ -487,12 +491,12 @@ function buildStick(
     el.setPointerCapture(e.pointerId);
     pressStartedAt = performance.now();
     travelled = 0;
+    rect = el.getBoundingClientRect();
     update(e.clientX, e.clientY);
   });
   el.addEventListener("pointermove", (e) => {
     if (e.pointerId !== ownerId) return;
     if (!el.hasPointerCapture(e.pointerId)) return;
-    const rect = el.getBoundingClientRect();
     const radius = rect.width / 2;
     const dx = (e.clientX - (rect.left + radius)) / radius;
     const dy = (e.clientY - (rect.top + radius)) / radius;
@@ -597,8 +601,8 @@ function buildTrigger(cfg: Extract<ControlConfig, { type: "trigger" }>, scale: n
     }
   };
 
+  let rect = el.getBoundingClientRect();
   const update = (clientY: number) => {
-    const rect = el.getBoundingClientRect();
     const raw = Math.min(1, Math.max(0, 1 - (clientY - rect.top) / rect.height));
     setValue(applyDeadZoneAndCurve(raw, cfg.deadZone ?? 0, cfg.curve ?? 1));
   };
@@ -613,6 +617,7 @@ function buildTrigger(cfg: Extract<ControlConfig, { type: "trigger" }>, scale: n
     if (ownerId !== null) return;
     ownerId = e.pointerId;
     el.setPointerCapture(e.pointerId);
+    rect = el.getBoundingClientRect();
     update(e.clientY);
   });
   el.addEventListener("pointermove", (e) => {

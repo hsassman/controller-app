@@ -5,6 +5,18 @@ import type { InputFrameData } from "../../protocol/frame.ts";
 
 const buttonsHeld = new Set<number>();
 
+/// Called whenever any value actually changes, so the sender can push a
+/// frame immediately instead of waiting for its next tick.
+let changeListener: (() => void) | null = null;
+
+export function onInputChange(listener: (() => void) | null): void {
+  changeListener = listener;
+}
+
+function changed(): void {
+  changeListener?.();
+}
+
 const state: InputFrameData = {
   sequence: 0,
   buttons: 0,
@@ -17,8 +29,10 @@ const state: InputFrameData = {
 };
 
 export function setButton(bit: number, pressed: boolean): void {
+  if (pressed === buttonsHeld.has(bit)) return;
   if (pressed) buttonsHeld.add(bit);
   else buttonsHeld.delete(bit);
+  changed();
 }
 
 export function isButtonHeld(bit: number): boolean {
@@ -33,18 +47,27 @@ export function setStick(which: "left" | "right", x: number, y: number): void {
   const sx = scaleAxis(x);
   const sy = scaleAxis(y);
   if (which === "left") {
+    if (state.leftStickX === sx && state.leftStickY === sy) return;
     state.leftStickX = sx;
     state.leftStickY = sy;
   } else {
+    if (state.rightStickX === sx && state.rightStickY === sy) return;
     state.rightStickX = sx;
     state.rightStickY = sy;
   }
+  changed();
 }
 
 export function setTrigger(which: "left" | "right", value: number): void {
   const v = Math.round(clamp(value, 0, 1) * 255);
-  if (which === "left") state.leftTrigger = v;
-  else state.rightTrigger = v;
+  if (which === "left") {
+    if (state.leftTrigger === v) return;
+    state.leftTrigger = v;
+  } else {
+    if (state.rightTrigger === v) return;
+    state.rightTrigger = v;
+  }
+  changed();
 }
 
 export function resetAll(): void {
@@ -55,6 +78,7 @@ export function resetAll(): void {
   state.rightStickY = 0;
   state.leftTrigger = 0;
   state.rightTrigger = 0;
+  changed();
 }
 
 export function snapshot(sequence: number): InputFrameData {

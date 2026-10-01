@@ -19,6 +19,8 @@ import {
   THEMES,
 } from "./theme.ts";
 import type { IconPackId } from "./iconPacks.ts";
+import type { PadStyleId } from "./padStyles.ts";
+import { PAD_STYLE_IDS } from "./padStyles.ts";
 import { ICON_PACKS } from "./iconPacks.ts";
 
 const STORAGE_KEY = "controller-settings-v1";
@@ -43,6 +45,7 @@ export interface Settings {
   glowIntensity: number; // 0-1.5, multiplies the accent glow on pressed controls
   idleDimSeconds: number; // seconds of no input before the controls fade; 0 = off
   iconPack: IconPackId; // what face buttons draw, purely cosmetic
+  padStyle: PadStyleId; // which real controller the pad is styled after
   shellColor: string; // controller body colour (hex), "" = follow the theme
   faceStyle: FaceStyle; // how A/B/X/Y are coloured
   stickStyle: StickStyle; // thumbstick cap shape
@@ -82,6 +85,7 @@ export function defaults(): Settings {
     glowIntensity: 1,
     idleDimSeconds: 0,
     iconPack: "letters",
+    padStyle: "xbox360",
     shellColor: "",
     faceStyle: "classic",
     stickStyle: "concave",
@@ -140,8 +144,12 @@ function sanitize(s: Settings): Settings {
   // otherwise reach the DOM and match no rule at all.
   if (!THEMES.some((t) => t.id === s.theme)) s.theme = d.theme;
   if (!BUTTON_MATERIALS.some((m) => m.id === s.buttonMaterial)) s.buttonMaterial = d.buttonMaterial;
+  // "disc" was replaced by the faceted dish -- the closest successor, and
+  // what someone who picked a round d-pad most likely still wants.
+  if ((s.dpadStyle as string) === "disc") s.dpadStyle = "faceted";
   if (!DPAD_STYLES.some((p) => p.id === s.dpadStyle)) s.dpadStyle = d.dpadStyle;
   if (!ICON_PACKS.some((p) => p.id === s.iconPack)) s.iconPack = d.iconPack;
+  if (!PAD_STYLE_IDS.includes(s.padStyle)) s.padStyle = d.padStyle;
   if (!FACE_STYLES.some((p) => p.id === s.faceStyle)) s.faceStyle = d.faceStyle;
   if (!STICK_STYLES.some((p) => p.id === s.stickStyle)) s.stickStyle = d.stickStyle;
   if (!STICK_COLORS.some((p) => p.id === s.stickColor)) s.stickColor = d.stickColor;

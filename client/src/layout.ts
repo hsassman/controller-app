@@ -1,4 +1,4 @@
-import { ButtonBit } from "../../protocol/frame.ts";
+import { PAD_STYLES } from "./padStyles.ts";
 
 export interface ButtonConfig {
   id: string;
@@ -97,25 +97,8 @@ export interface Layout {
   background?: BackgroundConfig;
 }
 
+/// The Xbox 360 layout -- offset sticks, d-pad under the left stick, the
+/// Guide button with its ring of light in the middle. See padStyles.ts.
 export function defaultLayout(): Layout {
-  return {
-    id: "default",
-    name: "Default",
-    controls: [
-      { id: "lb", type: "button", label: "LB", bit: ButtonBit.L1, x: 7, y: 8, size: 42, toggle: false },
-      { id: "rb", type: "button", label: "RB", bit: ButtonBit.R1, x: 93, y: 8, size: 42, toggle: false },
-      { id: "lt", type: "trigger", label: "LT", x: 7, y: 26, width: 42, height: 42, trigger: "left" },
-      { id: "rt", type: "trigger", label: "RT", x: 93, y: 26, width: 42, height: 42, trigger: "right" },
-      { id: "select", type: "button", label: "Select", bit: ButtonBit.SELECT, x: 39, y: 8, size: 34, width: 62, height: 34, shape: "pill", toggle: false },
-      { id: "guide", type: "button", label: "⊗", bit: ButtonBit.GUIDE, x: 50, y: 10, size: 42, toggle: false },
-      { id: "start", type: "button", label: "Start", bit: ButtonBit.START, x: 61, y: 8, size: 34, width: 62, height: 34, shape: "pill", toggle: false },
-      { id: "dpad", type: "dpad", x: 15, y: 68, size: 108 },
-      { id: "left-stick", type: "stick", label: "Left stick", x: 33, y: 68, size: 98, clickBit: ButtonBit.L3, stick: "left" },
-      { id: "right-stick", type: "stick", label: "Right stick", x: 64, y: 68, size: 90, clickBit: ButtonBit.R3, stick: "right" },
-      { id: "face-x", type: "button", label: "X", bit: ButtonBit.X, x: 80, y: 64, size: 42, toggle: false },
-      { id: "face-y", type: "button", label: "Y", bit: ButtonBit.Y, x: 87, y: 49, size: 42, toggle: false },
-      { id: "face-b", type: "button", label: "B", bit: ButtonBit.B, x: 93, y: 64, size: 42, toggle: false },
-      { id: "face-a", type: "button", label: "A", bit: ButtonBit.A, x: 87, y: 79, size: 42, toggle: false },
-    ],
-  };
+  return { ...PAD_STYLES[0].layout(), id: "default", name: "Default" };
 }

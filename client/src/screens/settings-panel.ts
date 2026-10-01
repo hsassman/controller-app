@@ -32,6 +32,7 @@ import { isStandalone, maybeOfferShortcut } from "../install.ts";
 import { ICON_PACKS } from "../iconPacks.ts";
 import { listSkins, saveSkin, deleteSkin, randomAppearance, appearanceOf, matchesSkin, type Skin } from "../skins.ts";
 import { buildShareUrl, renderQrCanvas } from "../share.ts";
+import { PAD_STYLES } from "../padStyles.ts";
 
 export interface SettingsPanelHost {
   onChange(settings: Settings): void;
@@ -235,6 +236,8 @@ function renderAppearance(
   emit: (partial: Partial<Settings>) => void,
   host: SettingsPanelHost,
 ): void {
+  renderPadStyleSection(body, current, emit, host);
+
   const themeRow = section(body, "Theme");
   const themes = document.createElement("div");
   themes.className = "theme-grid";
@@ -395,6 +398,50 @@ function renderAppearance(
     body.appendChild(shortcut);
     hint(body, "Removes the browser's address bar and toolbar, and pins an address that survives your PC changing IP.");
   }
+}
+
+/// Whole-controller styles (padStyles.ts). Picking one applies its look and
+/// switches to a profile laid out like that controller -- created the first
+/// time, reused after -- so the player's own layouts are never overwritten.
+function renderPadStyleSection(
+  body: HTMLElement,
+  current: Settings,
+  emit: (partial: Partial<Settings>) => void,
+  host: SettingsPanelHost,
+): void {
+  const row = section(body, "Controller style");
+  const grid = document.createElement("div");
+  grid.className = "pad-style-grid";
+  for (const style of PAD_STYLES) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "pad-style-card";
+    btn.dataset.style = style.id;
+    const on = current.padStyle === style.id;
+    btn.classList.toggle("on", on);
+    btn.setAttribute("aria-pressed", String(on));
+    const art = document.createElement("span");
+    art.className = "pad-style-art";
+    art.setAttribute("aria-hidden", "true");
+    const name = document.createElement("strong");
+    name.textContent = style.name;
+    const desc = document.createElement("span");
+    desc.className = "pad-style-desc";
+    desc.textContent = style.description;
+    btn.append(art, name, desc);
+    btn.addEventListener("click", () => {
+      haptic("ui");
+      emit({ ...style.look });
+      const existing = listProfiles().find((p) => p.name === style.name);
+      if (existing) setActiveProfile(existing.id);
+      else createProfile(style.name, style.layout());
+      host.onProfilesChanged();
+      renderReplace(body, () => renderAppearance(body, current, emit, host), ".pad-style-card.on");
+    });
+    grid.appendChild(btn);
+  }
+  row.appendChild(grid);
+  hint(row, "Lays the pad out like that controller, with its button names and d-pad. Your PC still sees an Xbox controller, so every game works the same — buttons match by position.");
 }
 
 /// The controller's body colour: named colourways plus a free picker, the

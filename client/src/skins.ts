@@ -17,6 +17,7 @@ import {
   SURFACE_STYLES,
   THEMES,
 } from "./theme.ts";
+import { PAD_STYLE_IDS } from "./padStyles.ts";
 import { ICON_PACKS } from "./iconPacks.ts";
 
 const STORE_KEY = "controller-skins-v1";
@@ -31,6 +32,7 @@ export const SKIN_KEYS = [
   "dpadStyle",
   "glowIntensity",
   "iconPack",
+  "padStyle",
   "shellColor",
   "faceStyle",
   "stickStyle",
@@ -73,6 +75,7 @@ function readSkins(): Skin[] {
     const d = defaults();
     return parsed
       .map((v) => (v && typeof v === "object" ? { ...appearanceOf(d), ...(v as object) } : v))
+      .map((v) => (v && (v as { dpadStyle?: string }).dpadStyle === "disc" ? { ...(v as object), dpadStyle: "faceted" } : v))
       .filter(isValidSkin);
   } catch {
     return [];
@@ -92,6 +95,7 @@ function isValidSkin(v: unknown): v is Skin {
     typeof s.glowIntensity === "number" &&
     ICON_PACKS.some((p) => p.id === s.iconPack) &&
     typeof s.shellColor === "string" &&
+    PAD_STYLE_IDS.includes(s.padStyle as never) &&
     FACE_STYLES.some((p) => p.id === s.faceStyle) &&
     STICK_STYLES.some((p) => p.id === s.stickStyle) &&
     STICK_COLORS.some((p) => p.id === s.stickColor) &&
@@ -138,6 +142,9 @@ export function randomAppearance(): SkinAppearance {
     dpadStyle: pick(DPAD_STYLES).id,
     glowIntensity: Math.round((0.6 + Math.random() * 0.9) * 20) / 20,
     iconPack: "letters",
+    // Remix restyles the controller you have; it never swaps your layout's
+    // button names out from under you.
+    padStyle: "xbox360",
     shellColor: pick(SHELL_PRESETS).value,
     faceStyle: pick(FACE_STYLES).id,
     stickStyle: pick(STICK_STYLES).id,

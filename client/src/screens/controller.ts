@@ -1,6 +1,6 @@
 import type { HostConnection, ConnectionState } from "../connection.ts";
 import { renderControls } from "../controls.ts";
-import { snapshot, resetAll } from "../inputState.ts";
+import { snapshot, resetAll, onInputChange } from "../inputState.ts";
 import { encodeInputFrame } from "../../../protocol/frame.ts";
 import { loadSettings, saveSettings, applyHighContrast } from "../settings.ts";
 import { applyAppearance, applyBackground } from "../theme.ts";
@@ -13,7 +13,12 @@ import { confirmDialog } from "../dialog.ts";
 import { showFirstRunHint } from "../onboarding.ts";
 import { maybeOfferShortcut } from "../install.ts";
 
-const SEND_RATE_HZ = 100;
+/// Input is pushed the moment it changes, capped at one frame per
+/// MIN_FRAME_GAP_MS (250 Hz) so a fast stick sweep can't flood the link.
+/// Nothing changing still re-sends every KEEPALIVE_MS, so the PC's copy of
+/// the pad can never drift from the phone's for long.
+const MIN_FRAME_GAP_MS = 4;
+const KEEPALIVE_MS = 50;
 /// Written by the connect screen just before it dials, so the first entry is
 /// the address this session is actually on. Read (never written) here so
 /// "Reconnect now" has a target without connection.ts having to expose one.
@@ -256,12 +261,28 @@ export function renderControllerScreen(
     lost: "Connection lost — reconnecting…",
   };
 
-  const intervalMs = 1000 / SEND_RATE_HZ;
-  const sendTimer = window.setInterval(() => {
+  // Previously a fixed 100 Hz loop: up to 10 ms between a press and its
+  // frame leaving the phone, and 100 frames a second sent even while
+  // nothing moved. Now a change goes out at once, and the idle phone sends
+  // a fifth as much -- less latency and less battery.
+  let lastSentAt = 0;
+  let pendingSend: number | null = null;
+  const sendNow = () => {
+    pendingSend = null;
     if (editing) return; // don't stream stale button state while editing
-    const frame = snapshot(sequence++);
-    connection.sendFrame(encodeInputFrame(frame));
-  }, intervalMs);
+    lastSentAt = performance.now();
+    connection.sendFrame(encodeInputFrame(snapshot(sequence++)));
+  };
+  const requestSend = () => {
+    if (pendingSend !== null) return;
+    const wait = MIN_FRAME_GAP_MS - (performance.now() - lastSentAt);
+    if (wait <= 0) sendNow();
+    else pendingSend = window.setTimeout(sendNow, wait);
+  };
+  onInputChange(requestSend);
+  const sendTimer = window.setInterval(() => {
+    if (performance.now() - lastSentAt >= KEEPALIVE_MS - 1) sendNow();
+  }, KEEPALIVE_MS);
 
   const handleState = (state: ConnectionState) => {
     statusEl.dataset.state = state;
@@ -329,6 +350,8 @@ export function renderControllerScreen(
 
   const cleanup = () => {
     window.clearInterval(sendTimer);
+    onInputChange(null);
+    if (pendingSend !== null) window.clearTimeout(pendingSend);
     document.removeEventListener("visibilitychange", onWake);
     window.removeEventListener("online", onWake);
     stopRumble();
