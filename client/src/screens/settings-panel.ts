@@ -1,4 +1,4 @@
-import type { Layout } from "../layout.ts";
+import type { Layout, BackgroundFilter } from "../layout.ts";
 import type { Settings } from "../settings.ts";
 import {
   THEMES,
@@ -11,7 +11,9 @@ import {
   STICK_COLORS,
   STICK_STYLES,
   SURFACE_STYLES,
+  TRIGGER_STYLES,
   applyBackground,
+  backgroundFilterCss,
 } from "../theme.ts";
 import { promptDialog, confirmDialog, alertDialog } from "../dialog.ts";
 import { mappingName } from "../mappings.ts";
@@ -34,6 +36,7 @@ import { listSkins, saveSkin, deleteSkin, randomAppearance, appearanceOf, matche
 import { buildShareUrl, renderQrCanvas } from "../share.ts";
 import { PAD_STYLES } from "../padStyles.ts";
 import { ICONS, iconLabel } from "../icons.ts";
+import { GUIDE_STYLES } from "../glyphs.ts";
 
 export interface SettingsPanelHost {
   onChange(settings: Settings): void;
@@ -44,6 +47,8 @@ export interface SettingsPanelHost {
   /// `onChange` because the caller has to reload the layout and re-render
   /// the surface, not merely re-read settings.
   onProfilesChanged(): void;
+  /// Redraws the panel's live preview (set by the panel itself).
+  refreshPreview?(): void;
 }
 
 type TabId = "style" | "controls" | "access" | "profiles";
@@ -162,6 +167,20 @@ export function renderSettingsPanel(layout: Layout, current: Settings, host: Set
     frame.style.backgroundImage = page.backgroundImage;
     frame.style.backgroundSize = "cover";
     frame.style.backgroundPosition = "center";
+    // The profile's own colour or photo, with its adjustments, is a layer of
+    // its own (body::before); blur is scaled down with the miniature.
+    if (document.documentElement.classList.contains("has-profile-background")) {
+      const layerStyle = getComputedStyle(document.body, "::before");
+      const layer = document.createElement("div");
+      layer.className = "preview-bg";
+      layer.style.backgroundColor = layerStyle.backgroundColor;
+      layer.style.backgroundImage = layerStyle.backgroundImage;
+      layer.style.backgroundSize = layerStyle.backgroundSize;
+      layer.style.opacity = layerStyle.opacity;
+      const filter = getComputedStyle(document.documentElement).getPropertyValue("--profile-bg-filter").trim() || "none";
+      layer.style.filter = filter.replace(/blur\(([\d.]+)px\)/, (_, px) => `blur(${(Number(px) * scale).toFixed(2)}px)`);
+      frame.appendChild(layer);
+    }
     frame.appendChild(copy);
     stage.appendChild(frame);
   };
@@ -183,6 +202,7 @@ export function renderSettingsPanel(layout: Layout, current: Settings, host: Set
   const tabHost: SettingsPanelHost = {
     onChange: host.onChange,
     getLayout: host.getLayout,
+    refreshPreview: () => schedulePreview(),
     onProfilesChanged: () => {
       host.onProfilesChanged();
       schedulePreview();
@@ -494,6 +514,21 @@ function renderStyle(
   );
   choiceRow(
     inner,
+    "Triggers",
+    TRIGGER_STYLES.map((m) => ({ value: m.id, label: m.name })),
+    current.triggerStyle,
+    (v) => emit({ triggerStyle: v }),
+  );
+  choiceRow(
+    inner,
+    "Guide button",
+    GUIDE_STYLES.map((m) => ({ value: m.id, label: m.name })),
+    current.guideStyle,
+    (v) => emit({ guideStyle: v }),
+  );
+  switchRow(inner, "Ring of light around the Guide button", current.guideRing, (v) => emit({ guideRing: v }));
+  choiceRow(
+    inner,
     "Behind the controls",
     SURFACE_STYLES.map((m) => ({ value: m.id, label: m.name })),
     current.surfaceStyle,
@@ -503,7 +538,7 @@ function renderStyle(
     v === 0 ? "Off" : `${Math.round(v * 100)}%`, (v) => emit({ glowIntensity: v }),
   );
   switchRow(inner, "Soft light behind the controls", current.surfaceGlow, (v) => emit({ surfaceGlow: v }));
-  renderBackgroundSection(inner, current, emit, host, () => rerender());
+  renderBackgroundSection(inner, host, () => rerender(), () => host.refreshPreview?.());
 
   renderSkinsSection(body, current, emit, rerender);
 
@@ -531,7 +566,12 @@ function renderStyle(
 }
 
 /// A native colour picker dressed as one more swatch, with a visible name.
-function colourPicker(value: string, label: string, onInput: (v: string) => void): HTMLLabelElement {
+function colourPicker(
+  value: string,
+  label: string,
+  onInput: (v: string) => void,
+  onChange?: (v: string) => void,
+): HTMLLabelElement {
   const wrap = document.createElement("label");
   wrap.className = "swatch swatch-custom";
   wrap.title = label;
@@ -540,9 +580,12 @@ function colourPicker(value: string, label: string, onInput: (v: string) => void
   input.value = /^#[0-9a-f]{6}$/i.test(value) ? value : "#262b37";
   input.setAttribute("aria-label", label);
   input.addEventListener("input", () => onInput(input.value));
+  if (onChange) input.addEventListener("change", () => onChange(input.value));
+  // A drawn plus, so it sits dead centre whatever the phone's font.
   const plus = document.createElement("span");
+  plus.className = "swatch-plus";
   plus.setAttribute("aria-hidden", "true");
-  plus.textContent = "+";
+  plus.innerHTML = ICONS.plus;
   wrap.append(input, plus);
   return wrap;
 }
@@ -645,31 +688,116 @@ function renderBodySection(
   hint(row, `${name}. Lettering turns dark on light colours so it stays readable.`);
 }
 
-/// Base64 inflates a file by roughly a third; capped comfortably under
-/// profile.ts's MAX_BACKGROUND_IMAGE_BYTES so a file that looks acceptable
-/// here doesn't get silently dropped by that sanitizer afterwards.
-const MAX_BACKGROUND_IMAGE_FILE_BYTES = 1_400_000;
+/// Photos are shrunk to this many pixels on the long edge and re-encoded
+/// as JPEG before they are stored: a phone photo is 2-12MB, far more than a
+/// backdrop needs and more than localStorage can hold.
+const BACKGROUND_MAX_SIDE = 1920;
+/// Re-encoded size limit; comfortably under profile.ts's stored-image cap.
+const BACKGROUND_MAX_BYTES = 1_800_000;
+
+/// Reads `file` as an image and returns a downscaled JPEG data: URL.
+async function shrinkPhoto(file: File): Promise<string> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.decoding = "async";
+    img.src = url;
+    await img.decode();
+    let side = BACKGROUND_MAX_SIDE;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const scale = Math.min(1, side / Math.max(img.naturalWidth, img.naturalHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+      canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const data = canvas.toDataURL("image/jpeg", 0.82);
+      if (data.length <= BACKGROUND_MAX_BYTES) return data;
+      side = Math.round(side * 0.7);
+    }
+    throw new Error("still too large");
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+const BACKGROUND_COLOURS: { value: string; name: string }[] = [
+  { value: "#1a1d24", name: "Graphite" },
+  { value: "#0b1530", name: "Navy" },
+  { value: "#13261f", name: "Forest" },
+  { value: "#2a1236", name: "Plum" },
+  { value: "#331414", name: "Oxblood" },
+  { value: "#000000", name: "Black" },
+];
+
+const PHOTO_FILTERS: { value: BackgroundFilter; label: string }[] = [
+  { value: "none", label: "Original" },
+  { value: "mono", label: "Black & white" },
+  { value: "sepia", label: "Sepia" },
+  { value: "warm", label: "Warm" },
+  { value: "cool", label: "Cool" },
+  { value: "vivid", label: "Vivid" },
+  { value: "fade", label: "Faded" },
+];
 
 function renderBackgroundSection(
   body: HTMLElement,
-  _current: Settings,
-  _emit: (partial: Partial<Settings>) => void,
   host: SettingsPanelHost,
   rerender: () => void,
+  refreshPreview: () => void,
 ): void {
   const layout = host.getLayout?.();
   if (!layout) return;
   const bg = layout.background;
 
-  const apply = (next: Layout["background"]) => {
+  /// Saves and shows a new background. `live` skips the full refresh, for
+  /// slider drags: re-rendering mid-drag would drop the slider.
+  const apply = (next: Layout["background"], live = false) => {
     setProfileBackground(layout.id, next);
     applyBackground(next);
+    if (live) {
+      // The pad's own copy of the profile catches up when the drag ends.
+      refreshPreview();
+      return;
+    }
     host.onProfilesChanged();
     rerender();
   };
 
   const section_ = section(body, "Background");
-  hint(section_, "A colour or photo behind the controls, for this profile only.");
+  hint(section_, "A colour or your own photo behind the controls, for this profile.");
+
+  const fileInput = document.createElement("input");
+  fileInput.type = "file";
+  fileInput.accept = "image/*";
+  fileInput.className = "visually-hidden";
+  fileInput.tabIndex = -1;
+  fileInput.setAttribute("aria-hidden", "true");
+  const status = document.createElement("p");
+  status.className = "hint";
+  status.setAttribute("role", "status");
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files?.[0];
+    fileInput.value = "";
+    if (!file) return;
+    status.textContent = "Adding your photo…";
+    try {
+      const data = await shrinkPhoto(file);
+      const keep = bg?.type === "image" ? bg : undefined;
+      apply({
+        type: "image",
+        value: data,
+        fit: keep?.fit,
+        opacity: keep?.opacity,
+        brightness: keep?.brightness,
+        blur: keep?.blur,
+        filter: keep?.filter,
+      });
+    } catch {
+      status.textContent = "";
+      await alertDialog("Couldn't use that photo", "Try a different photo — a JPEG or PNG from your camera roll works best.");
+    }
+  });
+  const choosePhoto = () => fileInput.click();
 
   const mode = bg?.type ?? "none";
   const modeRow = document.createElement("div");
@@ -691,64 +819,103 @@ function renderBackgroundSection(
     btn.addEventListener("click", () => {
       haptic("ui");
       if (value === "none") apply(undefined);
-      else if (value === "color") apply({ type: "color", value: "#1a1d24" });
-      // "image" alone does nothing yet -- it's chosen by picking a file
-      // below, so switching to it here would otherwise clear a working
-      // background for no visible result.
+      else if (value === "color") apply({ type: "color", value: bg?.type === "color" ? bg.value : BACKGROUND_COLOURS[0].value });
+      // Photo goes straight to the photo picker; the background only changes
+      // once a photo has been picked.
+      else choosePhoto();
     });
     modeRow.appendChild(btn);
   }
-  section_.appendChild(modeRow);
+  section_.append(modeRow, fileInput, status);
 
-  if (mode === "color") {
-    const picker = document.createElement("input");
-    picker.type = "color";
-    picker.className = "bg-colour";
-    picker.value = /^#[0-9a-f]{6}$/i.test(bg?.value ?? "") ? bg!.value : "#1a1d24";
-    picker.setAttribute("aria-label", "Background colour");
+  if (bg?.type === "color") {
+    const swatches = document.createElement("div");
+    swatches.className = "swatches";
+    swatches.setAttribute("role", "group");
+    swatches.setAttribute("aria-label", "Background colour");
+    BACKGROUND_COLOURS.forEach((colour, index) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "swatch bg-swatch";
+      btn.dataset.index = String(index);
+      btn.style.background = colour.value;
+      btn.setAttribute("aria-label", colour.name);
+      btn.title = colour.name;
+      const on = colour.value.toLowerCase() === bg.value.toLowerCase();
+      btn.setAttribute("aria-pressed", String(on));
+      btn.classList.toggle("on", on);
+      btn.addEventListener("click", () => {
+        haptic("ui");
+        apply({ type: "color", value: colour.value });
+        body.querySelector<HTMLElement>(`.bg-swatch[data-index="${index}"]`)?.focus();
+      });
+      swatches.appendChild(btn);
+    });
     // "change", not "input": each apply re-renders the tab, which would
     // close the native picker mid-drag.
-    picker.addEventListener("change", () => apply({ type: "color", value: picker.value }));
-    section_.appendChild(picker);
+    const picker = colourPicker(bg.value, "Pick any background colour", () => {}, (v) =>
+      apply({ type: "color", value: v }),
+    );
+    swatches.appendChild(picker);
+    section_.appendChild(swatches);
   }
 
-  if (mode === "image") {
-    if (bg?.type === "image") {
-      const preview = document.createElement("img");
-      preview.className = "bg-preview";
-      preview.src = bg.value;
-      preview.alt = "Current background photo";
-      section_.appendChild(preview);
-    }
-    const chooseBtn = document.createElement("button");
-    chooseBtn.type = "button";
-    chooseBtn.className = "small";
-    chooseBtn.textContent = bg?.type === "image" ? "Choose a different photo" : "Choose a photo";
-    const fileInput = document.createElement("input");
-    fileInput.type = "file";
-    fileInput.accept = "image/*";
-    fileInput.className = "visually-hidden";
-    fileInput.tabIndex = -1;
-    chooseBtn.addEventListener("click", () => fileInput.click());
-    fileInput.addEventListener("change", async () => {
-      const file = fileInput.files?.[0];
-      if (!file) return;
-      if (file.size > MAX_BACKGROUND_IMAGE_FILE_BYTES) {
-        await alertDialog(
-          "That photo is too big",
-          `Pick something under ${Math.round(MAX_BACKGROUND_IMAGE_FILE_BYTES / 1_000_000)}MB — a phone's full-resolution camera roll photo is usually well past what a background needs.`,
-        );
-        return;
-      }
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(file);
+  if (bg?.type === "image") {
+    const photo = bg;
+    const adjust = (patch: Partial<NonNullable<Layout["background"]>>, live = false) =>
+      apply({ ...photo, ...patch } as Layout["background"], live) ;
+
+    const row = document.createElement("div");
+    row.className = "bg-photo-row";
+    const thumb = document.createElement("div");
+    thumb.className = "bg-preview";
+    thumb.setAttribute("role", "img");
+    thumb.setAttribute("aria-label", "Your background photo");
+    // The photo is drawn on an inner layer so blur stays inside the frame.
+    const thumbImage = document.createElement("span");
+    thumbImage.className = "bg-preview-image";
+    thumb.appendChild(thumbImage);
+    const paintThumb = (b: NonNullable<Layout["background"]>) => {
+      thumbImage.style.backgroundImage = `url("${b.value.replace(/"/g, '\\"')}")`;
+      thumbImage.style.backgroundSize = b.fit === "contain" ? "contain" : "cover";
+      thumbImage.style.opacity = String(b.opacity ?? 1);
+      thumbImage.style.filter = backgroundFilterCss(b);
+    };
+    paintThumb(photo);
+    const change = document.createElement("button");
+    change.type = "button";
+    change.className = "small";
+    change.textContent = "Change photo";
+    change.addEventListener("click", choosePhoto);
+    row.append(thumb, change);
+    section_.appendChild(row);
+
+    choiceRow(
+      section_,
+      "Fit",
+      [
+        { value: "cover", label: "Fill the screen" },
+        { value: "contain", label: "Whole photo" },
+      ],
+      photo.fit ?? "cover",
+      (v) => adjust({ fit: v }),
+    );
+    choiceRow(section_, "Filter", PHOTO_FILTERS, photo.filter ?? "none", (v) => adjust({ filter: v }));
+
+    const slider = (label: string, key: "opacity" | "brightness" | "blur", value: number, min: number, max: number, step: number, fmt: (v: number) => string) => {
+      const sliderEl = sliderRow(section_, label, value, min, max, step, fmt, (v) => {
+        const next = { ...photo, [key]: v };
+        Object.assign(photo, { [key]: v });
+        paintThumb(next);
+        adjust({ [key]: v }, true);
       });
-      apply({ type: "image", value: dataUrl });
-    });
-    section_.append(chooseBtn, fileInput);
+      // Drag finished: let the pad's copy of the profile catch up once.
+      sliderEl.querySelector("input")!.addEventListener("change", () => host.onProfilesChanged());
+    };
+    slider("Photo strength", "opacity", photo.opacity ?? 1, 0.15, 1, 0.05, (v) => `${Math.round(v * 100)}%`);
+    slider("Brightness", "brightness", photo.brightness ?? 1, 0.3, 1.5, 0.05, (v) => `${Math.round(v * 100)}%`);
+    slider("Blur", "blur", photo.blur ?? 0, 0, 16, 1, (v) => (v === 0 ? "Off" : `${v}px`));
+    hint(section_, "Lower the strength or brightness to keep the controls easy to see.");
   }
 }
 

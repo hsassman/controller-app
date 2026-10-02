@@ -66,9 +66,10 @@ export function renderControllerScreen(
           <button id="hide-bar-btn" class="icon-btn hide-bar-btn" type="button" aria-controls="topbar">${iconLabel(ICONS.hide, "Hide menu")}</button>
         </div>
       </header>
-      <!-- Shown while the menu is tucked away for play: one clear, finger-
-           sized button that brings it back on the first tap. -->
-      <button id="bar-handle" class="bar-handle" type="button" aria-controls="topbar" aria-expanded="false">${iconLabel(ICONS.menu, "Menu")}</button>
+      <!-- Shown while the menu is tucked away for play: a slim pill at the
+           top edge. It looks small, but the button around it is a full
+           finger-sized target, so it opens on the first tap. -->
+      <button id="bar-handle" class="bar-handle" type="button" aria-label="Show menu" title="Show menu" aria-controls="topbar" aria-expanded="false"><span class="bar-pill" aria-hidden="true"></span></button>
       <main class="surface-wrap">
         <div id="controls-surface" class="controls-surface" role="group" aria-label="Game controller"></div>
         <div id="empty-layout" class="empty-layout" hidden>

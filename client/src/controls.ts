@@ -3,6 +3,7 @@ import { isButtonHeld, resetAll, setButton, setStick, setTrigger } from "./input
 import type { Settings } from "./settings.ts";
 import { haptic } from "./haptics.ts";
 import { displayLabel } from "./iconPacks.ts";
+import { faceShapeSvg, guideIconSvg } from "./glyphs.ts";
 import { ButtonBit } from "../../protocol/frame.ts";
 import { mappingName } from "./mappings.ts";
 
@@ -168,10 +169,14 @@ function buildButton(
     el.appendChild(ring);
     const glyph = document.createElement("span");
     glyph.className = "guide-glyph";
-    glyph.textContent = shown;
+    const icon = guideIconSvg(getSettings().guideStyle, shown);
+    if (icon) glyph.innerHTML = icon;
+    else glyph.textContent = shown;
     el.appendChild(glyph);
   } else {
-    el.textContent = shown;
+    const drawn = face ? faceShapeSvg(shown) : null;
+    if (drawn) el.innerHTML = drawn;
+    else el.textContent = shown;
   }
   const bw = cfg.width ?? cfg.size;
   const bh = cfg.height ?? cfg.size;

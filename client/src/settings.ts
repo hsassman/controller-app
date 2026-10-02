@@ -4,6 +4,7 @@ import type {
   FaceStyle,
   LabelStyle,
   StickColor,
+  TriggerStyle,
   StickStyle,
   SurfaceStyle,
   ThemeId,
@@ -15,6 +16,7 @@ import {
   LABEL_STYLES,
   STICK_COLORS,
   STICK_STYLES,
+  TRIGGER_STYLES,
   SURFACE_STYLES,
   THEMES,
 } from "./theme.ts";
@@ -22,6 +24,7 @@ import type { IconPackId } from "./iconPacks.ts";
 import type { PadStyleId } from "./padStyles.ts";
 import { PAD_STYLE_IDS } from "./padStyles.ts";
 import { ICON_PACKS } from "./iconPacks.ts";
+import { GUIDE_STYLES, type GuideStyle } from "./glyphs.ts";
 
 const STORAGE_KEY = "controller-settings-v1";
 
@@ -50,6 +53,9 @@ export interface Settings {
   faceStyle: FaceStyle; // how A/B/X/Y are coloured
   stickStyle: StickStyle; // thumbstick cap shape
   stickColor: StickColor; // thumbstick cap colour
+  triggerStyle: TriggerStyle; // LT/RT shape
+  guideStyle: GuideStyle; // what the Guide/home button shows
+  guideRing: boolean; // the Xbox ring of light around the Guide button
   labelStyle: LabelStyle; // printed / engraved / backlit legends
   surfaceStyle: SurfaceStyle; // dark backdrop, or the controller body edge to edge
   topBar: "auto" | "always"; // the status/menu bar: slides away during play, or stays put
@@ -91,6 +97,9 @@ export function defaults(): Settings {
     faceStyle: "classic",
     stickStyle: "concave",
     stickColor: "accent",
+    triggerStyle: "paddle",
+    guideStyle: "auto",
+    guideRing: true,
     labelStyle: "printed",
     surfaceStyle: "backdrop",
     topBar: "auto",
@@ -155,6 +164,9 @@ function sanitize(s: Settings): Settings {
   if (!FACE_STYLES.some((p) => p.id === s.faceStyle)) s.faceStyle = d.faceStyle;
   if (!STICK_STYLES.some((p) => p.id === s.stickStyle)) s.stickStyle = d.stickStyle;
   if (!STICK_COLORS.some((p) => p.id === s.stickColor)) s.stickColor = d.stickColor;
+  if (!TRIGGER_STYLES.some((p) => p.id === s.triggerStyle)) s.triggerStyle = d.triggerStyle;
+  if (!GUIDE_STYLES.some((p) => p.id === s.guideStyle)) s.guideStyle = d.guideStyle;
+  if (typeof s.guideRing !== "boolean") s.guideRing = d.guideRing;
   if (!LABEL_STYLES.some((p) => p.id === s.labelStyle)) s.labelStyle = d.labelStyle;
   if (s.topBar !== "auto" && s.topBar !== "always") s.topBar = d.topBar;
   if (!SURFACE_STYLES.some((p) => p.id === s.surfaceStyle)) s.surfaceStyle = d.surfaceStyle;

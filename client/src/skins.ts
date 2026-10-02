@@ -14,11 +14,13 @@ import {
   SHELL_PRESETS,
   STICK_COLORS,
   STICK_STYLES,
+  TRIGGER_STYLES,
   SURFACE_STYLES,
   THEMES,
 } from "./theme.ts";
 import { PAD_STYLE_IDS } from "./padStyles.ts";
 import { ICON_PACKS } from "./iconPacks.ts";
+import { GUIDE_STYLES } from "./glyphs.ts";
 
 const STORE_KEY = "controller-skins-v1";
 
@@ -37,6 +39,9 @@ export const SKIN_KEYS = [
   "faceStyle",
   "stickStyle",
   "stickColor",
+  "triggerStyle",
+  "guideStyle",
+  "guideRing",
   "labelStyle",
   "surfaceStyle",
 ] as const;
@@ -99,6 +104,9 @@ function isValidSkin(v: unknown): v is Skin {
     FACE_STYLES.some((p) => p.id === s.faceStyle) &&
     STICK_STYLES.some((p) => p.id === s.stickStyle) &&
     STICK_COLORS.some((p) => p.id === s.stickColor) &&
+    TRIGGER_STYLES.some((p) => p.id === s.triggerStyle) &&
+    GUIDE_STYLES.some((p) => p.id === s.guideStyle) &&
+    typeof s.guideRing === "boolean" &&
     LABEL_STYLES.some((p) => p.id === s.labelStyle) &&
     SURFACE_STYLES.some((p) => p.id === s.surfaceStyle)
   );
@@ -149,6 +157,9 @@ export function randomAppearance(): SkinAppearance {
     faceStyle: pick(FACE_STYLES).id,
     stickStyle: pick(STICK_STYLES).id,
     stickColor: pick(STICK_COLORS).id,
+    triggerStyle: pick(TRIGGER_STYLES).id,
+    guideStyle: pick(GUIDE_STYLES).id,
+    guideRing: true,
     labelStyle: pick(LABEL_STYLES).id,
     surfaceStyle: Math.random() < 0.5 ? "shell" : "backdrop",
   };

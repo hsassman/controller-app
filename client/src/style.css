@@ -1624,11 +1624,21 @@ button:disabled {
    usual page glow rather than replacing it -- see applyBackground() in
    theme.ts. A solid colour arrives as a degenerate two-stop gradient so it
    can share the same `cover`-sized layer as a photo. */
-:root.has-profile-background body {
-  background-image: var(--page-glow), var(--profile-bg-image);
-  background-size: auto, cover;
-  background-position: 0 0, center;
-  background-repeat: no-repeat, no-repeat;
+/* Its own layer under the page, so a photo can be faded, filtered and
+   blurred without touching anything drawn over it. */
+:root.has-profile-background body::before {
+  content: "";
+  position: fixed;
+  inset: calc(-1 * var(--profile-bg-bleed, 0px));
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--bg);
+  background-image: var(--profile-bg-image);
+  background-size: var(--profile-bg-size, cover);
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: var(--profile-bg-opacity, 1);
+  filter: var(--profile-bg-filter, none);
 }
 
 :root.no-surface-glow body {

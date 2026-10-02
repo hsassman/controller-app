@@ -821,3 +821,147 @@
   filter: none;
 }
 
+
+/* ============================================================
+   MORE THUMBSTICKS
+   ============================================================ */
+
+/* Ringed: the newer Xbox stick -- a dished top inside a broad, finely
+   dotted grip ring. */
+:root[data-stick-style="ringed"] .stick-knob {
+  width: 48%;
+  height: 48%;
+}
+
+:root[data-stick-style="ringed"] .stick-knob::before {
+  inset: 21%;
+}
+
+:root[data-stick-style="ringed"] .stick-knob::after {
+  background:
+    radial-gradient(circle, rgba(0, 0, 0, 0.42) 0.8px, rgba(0, 0, 0, 0) 1.15px) 0 0 / 3.2px 3.2px,
+    radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0.18));
+  -webkit-mask: radial-gradient(circle at 50% 50%, transparent 58%, #000 62%, #000 96%, transparent 100%);
+  mask: radial-gradient(circle at 50% 50%, transparent 58%, #000 62%, #000 96%, transparent 100%);
+  opacity: 0.95;
+}
+
+/* Flat disc: a low, flat-topped cap with fine concentric rings, like a
+   Switch stick. */
+:root[data-stick-style="flat"] .stick-knob {
+  width: 42%;
+  height: 42%;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -3px 5px rgba(0, 0, 0, 0.35),
+    0 2px 3px rgba(0, 0, 0, 0.55),
+    0 5px 10px -4px rgba(0, 0, 0, 0.6);
+}
+
+:root[data-stick-style="flat"] .stick-knob::before {
+  inset: 7%;
+  background:
+    repeating-radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.16) 0 1px, rgba(255, 255, 255, 0.05) 1px 3px),
+    radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 60%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+:root[data-stick-style="flat"] .stick-knob::after {
+  opacity: 0;
+}
+
+/* Tall: a taller "elite" stick -- a deep dish on a metal collar, casting a
+   longer shadow. */
+:root[data-stick-style="tall"] .stick-knob {
+  width: 50%;
+  height: 50%;
+  box-shadow:
+    0 0 0 2px rgba(205, 210, 220, 0.55),
+    0 0 0 3.5px rgba(0, 0, 0, 0.6),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -9px 14px rgba(0, 0, 0, 0.5),
+    0 4px 5px rgba(0, 0, 0, 0.55),
+    0 14px 22px -6px rgba(0, 0, 0, 0.8);
+}
+
+:root[data-stick-style="tall"] .stick-knob::before {
+  inset: 12%;
+  box-shadow:
+    inset 0 6px 9px -1px rgba(0, 0, 0, 0.65),
+    inset 0 -2px 3px rgba(255, 255, 255, 0.3),
+    0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+/* ============================================================
+   TRIGGER SHAPES
+   ============================================================ */
+
+/* Curved: a sculpted, arched top with a fine dotted grip, after the newer
+   Xbox triggers. */
+:root[data-trigger-style="curved"] .trigger-control {
+  border-radius: 50% 50% 0.7rem 0.7rem / 34% 34% 0.7rem 0.7rem;
+}
+
+:root[data-trigger-style="curved"] .trigger-control::after {
+  background:
+    radial-gradient(circle, rgba(0, 0, 0, 0.3) 0.8px, rgba(0, 0, 0, 0) 1.1px) 0 0 / 4px 4px,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.02) 46%, rgba(0, 0, 0, 0.26));
+}
+
+/* Rounded: a soft, convex capsule, like a PlayStation L2/R2. */
+:root[data-trigger-style="rounded"] .trigger-control {
+  border-radius: 1.6rem 1.6rem 1.1rem 1.1rem;
+}
+
+:root[data-trigger-style="rounded"] .trigger-control::after {
+  background:
+    radial-gradient(120% 70% at 50% 0%, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0) 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.28));
+}
+
+/* Flat: a thin, square-edged digital-style trigger, like ZL/ZR. */
+:root[data-trigger-style="flat"] .trigger-control {
+  border-radius: 0.35rem;
+  box-shadow:
+    var(--rim),
+    0 3px 0 rgba(0, 0, 0, 0.45),
+    0 6px 10px -4px rgba(0, 0, 0, 0.6);
+}
+
+:root[data-trigger-style="flat"] .trigger-control::after {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 30%, rgba(0, 0, 0, 0.16));
+}
+
+/* ============================================================
+   DRAWN SYMBOLS (glyphs.ts)
+   ============================================================ */
+
+/* PlayStation shapes: bold outlines, sized to the button, in the button's
+   legend colour. */
+.button-control .face-shape {
+  display: block;
+  width: 52%;
+  height: 52%;
+  stroke-width: 2.7;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.35));
+}
+
+:root[data-label-style="engraved"] .button-control .face-shape {
+  filter: drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.55)) drop-shadow(0 1px 0 rgba(255, 255, 255, 0.18));
+}
+
+:root[data-label-style="backlit"] .button-control .face-shape {
+  filter: drop-shadow(0 0 3px currentColor);
+}
+
+.guide-glyph .guide-icon {
+  display: block;
+  width: 1.9em;
+  height: 1.9em;
+}
+
+/* Ring of light switched off (Style → Guide button). */
+:root.no-guide-ring .guide-ring {
+  display: none;
+}

@@ -1,3 +1,5 @@
+import type { BackgroundConfig, BackgroundFilter } from "./layout.ts";
+
 export type ThemeId =
   | "midnight"
   | "carbon"
@@ -28,7 +30,8 @@ export type DpadStyle = "cross" | "split" | "faceted";
 export type FaceStyle = "classic" | "jewel" | "mono" | "accent";
 
 /// The thumbstick cap's shape.
-export type StickStyle = "concave" | "dome" | "pro";
+export type StickStyle = "concave" | "dome" | "pro" | "ringed" | "flat" | "tall";
+export type TriggerStyle = "paddle" | "curved" | "rounded" | "flat";
 
 /// What colour the thumbstick caps are moulded in.
 export type StickColor = "accent" | "body" | "black";
@@ -69,6 +72,17 @@ export const STICK_STYLES: { id: StickStyle; name: string }[] = [
   { id: "concave", name: "Concave" },
   { id: "dome", name: "Dome" },
   { id: "pro", name: "Pro grip" },
+  { id: "ringed", name: "Ringed" },
+  { id: "flat", name: "Flat disc" },
+  { id: "tall", name: "Tall" },
+];
+
+/// The shape of LT/RT: each one after a real controller's triggers.
+export const TRIGGER_STYLES: { id: TriggerStyle; name: string }[] = [
+  { id: "paddle", name: "Paddle" },
+  { id: "curved", name: "Curved" },
+  { id: "rounded", name: "Rounded" },
+  { id: "flat", name: "Flat" },
 ];
 
 export const STICK_COLORS: { id: StickColor; name: string }[] = [
@@ -272,7 +286,29 @@ export function applyTheme(id: ThemeId): void {
 /// A profile's own backdrop, layered under the theme's usual page glow
 /// rather than replacing it outright -- a custom colour or photo still
 /// reads as "this app, personalised" instead of a jarring flat swap.
-export function applyBackground(background: { type: "color" | "image"; value: string } | undefined): void {
+/// CSS for each photo filter (Style → Background → Filter).
+const BACKGROUND_FILTER_CSS: Record<BackgroundFilter, string> = {
+  none: "",
+  mono: "grayscale(1)",
+  sepia: "sepia(0.85)",
+  warm: "sepia(0.3) saturate(1.35) hue-rotate(-8deg)",
+  cool: "saturate(1.1) hue-rotate(18deg) brightness(0.98)",
+  vivid: "saturate(1.7) contrast(1.12)",
+  fade: "contrast(0.78) saturate(0.65) brightness(1.08)",
+};
+
+/// The CSS filter for a background's adjustments, or "none".
+export function backgroundFilterCss(background: BackgroundConfig | undefined): string {
+  if (!background || background.type !== "image") return "none";
+  const parts = [BACKGROUND_FILTER_CSS[background.filter ?? "none"] ?? ""];
+  const brightness = background.brightness ?? 1;
+  if (brightness !== 1) parts.push(`brightness(${brightness})`);
+  const blur = background.blur ?? 0;
+  if (blur > 0) parts.push(`blur(${blur}px)`);
+  return parts.filter(Boolean).join(" ") || "none";
+}
+
+export function applyBackground(background: BackgroundConfig | undefined): void {
   const root = document.documentElement;
   if (!background) {
     root.style.removeProperty("--profile-bg-image");
@@ -284,6 +320,13 @@ export function applyBackground(background: { type: "color" | "image"; value: st
       ? `url("${background.value.replace(/"/g, '\\"')}")`
       : `linear-gradient(${background.value}, ${background.value})`;
   root.style.setProperty("--profile-bg-image", image);
+  const isPhoto = background.type === "image";
+  root.style.setProperty("--profile-bg-size", isPhoto && background.fit === "contain" ? "contain" : "cover");
+  root.style.setProperty("--profile-bg-opacity", String(isPhoto ? (background.opacity ?? 1) : 1));
+  root.style.setProperty("--profile-bg-filter", backgroundFilterCss(background));
+  // Blur softens the edges inwards too; bleed the layer past the screen so
+  // they stay off it.
+  root.style.setProperty("--profile-bg-bleed", `${isPhoto ? Math.ceil((background.blur ?? 0) * 2.5) : 0}px`);
   root.classList.add("has-profile-background");
 }
 
@@ -416,6 +459,8 @@ export interface AppearanceSettings {
   faceStyle: FaceStyle;
   stickStyle: StickStyle;
   stickColor: StickColor;
+  triggerStyle: TriggerStyle;
+  guideRing: boolean;
   labelStyle: LabelStyle;
   surfaceStyle: SurfaceStyle;
 }
@@ -436,6 +481,7 @@ export function applyAppearance(s: AppearanceSettings): void {
   root.style.setProperty("--control-opacity", String(s.controlOpacity));
   root.classList.toggle("reduce-motion", s.reduceMotion);
   root.classList.toggle("no-surface-glow", !s.surfaceGlow);
+  root.classList.toggle("no-guide-ring", !s.guideRing);
 
   root.dataset.padStyle = s.padStyle;
   setChoice("material", s.buttonMaterial, BUTTON_MATERIALS, "gloss");
@@ -443,6 +489,7 @@ export function applyAppearance(s: AppearanceSettings): void {
   setChoice("faceStyle", s.faceStyle, FACE_STYLES, "classic");
   setChoice("stickStyle", s.stickStyle, STICK_STYLES, "concave");
   setChoice("stickColor", s.stickColor, STICK_COLORS, "accent");
+  setChoice("triggerStyle", s.triggerStyle, TRIGGER_STYLES, "paddle");
   setChoice("labelStyle", s.labelStyle, LABEL_STYLES, "printed");
   setChoice("surface", s.surfaceStyle, SURFACE_STYLES, "backdrop");
 

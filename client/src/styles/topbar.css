@@ -65,8 +65,7 @@
 }
 
 /* SVG icons (icons.ts): a fixed box, so every icon sits dead centre. */
-.icon-btn .icon,
-.bar-handle .icon {
+.icon-btn .icon {
   display: block;
   flex: none;
   width: 1.25rem;
@@ -129,39 +128,52 @@
   display: none;
 }
 
-/* The way back to the menu while it is tucked away: a real 44px button
-   with a word on it, a little below the very top edge (where iPhone
-   Safari takes the tap to show its own toolbar instead). */
+/* The way back to the menu while it is tucked away: a slim pill, drawn
+   small, inside an invisible 96x44px button so it still opens on the
+   first tap. Kept a little below the very top edge, where iPhone Safari
+   takes the tap to show its own toolbar instead. Same layer as the bar,
+   so the settings panel and dialogs always cover it. */
 .controller-screen.bar-auto.bar-hidden .bar-handle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
+  display: grid;
+  place-items: center;
   position: absolute;
-  top: calc(env(safe-area-inset-top) + 0.4rem);
+  top: env(safe-area-inset-top);
   left: 50%;
   translate: -50% 0;
-  z-index: 30;
-  min-height: 2.75rem;
-  min-width: 2.75rem;
-  padding: 0 1rem 0 0.8rem;
-  border: 1px solid color-mix(in srgb, var(--fg) 22%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--bg) 70%, transparent);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  color: var(--fg);
-  font-size: 0.82rem;
-  font-weight: 650;
-  line-height: 1;
+  z-index: 9;
+  width: 6rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
   cursor: pointer;
   touch-action: manipulation;
-  box-shadow: 0 4px 14px -6px rgba(0, 0, 0, 0.7);
+}
+
+.bar-pill {
+  display: block;
+  width: 3.2rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fg) 55%, transparent);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 2px 6px rgba(0, 0, 0, 0.5);
+  transition:
+    width 0.15s ease-out,
+    background 0.15s ease-out;
+}
+
+.bar-handle:hover .bar-pill,
+.bar-handle:active .bar-pill {
+  width: 3.8rem;
+  background: color-mix(in srgb, var(--fg) 80%, transparent);
 }
 
 .bar-handle:focus-visible {
   outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline-offset: -3px;
+  border-radius: 0.8rem;
 }
 
 :root.reduce-motion .controller-screen.bar-auto .topbar {
@@ -180,10 +192,7 @@
   backdrop-filter: none;
 }
 
-:root.high-contrast .controller-screen.bar-auto.bar-hidden .bar-handle {
-  background: #000;
-  border: 2px solid #fff;
-  color: #fff;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
+:root.high-contrast .bar-pill {
+  background: #fff;
+  box-shadow: 0 0 0 2px #000;
 }

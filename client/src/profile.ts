@@ -1,5 +1,5 @@
 import { ButtonBit } from "../../protocol/frame.ts";
-import type { Layout } from "./layout.ts";
+import type { Layout, BackgroundFilter } from "./layout.ts";
 import { defaultLayout } from "./layout.ts";
 import { ACCENT_PRESETS } from "./theme.ts";
 
@@ -84,6 +84,8 @@ function bit(value: unknown, fallback: number): number {
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
+const BACKGROUND_FILTERS: BackgroundFilter[] = ["none", "mono", "sepia", "warm", "cool", "vivid", "fade"];
+
 /// Caps a stored background image so one huge photo can't blow past
 /// localStorage's ~5MB quota (which is shared with every other profile,
 /// every skin, and the settings blob) and silently take the whole app's
@@ -106,8 +108,24 @@ function migrate(layout: Layout): Layout {
     const validType = bg.type === "color" || bg.type === "image";
     const validValue =
       typeof bg.value === "string" &&
-      (bg.type === "color" ? HEX_COLOR.test(bg.value) : bg.value.length <= MAX_BACKGROUND_IMAGE_BYTES);
+      (bg.type === "color"
+        ? HEX_COLOR.test(bg.value)
+        : // Only an image data: URL -- this ends up inside a CSS url().
+          /^data:image\/(png|jpeg|jpg|webp|gif);base64,[a-z0-9+/=]+$/i.test(bg.value) &&
+          bg.value.length <= MAX_BACKGROUND_IMAGE_BYTES);
     if (!validType || !validValue) delete layout.background;
+    else {
+      const clamp = (v: unknown, lo: number, hi: number) =>
+        typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : undefined;
+      bg.opacity = clamp(bg.opacity, 0.15, 1);
+      bg.brightness = clamp(bg.brightness, 0.3, 1.5);
+      bg.blur = clamp(bg.blur, 0, 16);
+      if (bg.fit !== "cover" && bg.fit !== "contain") bg.fit = undefined;
+      if (!BACKGROUND_FILTERS.includes(bg.filter as BackgroundFilter)) bg.filter = undefined;
+      for (const key of ["opacity", "brightness", "blur", "fit", "filter"] as const) {
+        if (bg[key] === undefined) delete bg[key];
+      }
+    }
   }
 
   const filtered = (layout.controls ?? []).filter(

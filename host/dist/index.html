@@ -389,16 +389,115 @@
         grid-template-columns: minmax(0, 1fr);
         gap: 0.6rem;
       }
+      .live-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+      .pad-colour {
+        display: inline-flex;
+        padding: 2px;
+        gap: 2px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--card-raised, rgba(255, 255, 255, 0.03));
+      }
+      .pad-colour button {
+        min-height: 2rem;
+        padding: 0 0.85rem;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: var(--text);
+        font: inherit;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .pad-colour button[aria-pressed="true"] {
+        background: var(--accent);
+        color: #04210f;
+      }
+      .pad-colour button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
       svg.pad {
         width: 100%;
-        max-width: 560px;
+        max-width: 580px;
         justify-self: center;
         height: auto;
         overflow: visible;
+        filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.55));
+        /* Colours for the black controller; the white one overrides them. */
+        --body-0: #3b404b;
+        --body-1: #1f2228;
+        --body-2: #101114;
+        --body-stroke: #4a505c;
+        --trim-0: #3a3f49;
+        --trim-1: #17191e;
+        --well-0: #030304;
+        --well-1: #0e1014;
+        --well-2: #2a2e36;
+        --collar: #50576590;
+        --cap-0: #4d5360;
+        --cap-1: #15171b;
+        --dish-0: #50576a;
+        --dish-1: #1d2027;
+        --dish-2: #121418;
+        --key-0: #4a505d;
+        --key-1: #1c1f25;
+        --key-stroke: #5d6472;
+        --label: #e3e6ec;
+        --disc: #24272e;
+        --port: #050506;
+        --seam: rgba(255, 255, 255, 0.07);
       }
+      svg.pad[data-colour="white"] {
+        filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.6));
+        --body-0: #fbfcfd;
+        --body-1: #e3e6ea;
+        --body-2: #b9bec6;
+        --body-stroke: #9aa0a9;
+        --trim-0: #e9ebee;
+        --trim-1: #b4b9c1;
+        --well-0: #6e737c;
+        --well-1: #a6abb3;
+        --well-2: #d2d5da;
+        --collar: #ffffffa0;
+        --cap-0: #9ba1aa;
+        --cap-1: #4a4f57;
+        --dish-0: #a9aeb7;
+        --dish-1: #5f646d;
+        --dish-2: #43474e;
+        --key-0: #d5d8dd;
+        --key-1: #9ea3ab;
+        --key-stroke: #8b9099;
+        --label: #3a3e45;
+        --disc: #c4c8ce;
+        --port: #2a2d33;
+        --seam: rgba(0, 0, 0, 0.08);
+      }
+      .pad .c-body-0 { stop-color: var(--body-0); }
+      .pad .c-body-1 { stop-color: var(--body-1); }
+      .pad .c-body-2 { stop-color: var(--body-2); }
+      .pad .c-trim-0 { stop-color: var(--trim-0); }
+      .pad .c-trim-1 { stop-color: var(--trim-1); }
+      .pad .c-well-0 { stop-color: var(--well-0); }
+      .pad .c-well-1 { stop-color: var(--well-1); }
+      .pad .c-well-2 { stop-color: var(--well-2); }
+      .pad .c-cap-0 { stop-color: var(--cap-0); }
+      .pad .c-cap-1 { stop-color: var(--cap-1); }
+      .pad .c-dish-0 { stop-color: var(--dish-0); }
+      .pad .c-dish-1 { stop-color: var(--dish-1); }
+      .pad .c-dish-2 { stop-color: var(--dish-2); }
+      .pad .c-key-0 { stop-color: var(--key-0); }
+      .pad .c-key-1 { stop-color: var(--key-1); }
       .pad .body {
         fill: url(#body-grad);
-        stroke: #474d5b;
+        stroke: var(--body-stroke);
         stroke-width: 1.2;
       }
       .pad .body-sheen {
@@ -409,21 +508,38 @@
         fill: url(#grip-grad);
         pointer-events: none;
       }
+      .pad .seam {
+        fill: none;
+        stroke: var(--seam);
+        stroke-width: 1.2;
+        stroke-linecap: round;
+      }
+      .pad .port {
+        fill: var(--port);
+      }
+      .pad .port-pins {
+        stroke: #8d7a3a;
+        stroke-width: 1.2;
+        stroke-dasharray: 1 1.6;
+      }
       .pad .well {
         fill: url(#well-grad);
-        stroke: #0a0b0e;
-        stroke-width: 1.5;
+        stroke: rgba(0, 0, 0, 0.55);
+        stroke-width: 1;
       }
       .pad .collar {
         fill: none;
-        stroke: #545b6a;
-        stroke-width: 1.4;
+        stroke: var(--collar);
+        stroke-width: 2.2;
       }
       .pad .key {
         fill: url(#key-grad);
-        stroke: #5a6170;
-        stroke-width: 1;
+        stroke: var(--key-stroke);
+        stroke-width: 0.9;
         transition: fill 0.05s linear, filter 0.05s linear;
+      }
+      .pad .bumper {
+        fill: url(#trim-grad);
       }
       .pad .key.on,
       .pad .cap.on .cap-rim {
@@ -433,72 +549,130 @@
       }
       .pad text {
         font: 700 9px "Segoe UI", sans-serif;
-        fill: #d5d9e1;
+        fill: var(--label);
         text-anchor: middle;
         dominant-baseline: central;
         pointer-events: none;
       }
-      .pad .key.on + text {
-        fill: #04210f;
+      .pad .trig-label {
+        font-size: 8px;
+        opacity: 0.85;
+      }
+      .pad .bumper-label {
+        font-size: 7.5px;
+        opacity: 0.8;
+      }
+      .pad .key-glyph {
+        fill: var(--label);
+        pointer-events: none;
+      }
+      .pad .dpad-disc {
+        fill: var(--disc);
+        stroke: rgba(0, 0, 0, 0.35);
+      }
+      .pad .dpad-hub {
+        fill: url(#key-grad);
+      }
+      .pad .dpad-dimple {
+        fill: url(#well-grad);
+        opacity: 0.7;
+        pointer-events: none;
+      }
+      .pad .face-socket {
+        fill: url(#well-grad);
+        opacity: 0.9;
       }
       .pad .face {
-        stroke-width: 1.2;
+        stroke: rgba(0, 0, 0, 0.45);
+        stroke-width: 0.8;
         transition: filter 0.05s linear;
       }
-      .pad .face + text {
-        fill: #fff;
+      .pad .face-letter {
         font-size: 11px;
+        font-weight: 800;
         paint-order: stroke;
-        stroke: rgba(0, 0, 0, 0.35);
-        stroke-width: 1.5px;
+        stroke: rgba(0, 0, 0, 0.45);
+        stroke-width: 1.4px;
       }
-      .pad .face-a { fill: url(#face-a); stroke: #9cf0bd; }
-      .pad .face-b { fill: url(#face-b); stroke: #ffaaa8; }
-      .pad .face-x { fill: url(#face-x); stroke: #a8c6ff; }
-      .pad .face-y { fill: url(#face-y); stroke: #ffe39a; }
+      .pad .letter-a { fill: #d9ffe4; }
+      .pad .letter-b { fill: #ffe0de; }
+      .pad .letter-x { fill: #e1ebff; }
+      .pad .letter-y { fill: #fff5d6; }
+      .pad .face-a { fill: url(#face-a); }
+      .pad .face-b { fill: url(#face-b); }
+      .pad .face-x { fill: url(#face-x); }
+      .pad .face-y { fill: url(#face-y); }
       .pad .face.on {
-        filter: brightness(1.45) drop-shadow(0 0 6px rgba(255, 255, 255, 0.75));
+        filter: brightness(1.5) drop-shadow(0 0 6px rgba(255, 255, 255, 0.8));
+      }
+      .pad .gloss {
+        fill: url(#gloss-grad);
+        opacity: 0.55;
+        pointer-events: none;
+      }
+      .pad .cap-shadow {
+        fill: #000;
+        opacity: 0.45;
       }
       .pad .cap-rim {
         fill: url(#cap-grad);
-        stroke: #6a7282;
+        stroke: rgba(0, 0, 0, 0.5);
         transition: fill 0.05s linear;
+      }
+      .pad .cap-knurl {
+        fill: url(#knurl);
+        pointer-events: none;
       }
       .pad .cap-dish {
         fill: url(#dish-grad);
+        stroke: rgba(255, 255, 255, 0.12);
+        stroke-width: 0.8;
         pointer-events: none;
       }
       .pad .trigger-bg {
-        fill: url(#key-grad);
-        stroke: #5a6170;
+        fill: url(#trim-grad);
+        stroke: var(--key-stroke);
+        stroke-width: 0.9;
       }
       .pad .trigger-fill {
         fill: var(--accent);
-        opacity: 0.9;
+        opacity: 0.92;
+      }
+      .pad .guide-recess {
+        fill: url(#well-grad);
+        opacity: 0.75;
+      }
+      .pad .ring-base {
+        fill: #0b0d10;
+      }
+      .pad .chrome {
+        fill: url(#chrome-grad);
+        stroke: rgba(0, 0, 0, 0.4);
+        stroke-width: 0.6;
       }
       .pad .guide {
         fill: url(#guide-grad);
-        stroke: #8a93a5;
+        stroke: rgba(0, 0, 0, 0.35);
       }
       .pad .guide.on {
         filter: brightness(1.4) drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.9));
       }
       .pad .guide-x {
-        stroke: #e9ecf2;
-        stroke-width: 2.6;
+        stroke: #f2fff4;
+        stroke-width: 2.8;
         stroke-linecap: round;
         fill: none;
         pointer-events: none;
       }
       .pad .ring {
         fill: none;
-        stroke: #2f343f;
-        stroke-width: 4;
+        stroke: #1f2a22;
+        stroke-width: 4.5;
         stroke-linecap: round;
       }
       .pad .ring.lit {
-        stroke: var(--accent);
-        filter: drop-shadow(0 0 3px rgba(var(--accent-rgb), 0.95));
+        stroke: #7dff9a;
+        filter: drop-shadow(0 0 3px rgba(125, 255, 154, 0.95));
       }
       /* The body shakes with the game's rumble, scaled by --shake. */
       svg.pad.rumbling .shell {
@@ -806,132 +980,192 @@
       </section>
 
       <section class="card" aria-labelledby="live-h">
-        <h2 id="live-h">Live controller</h2>
+        <div class="live-head">
+          <h2 id="live-h">Live controller</h2>
+          <div class="pad-colour" role="group" aria-label="Controller colour">
+            <button type="button" data-colour="white" aria-pressed="false">White</button>
+            <button type="button" data-colour="black" aria-pressed="true">Black</button>
+          </div>
+        </div>
         <div class="pad-wrap">
-          <svg class="pad" id="pad" viewBox="0 0 440 280" role="img" aria-labelledby="pad-desc">
-            <desc id="pad-desc">A live drawing of the virtual Xbox 360 controller. Pressed buttons light up, the sticks move and the triggers fill.</desc>
+<svg class="pad" id="pad" viewBox="0 0 440 290" role="img" aria-labelledby="pad-desc" data-colour="black">
+            <desc id="pad-desc">A live drawing of the virtual Xbox 360 controller. Pressed buttons light up, the sticks move and the triggers fill as they are pulled.</desc>
             <defs>
+              <!-- Body: glossy plastic lit from above, darker toward the grips. -->
               <linearGradient id="body-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#3a404d" />
-                <stop offset="0.45" stop-color="#262a33" />
-                <stop offset="1" stop-color="#15171c" />
+                <stop class="c-body-0" offset="0" />
+                <stop class="c-body-1" offset="0.5" />
+                <stop class="c-body-2" offset="1" />
               </linearGradient>
-              <radialGradient id="sheen-grad" cx="0.5" cy="0.05" r="0.7">
-                <stop offset="0" stop-color="#fff" stop-opacity="0.16" />
+              <radialGradient id="sheen-grad" cx="0.5" cy="0" r="0.75">
+                <stop offset="0" stop-color="#fff" stop-opacity="0.38" />
+                <stop offset="0.55" stop-color="#fff" stop-opacity="0.06" />
                 <stop offset="1" stop-color="#fff" stop-opacity="0" />
               </radialGradient>
               <linearGradient id="grip-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0.55" stop-color="#000" stop-opacity="0" />
-                <stop offset="1" stop-color="#000" stop-opacity="0.45" />
+                <stop offset="0.5" stop-color="#000" stop-opacity="0" />
+                <stop offset="1" stop-color="#000" stop-opacity="0.4" />
               </linearGradient>
-              <radialGradient id="well-grad" cx="0.5" cy="0.35" r="0.65">
-                <stop offset="0" stop-color="#050608" />
-                <stop offset="0.8" stop-color="#11141a" />
-                <stop offset="1" stop-color="#252a33" />
+              <linearGradient id="trim-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop class="c-trim-0" offset="0" />
+                <stop class="c-trim-1" offset="1" />
+              </linearGradient>
+              <radialGradient id="well-grad" cx="0.5" cy="0.32" r="0.7">
+                <stop class="c-well-0" offset="0" />
+                <stop class="c-well-1" offset="0.78" />
+                <stop class="c-well-2" offset="1" />
+              </radialGradient>
+              <radialGradient id="cap-grad" cx="0.5" cy="0.25" r="0.75">
+                <stop class="c-cap-0" offset="0" />
+                <stop class="c-cap-1" offset="1" />
+              </radialGradient>
+              <radialGradient id="dish-grad" cx="0.5" cy="0.9" r="0.85">
+                <stop class="c-dish-0" offset="0" />
+                <stop class="c-dish-1" offset="0.65" />
+                <stop class="c-dish-2" offset="1" />
               </radialGradient>
               <linearGradient id="key-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#4a505e" />
-                <stop offset="1" stop-color="#262a33" />
+                <stop class="c-key-0" offset="0" />
+                <stop class="c-key-1" offset="1" />
               </linearGradient>
-              <radialGradient id="cap-grad" cx="0.5" cy="0.3" r="0.7">
-                <stop offset="0" stop-color="#555c6b" />
-                <stop offset="1" stop-color="#1d2027" />
+              <!-- The Guide button's polished chrome ring. -->
+              <linearGradient id="chrome-grad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#f4f6fa" />
+                <stop offset="0.35" stop-color="#9aa1ad" />
+                <stop offset="0.55" stop-color="#e9ecf1" />
+                <stop offset="0.8" stop-color="#6d7480" />
+                <stop offset="1" stop-color="#c9ced6" />
+              </linearGradient>
+              <radialGradient id="guide-grad" cx="0.42" cy="0.3" r="0.8">
+                <stop offset="0" stop-color="#b9f3c6" />
+                <stop offset="0.45" stop-color="#4fbf62" />
+                <stop offset="1" stop-color="#1d5e2a" />
               </radialGradient>
-              <radialGradient id="dish-grad" cx="0.5" cy="0.85" r="0.75">
-                <stop offset="0" stop-color="#5b6272" />
-                <stop offset="0.7" stop-color="#22262e" />
-                <stop offset="1" stop-color="#16181e" />
+              <!-- Face buttons: translucent "jewel" caps with a bright top. -->
+              <radialGradient id="face-a" cx="0.45" cy="0.28" r="0.8">
+                <stop offset="0" stop-color="#b6f7c9" /><stop offset="0.5" stop-color="#36b45d" /><stop offset="1" stop-color="#0f4d22" />
               </radialGradient>
-              <radialGradient id="guide-grad" cx="0.5" cy="0.35" r="0.65">
-                <stop offset="0" stop-color="#9aa3b5" />
-                <stop offset="1" stop-color="#3c4250" />
+              <radialGradient id="face-b" cx="0.45" cy="0.28" r="0.8">
+                <stop offset="0" stop-color="#ffc0bb" /><stop offset="0.5" stop-color="#e03b36" /><stop offset="1" stop-color="#6c1214" />
               </radialGradient>
-              <radialGradient id="face-a" cx="0.45" cy="0.3" r="0.75">
-                <stop offset="0" stop-color="#8af0b0" /><stop offset="0.6" stop-color="#2fae62" /><stop offset="1" stop-color="#17602f" />
+              <radialGradient id="face-x" cx="0.45" cy="0.28" r="0.8">
+                <stop offset="0" stop-color="#c3d8ff" /><stop offset="0.5" stop-color="#2f6fe0" /><stop offset="1" stop-color="#112f72" />
               </radialGradient>
-              <radialGradient id="face-b" cx="0.45" cy="0.3" r="0.75">
-                <stop offset="0" stop-color="#ff9d97" /><stop offset="0.6" stop-color="#d93a3a" /><stop offset="1" stop-color="#7c1a1c" />
+              <radialGradient id="face-y" cx="0.45" cy="0.28" r="0.8">
+                <stop offset="0" stop-color="#fff0bd" /><stop offset="0.5" stop-color="#eab325" /><stop offset="1" stop-color="#7d560a" />
               </radialGradient>
-              <radialGradient id="face-x" cx="0.45" cy="0.3" r="0.75">
-                <stop offset="0" stop-color="#9cc0ff" /><stop offset="0.6" stop-color="#3a74e0" /><stop offset="1" stop-color="#1b3c86" />
+              <radialGradient id="gloss-grad" cx="0.5" cy="0.12" r="0.6">
+                <stop offset="0" stop-color="#fff" stop-opacity="0.85" />
+                <stop offset="1" stop-color="#fff" stop-opacity="0" />
               </radialGradient>
-              <radialGradient id="face-y" cx="0.45" cy="0.3" r="0.75">
-                <stop offset="0" stop-color="#ffe7a0" /><stop offset="0.6" stop-color="#e9b22c" /><stop offset="1" stop-color="#8a6312" />
-              </radialGradient>
-              <clipPath id="lt-clip"><rect x="94" y="8" width="68" height="24" rx="9" /></clipPath>
-              <clipPath id="rt-clip"><rect x="278" y="8" width="68" height="24" rx="9" /></clipPath>
+              <!-- Knurled rim of a thumbstick cap. -->
+              <pattern id="knurl" width="3" height="3" patternUnits="userSpaceOnUse">
+                <rect width="3" height="3" fill="none" />
+                <circle cx="1.5" cy="1.5" r="0.55" fill="#000" fill-opacity="0.35" />
+              </pattern>
+              <clipPath id="body-clip"><path d="M120 58 C 92 58 66 66 52 92 C 34 124 20 182 24 228 C 27 262 52 284 80 278 C 102 273 116 254 130 234 C 142 218 158 208 182 208 L 258 208 C 282 208 298 218 310 234 C 324 254 338 273 360 278 C 388 284 413 262 416 228 C 420 182 406 124 388 92 C 374 66 348 58 320 58 C 290 58 268 64 220 64 C 172 64 150 58 120 58 Z" /></clipPath>
+              <clipPath id="lt-clip"><path d="M94 46 C 94 28 108 14 132 14 C 156 14 170 28 170 46 Z" /></clipPath>
+              <clipPath id="rt-clip"><path d="M346 46 C 346 28 332 14 308 14 C 284 14 270 28 270 46 Z" /></clipPath>
             </defs>
 
-            <!-- triggers, filled as they are pulled -->
-            <rect class="trigger-bg" x="94" y="8" width="68" height="24" rx="9" />
-            <rect id="lt-fill" class="trigger-fill" x="94" y="8" width="0" height="24" clip-path="url(#lt-clip)" />
-            <text x="128" y="20">LT</text>
-            <rect class="trigger-bg" x="278" y="8" width="68" height="24" rx="9" />
-            <rect id="rt-fill" class="trigger-fill" x="278" y="8" width="0" height="24" clip-path="url(#rt-clip)" />
-            <text x="312" y="20">RT</text>
+            <!-- Triggers sit behind the bumpers; they fill from the bottom as
+                 they are pulled. -->
+            <path class="trigger-bg" d="M94 46 C 94 28 108 14 132 14 C 156 14 170 28 170 46 Z" />
+            <rect id="lt-fill" class="trigger-fill" x="94" y="46" width="76" height="0" clip-path="url(#lt-clip)" />
+            <text class="trig-label" x="132" y="31">LT</text>
+            <path class="trigger-bg" d="M346 46 C 346 28 332 14 308 14 C 284 14 270 28 270 46 Z" />
+            <rect id="rt-fill" class="trigger-fill" x="270" y="46" width="76" height="0" clip-path="url(#rt-clip)" />
+            <text class="trig-label" x="308" y="31">RT</text>
 
             <g class="shell">
-              <!-- bumpers, angled to follow the shoulders -->
-              <rect id="b8" class="key" x="84" y="39" width="88" height="16" rx="8" transform="rotate(-5 128 47)" />
-              <text x="128" y="47">LB</text>
-              <rect id="b9" class="key" x="268" y="39" width="88" height="16" rx="8" transform="rotate(5 312 47)" />
-              <text x="312" y="47">RB</text>
-
               <path
                 class="body"
-                d="M130 56 C 96 54 72 64 60 88 C 40 128 22 200 34 242 C 44 274 82 274 104 248 C 122 226 138 210 160 208 L 280 208 C 302 210 318 226 336 248 C 358 274 396 274 406 242 C 418 200 400 128 380 88 C 368 64 344 54 310 56 C 280 58 262 66 220 66 C 178 66 160 58 130 56 Z"
+                d="M120 58 C 92 58 66 66 52 92 C 34 124 20 182 24 228 C 27 262 52 284 80 278 C 102 273 116 254 130 234 C 142 218 158 208 182 208 L 258 208 C 282 208 298 218 310 234 C 324 254 338 273 360 278 C 388 284 413 262 416 228 C 420 182 406 124 388 92 C 374 66 348 58 320 58 C 290 58 268 64 220 64 C 172 64 150 58 120 58 Z"
               />
               <path
                 class="grip-shade"
-                d="M130 56 C 96 54 72 64 60 88 C 40 128 22 200 34 242 C 44 274 82 274 104 248 C 122 226 138 210 160 208 L 280 208 C 302 210 318 226 336 248 C 358 274 396 274 406 242 C 418 200 400 128 380 88 C 368 64 344 54 310 56 C 280 58 262 66 220 66 C 178 66 160 58 130 56 Z"
+                d="M120 58 C 92 58 66 66 52 92 C 34 124 20 182 24 228 C 27 262 52 284 80 278 C 102 273 116 254 130 234 C 142 218 158 208 182 208 L 258 208 C 282 208 298 218 310 234 C 324 254 338 273 360 278 C 388 284 413 262 416 228 C 420 182 406 124 388 92 C 374 66 348 58 320 58 C 290 58 268 64 220 64 C 172 64 150 58 120 58 Z"
               />
-              <ellipse class="body-sheen" cx="220" cy="90" rx="150" ry="40" />
+              <ellipse class="body-sheen" cx="220" cy="86" rx="170" ry="44" clip-path="url(#body-clip)" />
+              <!-- Bumpers: long curved buttons wrapping the shoulders. -->
+              <path id="b8" class="key bumper" d="M58 86 C 66 62 92 46 128 44 L 168 45 C 176 45 178 50 174 55 L 170 60 C 150 57 124 57 104 61 C 88 64 74 74 66 88 C 63 93 56 92 58 86 Z" />
+              <text class="bumper-label" x="118" y="53">LB</text>
+              <path id="b9" class="key bumper" d="M382 86 C 374 62 348 46 312 44 L 272 45 C 264 45 262 50 266 55 L 270 60 C 290 57 316 57 336 61 C 352 64 366 74 374 88 C 377 93 384 92 382 86 Z" />
+              <text class="bumper-label" x="322" y="53">RB</text>
 
-              <!-- left stick: high on the left, as on the 360 -->
-              <circle class="well" cx="126" cy="112" r="30" />
+              <!-- Moulded seam between the top shell and the grips. -->
+              <path class="seam" d="M40 150 C 70 136 104 132 140 140 M400 150 C 370 136 336 132 300 140" />
+
+              <!-- Expansion port and headset jack on the bottom edge. -->
+              <rect class="port" x="203" y="198" width="34" height="7" rx="1.5" />
+              <path class="port-pins" d="M207 201.5 H233" />
+              <circle class="port" cx="220" cy="190" r="3" />
+
+              <!-- Left stick: high on the left, as on the 360. -->
               <circle class="collar" cx="126" cy="112" r="33" />
+              <circle class="well" cx="126" cy="112" r="29" />
               <g id="b10" class="cap">
-                <circle class="cap-rim" cx="126" cy="112" r="19" />
+                <circle class="cap-shadow" cx="126" cy="115" r="19" />
+                <circle class="cap-rim" cx="126" cy="112" r="18.5" />
+                <circle class="cap-knurl" cx="126" cy="112" r="18.5" />
                 <circle class="cap-dish" cx="126" cy="112" r="12.5" />
               </g>
 
-              <!-- d-pad: a cross in a round dish -->
-              <circle class="well" cx="172" cy="172" r="29" />
-              <rect class="key" x="163" y="163" width="18" height="18" />
-              <path id="b4" class="key" d="M163 163 L163 149 Q163 146 166 146 L178 146 Q181 146 181 149 L181 163 Z" />
-              <path id="b5" class="key" d="M163 181 L181 181 L181 195 Q181 198 178 198 L166 198 Q163 198 163 195 Z" />
-              <path id="b6" class="key" d="M163 163 L149 163 Q146 163 146 166 L146 178 Q146 181 149 181 L163 181 Z" />
-              <path id="b7" class="key" d="M181 163 L195 163 Q198 163 198 166 L198 178 Q198 181 195 181 L181 181 Z" />
+              <!-- D-pad: the 360's disc with a raised cross. -->
+              <circle class="collar" cx="168" cy="170" r="30" />
+              <circle class="well" cx="168" cy="170" r="27" />
+              <circle class="dpad-disc" cx="168" cy="170" r="23" />
+              <rect class="dpad-hub" x="159" y="161" width="18" height="18" rx="2" />
+              <path id="b4" class="key dpad-arm" d="M159 161 L159 149 Q159 146 162 146 L174 146 Q177 146 177 149 L177 161 Z" />
+              <path id="b5" class="key dpad-arm" d="M159 179 L177 179 L177 191 Q177 194 174 194 L162 194 Q159 194 159 191 Z" />
+              <path id="b6" class="key dpad-arm" d="M159 161 L147 161 Q144 161 144 164 L144 176 Q144 179 147 179 L159 179 Z" />
+              <path id="b7" class="key dpad-arm" d="M177 161 L189 161 Q192 161 192 164 L192 176 Q192 179 189 179 L177 179 Z" />
+              <circle class="dpad-dimple" cx="168" cy="170" r="4.5" />
 
-              <!-- right stick -->
-              <circle class="well" cx="268" cy="172" r="30" />
-              <circle class="collar" cx="268" cy="172" r="33" />
+              <!-- Right stick. -->
+              <circle class="collar" cx="272" cy="170" r="33" />
+              <circle class="well" cx="272" cy="170" r="29" />
               <g id="b11" class="cap">
-                <circle class="cap-rim" cx="268" cy="172" r="19" />
-                <circle class="cap-dish" cx="268" cy="172" r="12.5" />
+                <circle class="cap-shadow" cx="272" cy="173" r="19" />
+                <circle class="cap-rim" cx="272" cy="170" r="18.5" />
+                <circle class="cap-knurl" cx="272" cy="170" r="18.5" />
+                <circle class="cap-dish" cx="272" cy="170" r="12.5" />
               </g>
 
-              <!-- back / guide / start; the ring lights the player slot -->
-              <circle id="b13" class="key" cx="184" cy="114" r="8" />
-              <path d="M186.5 110 L180.5 114 L186.5 118 Z" fill="#d5d9e1" pointer-events="none" />
-              <circle id="b12" class="key" cx="256" cy="114" r="8" />
-              <path d="M253.5 110 L259.5 114 L253.5 118 Z" fill="#d5d9e1" pointer-events="none" />
-              <circle id="b14" class="guide" cx="220" cy="98" r="15" />
-              <path class="guide-x" d="M213.5 91.5 L226.5 104.5 M226.5 91.5 L213.5 104.5" />
+              <!-- Back / Guide / Start. The ring around the Guide button
+                   lights the quadrant for the player slot. -->
+              <circle id="b13" class="key small-key" cx="184" cy="108" r="7.5" />
+              <path class="key-glyph" d="M186.6 104.4 L180.6 108 L186.6 111.6 Z" />
+              <circle id="b12" class="key small-key" cx="256" cy="108" r="7.5" />
+              <path class="key-glyph" d="M253.4 104.4 L259.4 108 L253.4 111.6 Z" />
+              <circle class="guide-recess" cx="220" cy="98" r="25" />
+              <circle class="ring-base" cx="220" cy="98" r="21" />
               <path id="ring-0" class="ring" d="M 199.5 93.3 A 21 21 0 0 1 215.3 77.5" />
               <path id="ring-1" class="ring" d="M 224.7 77.5 A 21 21 0 0 1 240.5 93.3" />
               <path id="ring-2" class="ring" d="M 215.3 118.5 A 21 21 0 0 1 199.5 102.7" />
               <path id="ring-3" class="ring" d="M 240.5 102.7 A 21 21 0 0 1 224.7 118.5" />
+              <circle class="chrome" cx="220" cy="98" r="16.5" />
+              <circle id="b14" class="guide" cx="220" cy="98" r="13.5" />
+              <path class="guide-x" d="M214 92 Q220 99 226 104 M226 92 Q220 99 214 104" />
+              <ellipse class="gloss" cx="220" cy="91" rx="9" ry="5" />
 
-              <!-- face buttons -->
-              <circle id="b3" class="face face-y" cx="324" cy="88" r="12" />
-              <text x="324" y="88">Y</text>
-              <circle id="b2" class="face face-x" cx="300" cy="112" r="12" />
-              <text x="300" y="112">X</text>
-              <circle id="b1" class="face face-b" cx="348" cy="112" r="12" />
-              <text x="348" y="112">B</text>
-              <circle id="b0" class="face face-a" cx="324" cy="136" r="12" />
-              <text x="324" y="136">A</text>
+              <!-- Face buttons, in the 360's colours. -->
+              <circle class="face-socket" cx="330" cy="88" r="13.5" />
+              <circle class="face-socket" cx="306" cy="112" r="13.5" />
+              <circle class="face-socket" cx="354" cy="112" r="13.5" />
+              <circle class="face-socket" cx="330" cy="136" r="13.5" />
+              <circle id="b3" class="face face-y" cx="330" cy="88" r="11.5" />
+              <text class="face-letter letter-y" x="330" y="88.5">Y</text>
+              <circle id="b2" class="face face-x" cx="306" cy="112" r="11.5" />
+              <text class="face-letter letter-x" x="306" y="112.5">X</text>
+              <circle id="b1" class="face face-b" cx="354" cy="112" r="11.5" />
+              <text class="face-letter letter-b" x="354" y="112.5">B</text>
+              <circle id="b0" class="face face-a" cx="330" cy="136" r="11.5" />
+              <text class="face-letter letter-a" x="330" y="136.5">A</text>
+              <ellipse class="gloss" cx="330" cy="83" rx="6.5" ry="3.6" />
+              <ellipse class="gloss" cx="306" cy="107" rx="6.5" ry="3.6" />
+              <ellipse class="gloss" cx="354" cy="107" rx="6.5" ry="3.6" />
+              <ellipse class="gloss" cx="330" cy="131" rx="6.5" ry="3.6" />
             </g>
           </svg>
 
@@ -1038,8 +1272,10 @@
       const lsVal = el("ls-val");
       const rsVal = el("rs-val");
       const trVal = el("tr-val");
-      const TRAVEL = 11; // px of stick travel in the drawing's coordinates
-      const TRIGGER_W = 68;
+      const TRAVEL = 10; // px of stick travel in the drawing's coordinates
+      // Triggers fill upward from their base as they are pulled.
+      const TRIGGER_BASE = 46;
+      const TRIGGER_H = 32;
 
       const pct = (v) => Math.round((v / 32767) * 100);
 
@@ -1052,8 +1288,11 @@
         const ry = (-Math.max(-32767, s.right_stick_y) / 32767) * TRAVEL;
         capL.setAttribute("transform", `translate(${lx.toFixed(1)} ${ly.toFixed(1)})`);
         capR.setAttribute("transform", `translate(${rx.toFixed(1)} ${ry.toFixed(1)})`);
-        ltFill.setAttribute("width", ((s.left_trigger / 255) * TRIGGER_W).toFixed(1));
-        rtFill.setAttribute("width", ((s.right_trigger / 255) * TRIGGER_W).toFixed(1));
+        for (const [node, value] of [[ltFill, s.left_trigger], [rtFill, s.right_trigger]]) {
+          const h = (value / 255) * TRIGGER_H;
+          node.setAttribute("height", h.toFixed(1));
+          node.setAttribute("y", (TRIGGER_BASE - h).toFixed(1));
+        }
         lsVal.textContent = `${pct(s.left_stick_x)}%, ${pct(s.left_stick_y)}%`;
         rsVal.textContent = `${pct(s.right_stick_x)}%, ${pct(s.right_stick_y)}%`;
         trVal.textContent = `${Math.round((s.left_trigger / 255) * 100)}% / ${Math.round((s.right_trigger / 255) * 100)}%`;
@@ -1065,6 +1304,21 @@
       }
 
       const padSvg = el("pad");
+
+      // White or black controller, remembered between launches.
+      const colourButtons = [...document.querySelectorAll(".pad-colour button")];
+      function setPadColour(colour) {
+        padSvg.dataset.colour = colour;
+        for (const b of colourButtons) b.setAttribute("aria-pressed", String(b.dataset.colour === colour));
+        try {
+          localStorage.setItem("pad-colour", colour);
+        } catch {}
+      }
+      for (const b of colourButtons) b.addEventListener("click", () => setPadColour(b.dataset.colour));
+      try {
+        const saved = localStorage.getItem("pad-colour");
+        if (saved === "white" || saved === "black") setPadColour(saved);
+      } catch {}
       const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
       function showRumble(r) {
         const shake = Math.max(r.large, r.small) / 255;

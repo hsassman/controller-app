@@ -20,7 +20,7 @@ export interface PadStyle {
   layout: () => Layout;
   /// The look that comes with it. Only the parts that define the controller;
   /// colour, finish and theme stay the player's own.
-  look: Pick<Settings, "padStyle" | "dpadStyle" | "faceStyle" | "iconPack">;
+  look: Pick<Settings, "padStyle" | "dpadStyle" | "faceStyle" | "iconPack" | "stickStyle" | "triggerStyle">;
 }
 
 function button(
@@ -134,21 +134,21 @@ export const PAD_STYLES: PadStyle[] = [
     name: "Xbox 360",
     description: "Offset sticks, the classic cross d-pad, coloured A/B/X/Y and the ring of light.",
     layout: () => offsetLayout("xbox360", "Xbox 360", XBOX),
-    look: { padStyle: "xbox360", dpadStyle: "cross", faceStyle: "jewel", iconPack: "letters" },
+    look: { padStyle: "xbox360", dpadStyle: "cross", faceStyle: "jewel", iconPack: "letters", stickStyle: "concave", triggerStyle: "paddle" },
   },
   {
     id: "xboxseries",
     name: "Xbox Series",
     description: "Offset sticks with the faceted hybrid d-pad and View / Menu buttons.",
     layout: () => offsetLayout("xboxseries", "Xbox Series", { ...XBOX, back: "⧉", start: "≡" }),
-    look: { padStyle: "xboxseries", dpadStyle: "faceted", faceStyle: "classic", iconPack: "letters" },
+    look: { padStyle: "xboxseries", dpadStyle: "faceted", faceStyle: "classic", iconPack: "letters", stickStyle: "ringed", triggerStyle: "curved" },
   },
   {
     id: "playstation",
     name: "PlayStation",
     description: "Symmetric sticks, split d-pad, touchpad, and △ ○ ✕ □ in their own colours.",
     layout: playstationLayout,
-    look: { padStyle: "playstation", dpadStyle: "split", faceStyle: "classic", iconPack: "letters" },
+    look: { padStyle: "playstation", dpadStyle: "split", faceStyle: "classic", iconPack: "letters", stickStyle: "dome", triggerStyle: "rounded" },
   },
   {
     id: "nintendo",
@@ -168,7 +168,7 @@ export const PAD_STYLES: PadStyle[] = [
         start: "+",
         guide: "⌂",
       }, "nintendo"),
-    look: { padStyle: "nintendo", dpadStyle: "cross", faceStyle: "mono", iconPack: "letters" },
+    look: { padStyle: "nintendo", dpadStyle: "cross", faceStyle: "mono", iconPack: "letters", stickStyle: "flat", triggerStyle: "flat" },
   },
 ];
 

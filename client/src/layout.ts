@@ -84,7 +84,19 @@ export interface BackgroundConfig {
   type: "color" | "image";
   /// A hex colour for "color", or a data: URL for "image".
   value: string;
+  /// Photo adjustments (image backgrounds only; all optional, so older
+  /// saved profiles keep working). See applyBackground() in theme.ts.
+  fit?: "cover" | "contain";
+  /// How strongly the photo shows over the theme's own backdrop, 0.15-1.
+  opacity?: number;
+  /// 0.3-1.5; 1 is the photo as taken.
+  brightness?: number;
+  /// Softening, in px, 0-16.
+  blur?: number;
+  filter?: BackgroundFilter;
 }
+
+export type BackgroundFilter = "none" | "mono" | "sepia" | "warm" | "cool" | "vivid" | "fade";
 
 export interface Layout {
   id: string;

@@ -35,13 +35,13 @@ All downloads: [latest release](https://github.com/hsassman/controller-app/relea
 | Still nothing loads | Your router may keep devices apart ("AP isolation" or "client isolation"), as most work, school, hotel and guest Wi-Fi does. To check, turn on the phone's **Personal Hotspot**, connect the PC to it and scan the new code. If that works, turn off isolation in the router's settings. |
 | Connected, but nothing moves in the game | The gamepad driver is missing: click **Install driver** in the PC window. |
 | Windows' "Game Controllers" panel (joy.cpl) shows no movement | Normal for Xbox controllers. Check the live drawing in the PC window instead; games read the pad correctly. |
-| Where's the menu? | It tucks away while you play. Tap **Menu** at the top of the screen to bring it back. |
+| Where's the menu? | It tucks away while you play. Tap the small bar at the top of the screen to bring it back. |
 | No vibration on iPhone | iPhone browsers can't vibrate. The screen edges pulse with the game's rumble instead. |
 
 ## Features
 
 - **Real controller styles:** Xbox 360, Xbox Series, PlayStation and Nintendo layouts, with authentic button names, d-pads and colours. Buttons map by position, so every game works.
-- **Make it yours:** body colours, nine finishes (matte, soft-touch, gloss, metal, chrome, carbon, crystal, pearl, neon), button and stick styles, themes and saved looks, all with a live preview of your controller as you change them.
+- **Make it yours:** body colours, nine finishes (matte, soft-touch, gloss, metal, chrome, carbon, crystal, pearl, neon), six thumbstick shapes, four trigger shapes, Guide button styles, PlayStation symbols, themes, your own photo as a background (with filters, brightness and blur) and saved looks, all with a live preview of your controller as you change them.
 - **Editable layouts:** move, resize and remap any control; ten presets; multiple profiles, shareable by QR code.
 - **Game feedback:** game rumble vibrates the phone, and the Guide button's ring of light shows your player number.
 - **Low latency:** input is sent the instant it changes; a slim top bar hides while you play and shows your ping.
@@ -58,7 +58,7 @@ All downloads: [latest release](https://github.com/hsassman/controller-app/relea
   <img src="screenshots/16-settings-preview.png" alt="Settings with a live preview of the controller" width="100%">
 </p>
 <p align="center">
-  <img src="screenshots/12-host-window.png" alt="The PC window with the live controller view" width="60%">
+  <img src="screenshots/12-host-window.png" alt="The live Xbox 360 controller drawing in the PC window" width="60%">
 </p>
 
 ## Build from source
