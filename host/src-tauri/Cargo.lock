@@ -486,7 +486,7 @@ dependencies = [
 
 [[package]]
 name = "controller-host"
-version = "1.7.0"
+version = "1.8.0"
 dependencies = [
  "futures-util",
  "include_dir",

@@ -44,6 +44,7 @@ All downloads: [latest release](https://github.com/hsassman/controller-app/relea
 - **Make it yours:** body colours, nine finishes (matte, soft-touch, gloss, metal, chrome, carbon, crystal, pearl, neon), six thumbstick shapes, four trigger shapes, Guide button styles, PlayStation symbols, themes, your own photo as a background (with filters, brightness and blur) and saved looks, all with a live preview of your controller as you change them.
 - **Editable layouts:** move, resize and remap any control; ten presets; multiple profiles, shareable by QR code.
 - **Game feedback:** game rumble vibrates the phone, and the Guide button's ring of light shows your player number.
+- **A clear PC app:** scan-to-connect QR code, a live Xbox 360 drawing (white or black) that shows every press, and one-click updates.
 - **Low latency:** input is sent the instant it changes; a slim top bar hides while you play and shows your ping.
 - **Easy and accessible:** built to WCAG 2.2 AA. Every menu button is a full 44px target with a plain-word label; it works with screen readers and a keyboard, and has high-contrast mode, press-once-to-hold buttons and reduce motion.
 
@@ -58,7 +59,7 @@ All downloads: [latest release](https://github.com/hsassman/controller-app/relea
   <img src="screenshots/16-settings-preview.png" alt="Settings with a live preview of the controller" width="100%">
 </p>
 <p align="center">
-  <img src="screenshots/12-host-window.png" alt="The live Xbox 360 controller drawing in the PC window" width="60%">
+  <img src="screenshots/12-host-window.png" alt="The PC app: QR code to connect, and a live drawing of the Xbox 360 controller" width="80%">
 </p>
 
 ## Build from source
