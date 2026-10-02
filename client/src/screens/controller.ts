@@ -290,7 +290,7 @@ export function renderControllerScreen(
     disconnectBtn.hidden = true;
     fullscreenBtn.hidden = true;
     profilePicker.hidden = true;
-    editBtn.innerHTML = iconLabel(ICONS.hide, "Discard");
+    editBtn.innerHTML = iconLabel(ICONS.close, "Discard");
     doneBtn.hidden = false;
     container.querySelector<HTMLElement>("#empty-layout")!.hidden = true;
     heading.textContent = "Layout editor";

@@ -19,6 +19,8 @@ Your phone shows a touch gamepad in its browser; the PC app turns it into a real
 
 That's it. The app starts with Windows and waits in the system tray, so next time just open the page on your phone.
 
+**Updates install themselves:** when a new version is out, the PC window shows **Update now**. One click installs it over the old one and restarts the app, so there's nothing to download again.
+
 **Tip:** add the page to your Home Screen for fullscreen play (iPhone: **Share → Add to Home Screen**; Android: **⋮ → Install app**). The app offers to do this the first time you connect. From then on, open it from the Home Screen: it connects by itself, and if it ever needs the code again, tap **Scan the code on your PC** — the camera opens over the app and you stay in fullscreen.
 
 **No install?** Download the portable [PhoneController.exe](https://github.com/hsassman/controller-app/releases/latest/download/PhoneController.exe) instead and double-click it. If its window says the driver is missing, click **Install driver**.
@@ -33,16 +35,17 @@ All downloads: [latest release](https://github.com/hsassman/controller-app/relea
 | Still nothing loads | Your router may keep devices apart ("AP isolation" or "client isolation"), as most work, school, hotel and guest Wi-Fi does. To check, turn on the phone's **Personal Hotspot**, connect the PC to it and scan the new code. If that works, turn off isolation in the router's settings. |
 | Connected, but nothing moves in the game | The gamepad driver is missing: click **Install driver** in the PC window. |
 | Windows' "Game Controllers" panel (joy.cpl) shows no movement | Normal for Xbox controllers. Check the live drawing in the PC window instead; games read the pad correctly. |
+| Where's the menu? | It tucks away while you play. Tap **Menu** at the top of the screen to bring it back. |
 | No vibration on iPhone | iPhone browsers can't vibrate. The screen edges pulse with the game's rumble instead. |
 
 ## Features
 
 - **Real controller styles:** Xbox 360, Xbox Series, PlayStation and Nintendo layouts, with authentic button names, d-pads and colours. Buttons map by position, so every game works.
-- **Make it yours:** body colours, nine finishes (matte, soft-touch, gloss, metal, chrome, carbon, crystal, pearl, neon), button and stick styles, themes and saved skins.
+- **Make it yours:** body colours, nine finishes (matte, soft-touch, gloss, metal, chrome, carbon, crystal, pearl, neon), button and stick styles, themes and saved looks, all with a live preview of your controller as you change them.
 - **Editable layouts:** move, resize and remap any control; ten presets; multiple profiles, shareable by QR code.
 - **Game feedback:** game rumble vibrates the phone, and the Guide button's ring of light shows your player number.
 - **Low latency:** input is sent the instant it changes; a slim top bar hides while you play and shows your ping.
-- **Accessible:** keyboard operable, high-contrast mode, toggle buttons, reduce motion.
+- **Easy and accessible:** built to WCAG 2.2 AA. Every menu button is a full 44px target with a plain-word label; it works with screen readers and a keyboard, and has high-contrast mode, press-once-to-hold buttons and reduce motion.
 
 <p align="center">
   <img src="screenshots/13-style-playstation.png" alt="PlayStation style" width="100%">
@@ -50,6 +53,9 @@ All downloads: [latest release](https://github.com/hsassman/controller-app/relea
 <p align="center">
   <img src="screenshots/14-style-xbox-series.png" alt="Xbox Series style" width="49%">
   <img src="screenshots/15-style-nintendo.png" alt="Nintendo style" width="49%">
+</p>
+<p align="center">
+  <img src="screenshots/16-settings-preview.png" alt="Settings with a live preview of the controller" width="100%">
 </p>
 <p align="center">
   <img src="screenshots/12-host-window.png" alt="The PC window with the live controller view" width="60%">

@@ -59,7 +59,7 @@ export function renderConnectScreen(
   options: ConnectScreenOptions = {},
 ): void {
   container.innerHTML = `
-    <div class="screen connect-screen">
+    <main class="screen connect-screen">
       <div class="brand">
         <span class="brand-mark" aria-hidden="true"></span>
         <div>
@@ -117,7 +117,7 @@ export function renderConnectScreen(
           <li>Guest or client-isolation Wi-Fi blocks device-to-device traffic; use your normal network.</li>
         </ul>
       </details>
-    </div>
+    </main>
   `;
 
   const hostInput = container.querySelector<HTMLInputElement>("#host-input")!;

@@ -1480,30 +1480,6 @@ button:disabled {
   margin: 0;
 }
 
-#close-settings {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.9rem;
-  height: 1.9rem;
-  border-radius: 50%;
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--fg-muted);
-  font-size: 0.95rem;
-  line-height: 1;
-  cursor: pointer;
-  transition:
-    background 0.15s,
-    color 0.15s;
-}
-
-#close-settings:hover {
-  background: var(--panel-bg-raised);
-  border-color: var(--border);
-  color: var(--fg);
-}
-
 .rotate-block {
   display: none;
 }

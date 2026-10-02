@@ -33,6 +33,7 @@ import { ICON_PACKS } from "../iconPacks.ts";
 import { listSkins, saveSkin, deleteSkin, randomAppearance, appearanceOf, matchesSkin, type Skin } from "../skins.ts";
 import { buildShareUrl, renderQrCanvas } from "../share.ts";
 import { PAD_STYLES } from "../padStyles.ts";
+import { ICONS, iconLabel } from "../icons.ts";
 
 export interface SettingsPanelHost {
   onChange(settings: Settings): void;
@@ -45,16 +46,23 @@ export interface SettingsPanelHost {
   onProfilesChanged(): void;
 }
 
-type TabId = "appearance" | "feel" | "access" | "profiles";
+type TabId = "style" | "controls" | "access" | "profiles";
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: "appearance", label: "Look" },
-  { id: "feel", label: "Feel" },
-  { id: "access", label: "Access" },
+  { id: "style", label: "Style" },
+  { id: "controls", label: "Controls" },
+  { id: "access", label: "Accessibility" },
   { id: "profiles", label: "Profiles" },
 ];
 
+/// Tabs whose changes show on the pad itself, so they get the live preview.
+const PREVIEW_TABS: TabId[] = ["style", "controls"];
+
 let closeOpenPanel: (() => void) | null = null;
+/// Remembered between openings, so the panel comes back where it was left.
+let lastTab: TabId = "style";
+/// Whether "More style options" is unfolded; survives the tab re-rendering.
+let moreStyleOpen = false;
 
 export function renderSettingsPanel(layout: Layout, current: Settings, host: SettingsPanelHost): void {
   if (closeOpenPanel) {
@@ -64,10 +72,10 @@ export function renderSettingsPanel(layout: Layout, current: Settings, host: Set
 
   const overlay = document.createElement("div");
   overlay.id = "settings-overlay";
-  overlay.className = "overlay";
+  overlay.className = "overlay settings-overlay";
   overlay.setAttribute("role", "dialog");
   overlay.setAttribute("aria-modal", "true");
-  overlay.setAttribute("aria-label", "Settings");
+  overlay.setAttribute("aria-labelledby", "settings-title");
 
   const panel = document.createElement("div");
   panel.className = "panel settings-panel";
@@ -76,32 +84,112 @@ export function renderSettingsPanel(layout: Layout, current: Settings, host: Set
   const header = document.createElement("div");
   header.className = "panel-header";
   const title = document.createElement("h2");
+  title.id = "settings-title";
   title.textContent = "Settings";
   const closeBtn = document.createElement("button");
   closeBtn.id = "close-settings";
   closeBtn.type = "button";
-  closeBtn.textContent = "✕";
-  closeBtn.setAttribute("aria-label", "Close settings");
+  closeBtn.className = "panel-done";
+  closeBtn.innerHTML = iconLabel(ICONS.check, "Done");
   header.append(title, closeBtn);
   panel.appendChild(header);
 
   const tabList = document.createElement("div");
   tabList.className = "tab-list";
   tabList.setAttribute("role", "tablist");
+  tabList.setAttribute("aria-label", "Settings sections");
   panel.appendChild(tabList);
+
+  const main = document.createElement("div");
+  main.className = "settings-main";
+  panel.appendChild(main);
+
+  // ---- Live preview: a miniature of the real pad, redrawn on every change,
+  // so a style is seen before the panel is closed rather than hoped for.
+  const preview = document.createElement("aside");
+  preview.className = "settings-preview";
+  preview.setAttribute("aria-label", "Preview");
+  const stage = document.createElement("div");
+  stage.className = "preview-stage";
+  stage.setAttribute("role", "img");
+  stage.setAttribute("aria-label", "Preview of your controller with these settings");
+  const peekBtn = document.createElement("button");
+  peekBtn.type = "button";
+  peekBtn.id = "peek-btn";
+  peekBtn.className = "peek-btn";
+  peekBtn.innerHTML = iconLabel(ICONS.eye, "View full size");
+  preview.append(stage, peekBtn);
+  main.appendChild(preview);
 
   const body = document.createElement("div");
   body.className = "panel-body";
   body.id = "settings-tabpanel";
   body.setAttribute("role", "tabpanel");
-  panel.appendChild(body);
+  body.tabIndex = -1;
+  main.appendChild(body);
+
+  let previewFrame = 0;
+  const drawPreview = () => {
+    previewFrame = 0;
+    if (preview.hidden) return;
+    const source = document.querySelector<HTMLElement>(".controller-screen .surface-wrap");
+    stage.replaceChildren();
+    if (!source) return;
+    const w = source.offsetWidth;
+    const h = source.offsetHeight;
+    const room = stage.getBoundingClientRect();
+    if (!w || !h || !room.width) return;
+    const scale = Math.min(room.width / w, (room.height || room.width) / h);
+    const copy = source.cloneNode(true) as HTMLElement;
+    // A picture, not a second pad: no ids to clash with, nothing to focus
+    // or announce, nothing to touch.
+    copy.removeAttribute("id");
+    for (const el of copy.querySelectorAll("[id]")) el.removeAttribute("id");
+    copy.setAttribute("aria-hidden", "true");
+    copy.inert = true;
+    copy.classList.add("preview-copy");
+    copy.style.width = `${w}px`;
+    copy.style.height = `${h}px`;
+    copy.style.transform = `scale(${scale})`;
+    const frame = document.createElement("div");
+    frame.className = "preview-frame";
+    frame.style.width = `${Math.round(w * scale)}px`;
+    frame.style.height = `${Math.round(h * scale)}px`;
+    // The page behind the pad (theme glow, or the profile's own colour or
+    // photo) lives on <body>, which the copy doesn't bring with it.
+    const page = getComputedStyle(document.body);
+    frame.style.backgroundColor = page.backgroundColor;
+    frame.style.backgroundImage = page.backgroundImage;
+    frame.style.backgroundSize = "cover";
+    frame.style.backgroundPosition = "center";
+    frame.appendChild(copy);
+    stage.appendChild(frame);
+  };
+  /// Two frames: the pad re-renders on the change, then lays out.
+  const schedulePreview = () => {
+    if (previewFrame) cancelAnimationFrame(previewFrame);
+    previewFrame = requestAnimationFrame(() => {
+      previewFrame = requestAnimationFrame(drawPreview);
+    });
+  };
+  const resizeWatch = new ResizeObserver(schedulePreview);
+  resizeWatch.observe(stage);
 
   const emit = (partial: Partial<Settings>) => {
     Object.assign(current, partial);
     host.onChange(current);
+    schedulePreview();
+  };
+  const tabHost: SettingsPanelHost = {
+    onChange: host.onChange,
+    getLayout: host.getLayout,
+    onProfilesChanged: () => {
+      host.onProfilesChanged();
+      schedulePreview();
+    },
   };
 
-  let activeTab: TabId = "appearance";
+  let activeTab: TabId = lastTab;
   const tabButtons: HTMLButtonElement[] = [];
 
   /// Selects a tab and keeps the ARIA state in step. The tablist is a single
@@ -109,6 +197,7 @@ export function renderSettingsPanel(layout: Layout, current: Settings, host: Set
   /// arrow keys move between tabs, which is what the tab role promises.
   const selectTab = (id: TabId, moveFocus: boolean) => {
     activeTab = id;
+    lastTab = id;
     for (const btn of tabButtons) {
       const on = btn.dataset.tab === id;
       btn.setAttribute("aria-selected", String(on));
@@ -117,7 +206,12 @@ export function renderSettingsPanel(layout: Layout, current: Settings, host: Set
       if (on && moveFocus) btn.focus();
     }
     body.setAttribute("aria-labelledby", `settings-tab-${id}`);
+    const withPreview = PREVIEW_TABS.includes(id);
+    preview.hidden = !withPreview;
+    main.classList.toggle("with-preview", withPreview);
     renderBody();
+    body.scrollTop = 0;
+    schedulePreview();
   };
 
   const onTabKey = (e: KeyboardEvent) => {
@@ -156,11 +250,11 @@ export function renderSettingsPanel(layout: Layout, current: Settings, host: Set
   const renderBody = () => {
     body.innerHTML = "";
     switch (activeTab) {
-      case "appearance":
-        renderAppearance(body, current, emit, host);
+      case "style":
+        renderStyle(body, current, emit, tabHost);
         break;
-      case "feel":
-        renderFeel(body, current, emit);
+      case "controls":
+        renderControls(body, current, emit);
         break;
       case "access":
         // Read the layout fresh: switching profiles from the Profiles tab
@@ -169,14 +263,41 @@ export function renderSettingsPanel(layout: Layout, current: Settings, host: Set
         renderAccess(body, host.getLayout?.() ?? layout, current, emit);
         break;
       case "profiles":
-        renderProfiles(body, host, renderBody);
+        renderProfiles(body, tabHost, renderBody, current, emit);
         break;
     }
   };
 
+  // ---- "View full size": the panel steps aside so the real pad can be seen
+  // edge to edge, with one big button to come back.
+  const peekReturn = document.createElement("button");
+  peekReturn.type = "button";
+  peekReturn.id = "peek-return";
+  peekReturn.className = "peek-return";
+  peekReturn.innerHTML = iconLabel(ICONS.settings, "Back to settings");
+  peekReturn.hidden = true;
+  overlay.appendChild(peekReturn);
+  const peeking = () => overlay.classList.contains("peeking");
+  const setPeek = (on: boolean) => {
+    overlay.classList.toggle("peeking", on);
+    // The menu bar would cover the top of the pad being looked at.
+    document.documentElement.classList.toggle("settings-peeking", on);
+    panel.inert = on;
+    peekReturn.hidden = !on;
+    (on ? peekReturn : peekBtn).focus();
+  };
+  peekBtn.addEventListener("click", () => {
+    haptic("ui");
+    setPeek(true);
+  });
+  peekReturn.addEventListener("click", () => {
+    haptic("ui");
+    setPeek(false);
+  });
+
   buildTabs();
-  selectTab(activeTab, false);
   document.body.appendChild(overlay);
+  selectTab(activeTab, false);
 
   // Focus management for a modal dialog: move focus in, trap Tab inside
   // while open, restore focus to whatever opened it on close (Escape,
@@ -185,23 +306,29 @@ export function renderSettingsPanel(layout: Layout, current: Settings, host: Set
 
   const close = () => {
     document.removeEventListener("keydown", onDocumentKey);
+    resizeWatch.disconnect();
+    if (previewFrame) cancelAnimationFrame(previewFrame);
     closeOpenPanel = null;
+    document.documentElement.classList.remove("settings-peeking");
     overlay.remove();
-    previouslyFocused?.focus();
+    previouslyFocused?.focus({ preventScroll: true });
   };
   closeOpenPanel = close;
 
   const focusable = () =>
-    [...overlay.querySelectorAll<HTMLElement>('button, input, select, [tabindex]:not([tabindex="-1"])')].filter(
+    [...overlay.querySelectorAll<HTMLElement>('button, input, select, summary, [tabindex]:not([tabindex="-1"])')].filter(
       // tabIndex < 0 skips the unselected tabs: the tablist is one stop, so
       // Tab has to step over them the way the browser itself would.
-      (el) => !el.hasAttribute("disabled") && el.offsetParent !== null && el.tabIndex >= 0,
+      (el) => !el.hasAttribute("disabled") && el.offsetParent !== null && el.tabIndex >= 0 && !el.closest("[inert]"),
     );
 
   const onDocumentKey = (e: KeyboardEvent) => {
     if (e.key !== "Escape" || !overlay.isConnected) return;
+    // A dialog opened from inside the panel handles its own Escape.
+    if (document.querySelector(".dialog-overlay")) return;
     e.preventDefault();
-    close();
+    if (peeking()) setPeek(false);
+    else close();
   };
   document.addEventListener("keydown", onDocumentKey);
 
@@ -222,7 +349,9 @@ export function renderSettingsPanel(layout: Layout, current: Settings, host: Set
 
   closeBtn.addEventListener("click", close);
   overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) close();
+    if (e.target !== overlay) return;
+    if (peeking()) setPeek(false);
+    else close();
   });
 
   closeBtn.focus();
@@ -230,64 +359,18 @@ export function renderSettingsPanel(layout: Layout, current: Settings, host: Set
 
 // ---- Tabs ----
 
-function renderAppearance(
+/// Style: the handful of choices that change the look the most come first;
+/// the fine detail is folded away under "More style options".
+function renderStyle(
   body: HTMLElement,
   current: Settings,
   emit: (partial: Partial<Settings>) => void,
   host: SettingsPanelHost,
 ): void {
-  renderPadStyleSection(body, current, emit, host);
+  const rerender = (refocus?: string) => renderReplace(body, () => renderStyle(body, current, emit, host), refocus);
 
-  const themeRow = section(body, "Theme");
-  const themes = document.createElement("div");
-  themes.className = "theme-grid";
-  for (const theme of THEMES) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "theme-card";
-    btn.setAttribute("aria-pressed", String(theme.id === current.theme));
-    btn.classList.toggle("on", theme.id === current.theme);
-    btn.innerHTML = `<span class="theme-swatch"></span><span class="theme-name"></span>`;
-    const swatch = btn.querySelector<HTMLElement>(".theme-swatch")!;
-    swatch.style.background = `linear-gradient(135deg, ${theme.swatch[0]} 0 52%, ${theme.swatch[1]} 52% 100%)`;
-    btn.querySelector<HTMLElement>(".theme-name")!.textContent = theme.name;
-    btn.addEventListener("click", () => {
-      // The theme's own accent comes along, so a theme switch lands looking
-      // intentional instead of inheriting the previous theme's colour.
-      emit({ theme: theme.id, accent: theme.accent });
-      renderReplace(body, () => renderAppearance(body, current, emit, host), ".theme-card.on");
-    });
-    themes.appendChild(btn);
-  }
-  themeRow.appendChild(themes);
-
-  const accentRow = section(body, "Accent colour");
-  const swatches = document.createElement("div");
-  swatches.className = "swatches";
-  for (const colour of ACCENT_PRESETS) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "swatch";
-    btn.style.background = colour;
-    btn.setAttribute("aria-label", `Accent ${colour}`);
-    btn.setAttribute("aria-pressed", String(colour.toLowerCase() === current.accent.toLowerCase()));
-    btn.classList.toggle("on", colour.toLowerCase() === current.accent.toLowerCase());
-    btn.addEventListener("click", () => {
-      emit({ accent: colour });
-      renderReplace(body, () => renderAppearance(body, current, emit, host), ".swatch.on");
-    });
-    swatches.appendChild(btn);
-  }
-  const custom = document.createElement("input");
-  custom.type = "color";
-  custom.className = "swatch swatch-custom";
-  custom.value = current.accent;
-  custom.setAttribute("aria-label", "Custom accent colour");
-  custom.addEventListener("input", () => emit({ accent: custom.value }));
-  swatches.appendChild(custom);
-  accentRow.appendChild(swatches);
-
-  renderBodySection(body, current, emit, host);
+  renderPadStyleSection(body, current, emit, host, rerender);
+  renderBodySection(body, current, emit, rerender);
 
   choiceRow(
     body,
@@ -296,98 +379,133 @@ function renderAppearance(
     current.buttonMaterial,
     (v) => emit({ buttonMaterial: v }),
   );
-  hint(body, "How every button, stick and the d-pad catch the light.");
-  choiceRow(
-    body,
-    "Play surface",
-    SURFACE_STYLES.map((m) => ({ value: m.id, label: m.name })),
-    current.surfaceStyle,
-    (v) => emit({ surfaceStyle: v }),
-  );
-  hint(body, "Controller body paints the whole screen in your body colour and finish, so the phone looks like the pad itself.");
+
+  const themeRow = section(body, "Theme");
+  const themes = document.createElement("div");
+  themes.className = "theme-grid";
+  for (const theme of THEMES) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "theme-card";
+    btn.dataset.theme = theme.id;
+    btn.setAttribute("aria-pressed", String(theme.id === current.theme));
+    btn.classList.toggle("on", theme.id === current.theme);
+    btn.innerHTML = `<span class="theme-swatch" aria-hidden="true"></span><span class="theme-name"></span>`;
+    const swatch = btn.querySelector<HTMLElement>(".theme-swatch")!;
+    swatch.style.background = `linear-gradient(135deg, ${theme.swatch[0]} 0 52%, ${theme.swatch[1]} 52% 100%)`;
+    btn.querySelector<HTMLElement>(".theme-name")!.textContent = theme.name;
+    btn.addEventListener("click", () => {
+      haptic("ui");
+      // The theme's own accent comes along, so a theme switch lands looking
+      // intentional instead of inheriting the previous theme's colour.
+      emit({ theme: theme.id, accent: theme.accent });
+      rerender(`.theme-card[data-theme="${theme.id}"]`);
+    });
+    themes.appendChild(btn);
+  }
+  themeRow.appendChild(themes);
+
+  const accentRow = section(body, "Accent colour");
+  const swatches = document.createElement("div");
+  swatches.className = "swatches";
+  swatches.setAttribute("role", "group");
+  swatches.setAttribute("aria-label", "Accent colour");
+  ACCENT_PRESETS.forEach((colour, index) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "swatch";
+    btn.dataset.index = String(index);
+    btn.style.background = colour;
+    btn.setAttribute("aria-label", accentName(colour));
+    btn.title = accentName(colour);
+    const on = colour.toLowerCase() === current.accent.toLowerCase();
+    btn.setAttribute("aria-pressed", String(on));
+    btn.classList.toggle("on", on);
+    btn.addEventListener("click", () => {
+      haptic("ui");
+      emit({ accent: colour });
+      rerender(`.swatches:not(.body-swatches) .swatch[data-index="${index}"]`);
+    });
+    swatches.appendChild(btn);
+  });
+  swatches.appendChild(colourPicker(current.accent, "Pick any accent colour", (v) => emit({ accent: v })));
+  accentRow.appendChild(swatches);
+  hint(accentRow, "Lights, glows and highlights.");
+
+  // ---- Everything else, one tap away.
+  const more = document.createElement("details");
+  more.className = "more-options";
+  more.open = moreStyleOpen;
+  more.addEventListener("toggle", () => (moreStyleOpen = more.open));
+  const summary = document.createElement("summary");
+  summary.textContent = "More style options";
+  const summaryHint = document.createElement("span");
+  summaryHint.className = "summary-hint";
+  summaryHint.textContent = "Buttons, sticks, d-pad, glow, background";
+  summary.appendChild(summaryHint);
+  more.appendChild(summary);
+  const inner = document.createElement("div");
+  inner.className = "more-options-body";
+  more.appendChild(inner);
+  body.appendChild(more);
 
   choiceRow(
-    body,
+    inner,
     "Face buttons",
     FACE_STYLES.map((m) => ({ value: m.id, label: m.name })),
     current.faceStyle,
     (v) => emit({ faceStyle: v }),
   );
   choiceRow(
-    body,
-    "Button legends",
+    inner,
+    "Button lettering",
     LABEL_STYLES.map((m) => ({ value: m.id, label: m.name })),
     current.labelStyle,
     (v) => emit({ labelStyle: v }),
   );
   choiceRow(
-    body,
-    "Face button icons",
+    inner,
+    "Face button symbols",
     ICON_PACKS.map((p) => ({ value: p.id, label: p.name })),
     current.iconPack,
     (v) => emit({ iconPack: v }),
   );
-  hint(body, "Purely cosmetic — A/B/X/Y still send Xbox input either way. A control you've relabelled yourself keeps its own text.");
-
+  hint(inner, "Only changes what's drawn: the PC still gets Xbox buttons, so every game works the same.");
   choiceRow(
-    body,
-    "Thumbstick caps",
+    inner,
+    "D-pad",
+    DPAD_STYLES.map((d) => ({ value: d.id, label: d.name })),
+    current.dpadStyle,
+    (v) => emit({ dpadStyle: v }),
+  );
+  choiceRow(
+    inner,
+    "Thumbstick shape",
     STICK_STYLES.map((m) => ({ value: m.id, label: m.name })),
     current.stickStyle,
     (v) => emit({ stickStyle: v }),
   );
   choiceRow(
-    body,
+    inner,
     "Thumbstick colour",
     STICK_COLORS.map((m) => ({ value: m.id, label: m.name })),
     current.stickColor,
     (v) => emit({ stickColor: v }),
   );
   choiceRow(
-    body,
-    "D-pad style",
-    DPAD_STYLES.map((d) => ({ value: d.id, label: d.name })),
-    current.dpadStyle,
-    (v) => emit({ dpadStyle: v }),
+    inner,
+    "Behind the controls",
+    SURFACE_STYLES.map((m) => ({ value: m.id, label: m.name })),
+    current.surfaceStyle,
+    (v) => emit({ surfaceStyle: v }),
   );
-
-  sliderRow(body, "Control size", current.controlScale, 0.75, 1.4, 0.05, (v) => `${Math.round(v * 100)}%`, (v) =>
-    emit({ controlScale: v }),
-  );
-  sliderRow(body, "Control opacity", current.controlOpacity, 0.35, 1, 0.05, (v) => `${Math.round(v * 100)}%`, (v) =>
-    emit({ controlOpacity: v }),
-  );
-  choiceRow(
-    body,
-    "Top bar",
-    [
-      { value: "auto", label: "Hide while playing" },
-      { value: "always", label: "Always show" },
-    ],
-    current.topBar,
-    (v) => emit({ topBar: v }),
-  );
-  hint(body, "Hidden, the bar slides away once you start playing; tap the handle at the top edge to bring it back.");
-
-  sliderRow(body, "Press glow", current.glowIntensity, 0, 1.5, 0.05, (v) =>
+  sliderRow(inner, "Glow when pressed", current.glowIntensity, 0, 1.5, 0.05, (v) =>
     v === 0 ? "Off" : `${Math.round(v * 100)}%`, (v) => emit({ glowIntensity: v }),
   );
-  switchRow(body, "Show button labels", current.showLabels, (v) => emit({ showLabels: v }));
-  switchRow(body, "Background glow", current.surfaceGlow, (v) => emit({ surfaceGlow: v }));
+  switchRow(inner, "Soft light behind the controls", current.surfaceGlow, (v) => emit({ surfaceGlow: v }));
+  renderBackgroundSection(inner, current, emit, host, () => rerender());
 
-  renderBackgroundSection(body, current, emit, host);
-  renderSkinsSection(body, current, emit, host);
-
-  choiceRow(
-    body,
-    "Dim when idle",
-    IDLE_DIM_CHOICES,
-    // Match on the stored number so a hand-edited value still highlights the
-    // nearest offered option rather than leaving the group with none pressed.
-    nearestIdleChoice(current.idleDimSeconds),
-    (v) => emit({ idleDimSeconds: v }),
-  );
-  hint(body, "The controls fade after this long with no input, and come straight back on the next touch.");
+  renderSkinsSection(body, current, emit, rerender);
 
   // Only worth offering when it would change something. Launched from a
   // Home Screen icon the browser chrome is already gone, and on a desktop
@@ -412,6 +530,37 @@ function renderAppearance(
   }
 }
 
+/// A native colour picker dressed as one more swatch, with a visible name.
+function colourPicker(value: string, label: string, onInput: (v: string) => void): HTMLLabelElement {
+  const wrap = document.createElement("label");
+  wrap.className = "swatch swatch-custom";
+  wrap.title = label;
+  const input = document.createElement("input");
+  input.type = "color";
+  input.value = /^#[0-9a-f]{6}$/i.test(value) ? value : "#262b37";
+  input.setAttribute("aria-label", label);
+  input.addEventListener("input", () => onInput(input.value));
+  const plus = document.createElement("span");
+  plus.setAttribute("aria-hidden", "true");
+  plus.textContent = "+";
+  wrap.append(input, plus);
+  return wrap;
+}
+
+const ACCENT_NAMES: Record<string, string> = {
+  "#4c8bff": "Blue",
+  "#3fd9a4": "Mint",
+  "#b57bff": "Purple",
+  "#ff8a4c": "Orange",
+  "#ff5c8a": "Pink",
+  "#ffc94a": "Yellow",
+  "#4cd6ff": "Cyan",
+  "#e8e8ea": "White",
+};
+function accentName(hex: string): string {
+  return ACCENT_NAMES[hex.toLowerCase()] ?? `Colour ${hex.toUpperCase()}`;
+}
+
 /// Whole-controller styles (padStyles.ts). Picking one applies its look and
 /// switches to a profile laid out like that controller -- created the first
 /// time, reused after -- so the player's own layouts are never overwritten.
@@ -420,6 +569,7 @@ function renderPadStyleSection(
   current: Settings,
   emit: (partial: Partial<Settings>) => void,
   host: SettingsPanelHost,
+  rerender: (refocus?: string) => void,
 ): void {
   const row = section(body, "Controller style");
   const grid = document.createElement("div");
@@ -448,12 +598,12 @@ function renderPadStyleSection(
       if (existing) setActiveProfile(existing.id);
       else createProfile(style.name, style.layout());
       host.onProfilesChanged();
-      renderReplace(body, () => renderAppearance(body, current, emit, host), ".pad-style-card.on");
+      rerender(`.pad-style-card[data-style="${style.id}"]`);
     });
     grid.appendChild(btn);
   }
   row.appendChild(grid);
-  hint(row, "Lays the pad out like that controller, with its button names and d-pad. Your PC still sees an Xbox controller, so every game works the same — buttons match by position.");
+  hint(row, "Lays out the pad like that controller. Your PC still sees an Xbox controller, so every game works.");
 }
 
 /// The controller's body colour: named colourways plus a free picker, the
@@ -462,16 +612,19 @@ function renderBodySection(
   body: HTMLElement,
   current: Settings,
   emit: (partial: Partial<Settings>) => void,
-  host: SettingsPanelHost,
+  rerender: (refocus?: string) => void,
 ): void {
-  const row = section(body, "Controller body");
+  const row = section(body, "Body colour");
   const swatches = document.createElement("div");
   swatches.className = "swatches body-swatches";
+  swatches.setAttribute("role", "group");
+  swatches.setAttribute("aria-label", "Body colour");
   const currentBody = current.shellColor.toLowerCase();
-  for (const preset of SHELL_PRESETS) {
+  SHELL_PRESETS.forEach((preset, index) => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "swatch body-swatch";
+    btn.dataset.index = String(index);
     if (preset.value) btn.style.background = preset.value;
     else btn.classList.add("body-swatch-theme");
     btn.setAttribute("aria-label", preset.name);
@@ -480,22 +633,16 @@ function renderBodySection(
     btn.setAttribute("aria-pressed", String(on));
     btn.classList.toggle("on", on);
     btn.addEventListener("click", () => {
+      haptic("ui");
       emit({ shellColor: preset.value });
-      renderReplace(body, () => renderAppearance(body, current, emit, host), ".body-swatch.on");
+      rerender(`.body-swatch[data-index="${index}"]`);
     });
     swatches.appendChild(btn);
-  }
-  const custom = document.createElement("input");
-  custom.type = "color";
-  custom.className = "swatch swatch-custom";
-  custom.value = current.shellColor || "#262b37";
-  custom.setAttribute("aria-label", "Custom body colour");
-  custom.title = "Any colour";
-  custom.addEventListener("input", () => emit({ shellColor: custom.value }));
-  swatches.appendChild(custom);
+  });
+  swatches.appendChild(colourPicker(current.shellColor || "#262b37", "Pick any body colour", (v) => emit({ shellColor: v })));
   row.appendChild(swatches);
-  const name = SHELL_PRESETS.find((p) => p.value.toLowerCase() === currentBody)?.name ?? "Custom";
-  hint(row, `${name}. Legends switch to dark ink on light bodies so they stay readable.`);
+  const name = SHELL_PRESETS.find((p) => p.value.toLowerCase() === currentBody)?.name ?? "Your own colour";
+  hint(row, `${name}. Lettering turns dark on light colours so it stays readable.`);
 }
 
 /// Base64 inflates a file by roughly a third; capped comfortably under
@@ -505,9 +652,10 @@ const MAX_BACKGROUND_IMAGE_FILE_BYTES = 1_400_000;
 
 function renderBackgroundSection(
   body: HTMLElement,
-  current: Settings,
-  emit: (partial: Partial<Settings>) => void,
+  _current: Settings,
+  _emit: (partial: Partial<Settings>) => void,
   host: SettingsPanelHost,
+  rerender: () => void,
 ): void {
   const layout = host.getLayout?.();
   if (!layout) return;
@@ -517,11 +665,11 @@ function renderBackgroundSection(
     setProfileBackground(layout.id, next);
     applyBackground(next);
     host.onProfilesChanged();
-    renderReplace(body, () => renderAppearance(body, current, emit, host));
+    rerender();
   };
 
   const section_ = section(body, "Background");
-  hint(section_, "A backdrop for this profile only, layered behind the theme's usual glow.");
+  hint(section_, "A colour or photo behind the controls, for this profile only.");
 
   const mode = bg?.type ?? "none";
   const modeRow = document.createElement("div");
@@ -555,10 +703,12 @@ function renderBackgroundSection(
   if (mode === "color") {
     const picker = document.createElement("input");
     picker.type = "color";
-    picker.className = "swatch swatch-custom";
+    picker.className = "bg-colour";
     picker.value = /^#[0-9a-f]{6}$/i.test(bg?.value ?? "") ? bg!.value : "#1a1d24";
     picker.setAttribute("aria-label", "Background colour");
-    picker.addEventListener("input", () => apply({ type: "color", value: picker.value }));
+    // "change", not "input": each apply re-renders the tab, which would
+    // close the native picker mid-drag.
+    picker.addEventListener("change", () => apply({ type: "color", value: picker.value }));
     section_.appendChild(picker);
   }
 
@@ -609,20 +759,19 @@ function renderSkinsSection(
   body: HTMLElement,
   current: Settings,
   emit: (partial: Partial<Settings>) => void,
-  host: SettingsPanelHost,
+  rerender: (refocus?: string) => void,
 ): void {
-  const section_ = section(body, "My skins");
-  hint(section_, "Save the look you've built — theme, body colour, finish, buttons, sticks and all — and reapply it to any profile.");
+  const section_ = section(body, "Saved looks");
+  hint(section_, "Keep the look you've built and put it back on with one tap.");
 
-  const refresh = () => renderReplace(body, () => renderAppearance(body, current, emit, host));
+  const refresh = () => rerender();
 
   const actions = document.createElement("div");
   actions.className = "inspector-actions";
 
   const remix = document.createElement("button");
   remix.type = "button";
-  remix.textContent = "🎲 Remix";
-  remix.title = "Try a random combination";
+  remix.textContent = "Surprise me";
   remix.addEventListener("click", () => {
     haptic("ui");
     emit(randomAppearance());
@@ -631,11 +780,11 @@ function renderSkinsSection(
 
   const save = document.createElement("button");
   save.type = "button";
-  save.textContent = "Save current look…";
+  save.textContent = "Save this look…";
   save.addEventListener("click", async () => {
-    const name = await promptDialog("Save this look as a skin", {
-      label: "Skin name",
-      value: "My skin",
+    const name = await promptDialog("Save this look", {
+      label: "Name",
+      value: "My look",
       confirmLabel: "Save",
     });
     if (name === null) return;
@@ -648,7 +797,7 @@ function renderSkinsSection(
 
   const skins = listSkins();
   if (skins.length === 0) {
-    hint(section_, "No saved skins yet.");
+    hint(section_, "No saved looks yet.");
     return;
   }
   const list = document.createElement("div");
@@ -690,6 +839,8 @@ function skinRow(
     deleteSkin(skin.id);
     refresh();
   });
+  del.setAttribute("aria-label", `Delete ${skin.name}`);
+  use.setAttribute("aria-label", `Use the look ${skin.name}`);
   del.classList.add("danger");
 
   const actions = document.createElement("div");
@@ -714,61 +865,80 @@ function nearestIdleChoice(seconds: number): number {
   ).value;
 }
 
-function renderFeel(
+/// Controls: how the pad feels and behaves, grouped by what it touches.
+function renderControls(
   body: HTMLElement,
   current: Settings,
   emit: (partial: Partial<Settings>) => void,
 ): void {
-  switchRow(body, "Vibration", current.haptics, (v) => emit({ haptics: v }));
-  const strengthRow = sliderRow(body, "Vibration strength", current.hapticStrength, 0, 1, 0.05, (v) =>
+  const size = section(body, "Size");
+  sliderRow(size, "Control size", current.controlScale, 0.75, 1.4, 0.05, (v) => `${Math.round(v * 100)}%`, (v) =>
+    emit({ controlScale: v }),
+  );
+  sliderRow(size, "See-through", 1 - current.controlOpacity, 0, 0.65, 0.05, (v) =>
+    v < 0.025 ? "Solid" : `${Math.round(v * 100)}%`, (v) => emit({ controlOpacity: Math.round((1 - v) * 100) / 100 }),
+  );
+  hint(size, "See-through lets the game show behind the controls if you play with the phone over a screen.");
+
+  const vibration = section(body, "Vibration");
+  switchRow(vibration, "Buzz when I press a control", current.haptics, (v) => emit({ haptics: v }));
+  const strengthRow = sliderRow(vibration, "Buzz strength", current.hapticStrength, 0, 1, 0.05, (v) =>
     v === 0 ? "Off" : `${Math.round(v * 100)}%`, (v) => emit({ hapticStrength: v }),
   );
-  const testBtn = document.createElement("button");
-  testBtn.type = "button";
-  testBtn.className = "small";
-  testBtn.textContent = "Test";
-  // configureHaptics() has already been called by the time this fires --
-  // emit() runs applySettings() synchronously on every slider input -- so
-  // this always buzzes at whatever strength is currently on screen, not a
-  // stale value from when the panel opened.
-  testBtn.addEventListener("click", () => haptic("click"));
-  strengthRow.appendChild(testBtn);
-  const rumble = section(body, "Game rumble");
-  switchRow(rumble, "Vibrate when the game rumbles", current.gameRumble, (v) => emit({ gameRumble: v }));
-  const rumbleRow = sliderRow(rumble, "Rumble strength", current.rumbleStrength, 0, 1, 0.05, (v) =>
+  // configureHaptics() has already run by the time this fires -- emit()
+  // applies settings synchronously on every slider input -- so this always
+  // buzzes at the strength on screen.
+  strengthRow.appendChild(smallButton("Try it", () => haptic("click")));
+  switchRow(vibration, "Rumble when the game rumbles", current.gameRumble, (v) => emit({ gameRumble: v }));
+  const rumbleRow = sliderRow(vibration, "Rumble strength", current.rumbleStrength, 0, 1, 0.05, (v) =>
     v === 0 ? "Off" : `${Math.round(v * 100)}%`, (v) => emit({ rumbleStrength: v }),
   );
-  const rumbleTest = document.createElement("button");
-  rumbleTest.type = "button";
-  rumbleTest.className = "small";
-  rumbleTest.textContent = "Test";
-  rumbleTest.addEventListener("click", () => {
-    setRumble(1, 0.6);
-    window.setTimeout(stopRumble, 500);
-  });
-  rumbleRow.appendChild(rumbleTest);
-  switchRow(rumble, "Show rumble on screen", current.rumbleVisual, (v) => emit({ rumbleVisual: v }));
+  rumbleRow.appendChild(
+    smallButton("Try it", () => {
+      setRumble(1, 0.6);
+      window.setTimeout(stopRumble, 500);
+    }),
+  );
+  switchRow(vibration, "Show rumble on screen", current.rumbleVisual, (v) => emit({ rumbleVisual: v }));
   hint(
-    rumble,
+    vibration,
     canVibrate()
-      ? "Games' controller rumble is passed through to this phone. The on-screen pulse works too, for silent play."
-      : "This browser can't vibrate (no iPhone browser can), so rumble shows as a pulse around the edge of the pad instead.",
+      ? "Showing rumble on screen pulses the edges of the pad, which also works with the sound off."
+      : "This browser can't vibrate (no iPhone browser can), so rumble shows as a pulse around the edge of the pad.",
   );
 
-  sliderRow(body, "Stick dead zone", current.deadZone, 0, 0.5, 0.01, (v) => `${Math.round(v * 100)}%`, (v) =>
+  const sticks = section(body, "Thumbsticks");
+  sliderRow(sticks, "Dead zone", current.deadZone, 0, 0.5, 0.01, (v) => `${Math.round(v * 100)}%`, (v) =>
     emit({ deadZone: v }),
   );
-  sliderRow(body, "Stick sensitivity", current.sensitivityCurve, 0.5, 2, 0.1, (v) =>
-    v < 0.95 ? `Fast (${v.toFixed(1)})` : v > 1.05 ? `Precise (${v.toFixed(1)})` : "Linear", (v) =>
+  sliderRow(sticks, "Response", current.sensitivityCurve, 0.5, 2, 0.1, (v) =>
+    v < 0.95 ? `Quick (${v.toFixed(1)})` : v > 1.05 ? `Precise (${v.toFixed(1)})` : "Even", (v) =>
     emit({ sensitivityCurve: v }),
   );
-  switchRow(body, "Animate stick return", current.stickSnapBack, (v) => emit({ stickSnapBack: v }));
-  switchRow(body, "Snap to grid when editing", current.snapToGrid, (v) => emit({ snapToGrid: v }));
-  sliderRow(body, "Grid size", current.gridSize, 0.5, 10, 0.5, (v) => `${v}%`, (v) => emit({ gridSize: v }));
-  hint(
-    body,
-    "Sensitivity above Linear gives finer control near the centre of the stick; below it moves further per millimetre.",
+  hint(sticks, "Dead zone ignores small accidental movement. Precise gives finer control near the centre; Quick moves further per millimetre.");
+  switchRow(sticks, "Spring back to centre smoothly", current.stickSnapBack, (v) => emit({ stickSnapBack: v }));
+
+  const screen = section(body, "While playing");
+  choiceRow(
+    screen,
+    "Menu bar",
+    [
+      { value: "auto", label: "Hide while playing" },
+      { value: "always", label: "Always show" },
+    ],
+    current.topBar,
+    (v) => emit({ topBar: v }),
   );
+  choiceRow(
+    screen,
+    "Fade the controls when idle",
+    IDLE_DIM_CHOICES,
+    // Match on the stored number so a hand-edited value still highlights the
+    // nearest offered option rather than leaving the group with none pressed.
+    nearestIdleChoice(current.idleDimSeconds),
+    (v) => emit({ idleDimSeconds: v }),
+  );
+  hint(screen, "Hidden, the menu comes back with the Menu button at the top of the screen.");
 }
 
 function renderAccess(
@@ -777,11 +947,14 @@ function renderAccess(
   current: Settings,
   emit: (partial: Partial<Settings>) => void,
 ): void {
-  switchRow(body, "High-contrast mode", current.highContrast, (v) => emit({ highContrast: v }));
-  switchRow(body, "Reduce motion", current.reduceMotion, (v) => emit({ reduceMotion: v }));
+  const seeing = section(body, "Seeing");
+  switchRow(seeing, "High contrast", current.highContrast, (v) => emit({ highContrast: v }));
+  switchRow(seeing, "Show letters on buttons", current.showLabels, (v) => emit({ showLabels: v }));
+  switchRow(seeing, "Reduce motion", current.reduceMotion, (v) => emit({ reduceMotion: v }));
+  hint(seeing, "Need bigger controls? Use Control size on the Controls tab, or drag them larger in Edit layout.");
 
-  const toggles = section(body, "Toggle mode");
-  hint(toggles, "Press once to hold the button down, press again to release it.");
+  const toggles = section(body, "Press once to hold");
+  hint(toggles, "Turn this on for a button and one press holds it down; press again to let go. Handy for buttons you'd otherwise hold for a long time.");
   const buttons = layout.controls.filter((c) => c.type === "button");
   if (buttons.length === 0) {
     hint(toggles, "This layout has no buttons yet.");
@@ -803,7 +976,13 @@ function renderAccess(
   }
 }
 
-function renderProfiles(body: HTMLElement, host: SettingsPanelHost, refresh: () => void): void {
+function renderProfiles(
+  body: HTMLElement,
+  host: SettingsPanelHost,
+  refresh: () => void,
+  current: Settings,
+  emit: (partial: Partial<Settings>) => void,
+): void {
   const profiles = listProfiles();
   const active = activeProfileId();
 
@@ -814,7 +993,7 @@ function renderProfiles(body: HTMLElement, host: SettingsPanelHost, refresh: () 
     body.querySelector<HTMLElement>(".profile-item.on .profile-use")?.focus();
   };
 
-  hint(body, "Each profile is a complete layout. Switch between them from the bar at the top.");
+  hint(body, "Each profile is a whole layout with its own buttons. Tap one to use it.");
 
   const list = document.createElement("div");
   list.className = "profile-list";
@@ -889,6 +1068,16 @@ function renderProfiles(body: HTMLElement, host: SettingsPanelHost, refresh: () 
     del.classList.add("danger");
     del.disabled = profiles.length <= 1;
 
+    for (const [btn, verb] of [
+      [rename, "Rename"],
+      [dup, "Duplicate"],
+      [exp, "Export"],
+      [share, "Share"],
+      [del, "Delete"],
+    ] as const) {
+      btn.setAttribute("aria-label", `${verb} ${profile.name}`);
+    }
+    use.setAttribute("aria-pressed", String(profile.id === active));
     actions.append(rename, dup, exp, share, del);
     const headRow = document.createElement("div");
     headRow.className = "profile-head";
@@ -914,6 +1103,10 @@ function renderProfiles(body: HTMLElement, host: SettingsPanelHost, refresh: () 
     refreshAndFocus();
   });
   body.appendChild(add);
+
+  const editing = section(body, "When editing a layout");
+  switchRow(editing, "Snap controls to a grid", current.snapToGrid, (v) => emit({ snapToGrid: v }));
+  sliderRow(editing, "Grid spacing", current.gridSize, 0.5, 10, 0.5, (v) => `${v}%`, (v) => emit({ gridSize: v }));
 }
 
 /// A lightweight overlay (not the confirm/prompt/alert trio in dialog.ts,

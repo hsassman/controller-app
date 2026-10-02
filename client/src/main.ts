@@ -8,6 +8,7 @@ import "./styles/settings-extra.css";
 import "./styles/finish.css";
 import "./styles/dpad.css";
 import "./styles/topbar.css";
+import "./styles/settings-ux.css";
 import { renderConnectScreen } from "./screens/connect.ts";
 import { renderControllerScreen } from "./screens/controller.ts";
 import { loadSettings, applyHighContrast } from "./settings.ts";
