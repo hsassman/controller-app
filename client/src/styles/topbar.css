@@ -38,40 +38,58 @@
 }
 
 .topbar-actions {
-  gap: 0.25rem;
+  gap: 0.35rem;
+  flex-wrap: nowrap;
 }
 
+/* Every bar button is a full 44px touch target (WCAG 2.5.5) with its
+   icon and a word saying what it does. Words drop away only where the
+   screen is too narrow for them; the accessible name stays either way. */
 .topbar-actions button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.22rem 0.65rem;
-  font-size: 0.76rem;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 650;
   line-height: 1;
-  min-height: 1.75rem;
+  white-space: nowrap;
+  border-radius: 0.8rem;
 }
 
-/* 28px square: clears the 24px WCAG target with room to spare. */
 .topbar-actions .icon-btn {
-  width: 1.85rem;
-  height: 1.75rem;
-  padding: 0;
-  display: inline-grid;
-  place-items: center;
-  font-size: 0.92rem;
-  line-height: 1;
+  padding: 0 0.85rem 0 0.7rem;
 }
 
 /* SVG icons (icons.ts): a fixed box, so every icon sits dead centre. */
-.icon-btn .icon {
+.icon-btn .icon,
+.bar-handle .icon {
   display: block;
-  width: 1.05rem;
-  height: 1.05rem;
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
-#settings-btn {
-  width: 1.85rem;
-  padding: 0;
+@media (max-width: 720px) {
+  .topbar-actions .btn-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .topbar-actions .icon-btn {
+    padding: 0;
+    width: 2.75rem;
+  }
+}
+
+.topbar-actions #disconnect-btn .icon {
+  color: var(--danger, #ff6b6b);
 }
 
 .profile-picker select {
@@ -106,39 +124,44 @@
   pointer-events: none;
 }
 
-.bar-handle {
+.bar-handle,
+.hide-bar-btn[hidden] {
   display: none;
 }
 
+/* The way back to the menu while it is tucked away: a real 44px button
+   with a word on it, a little below the very top edge (where iPhone
+   Safari takes the tap to show its own toolbar instead). */
 .controller-screen.bar-auto.bar-hidden .bar-handle {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   position: absolute;
-  top: env(safe-area-inset-top);
+  top: calc(env(safe-area-inset-top) + 0.4rem);
   left: 50%;
   translate: -50% 0;
-  z-index: 9;
-  width: 4.5rem;
-  height: 1.5rem;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-}
-
-.bar-handle span {
-  display: block;
-  width: 2.6rem;
-  height: 0.28rem;
-  margin: 0.35rem auto 0;
+  z-index: 30;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0 1rem 0 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--fg) 22%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--fg) 34%, transparent);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: var(--fg);
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 0 4px 14px -6px rgba(0, 0, 0, 0.7);
 }
 
 .bar-handle:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: -2px;
-  border-radius: 0.5rem;
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 :root.reduce-motion .controller-screen.bar-auto .topbar {
@@ -157,6 +180,10 @@
   backdrop-filter: none;
 }
 
-:root.high-contrast .bar-handle span {
-  background: #fff;
+:root.high-contrast .controller-screen.bar-auto.bar-hidden .bar-handle {
+  background: #000;
+  border: 2px solid #fff;
+  color: #fff;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }

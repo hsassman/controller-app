@@ -682,13 +682,6 @@ button:disabled {
   box-shadow: 0 3px 10px -3px rgba(var(--accent-rgb), 0.7);
 }
 
-#settings-btn {
-  width: 2.05rem;
-  padding: 0.42rem 0;
-  text-align: center;
-  font-size: 0.95rem;
-}
-
 #disconnect-btn {
   color: color-mix(in srgb, var(--danger) 78%, var(--fg));
 }

@@ -9,6 +9,7 @@ mod qr;
 mod server;
 mod stable;
 mod status;
+mod update;
 
 use tauri::{Manager, WindowEvent};
 
@@ -42,6 +43,8 @@ pub fn run() {
             desktop::fix_firewall,
             desktop::test_rumble,
             desktop::quit_app,
+            update::check_for_update,
+            update::install_update,
         ])
         // Closing the window keeps the host running in the tray: quitting
         // unplugs the controller and takes the phone page down with it, so
@@ -112,6 +115,8 @@ pub fn run() {
                 }
             };
             desktop::check_firewall(&app_handle);
+            app.manage(update::UpdateState::default());
+            update::start_background_checks(&app_handle);
 
             let ws_bound = ports::bind_from(server::PORT);
             let http_bound = ports::bind_from(http::HTTP_PORT);

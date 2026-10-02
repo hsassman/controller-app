@@ -355,7 +355,7 @@ pub fn show_main_window(app: &AppHandle) {
 // ---------------------------------------------------------------------------
 
 #[cfg(windows)]
-fn hidden_powershell(script: &str) -> std::process::Command {
+pub(crate) fn hidden_powershell(script: &str) -> std::process::Command {
     use std::os::windows::process::CommandExt;
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
     let mut command = std::process::Command::new("powershell.exe");

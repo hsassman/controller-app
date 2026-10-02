@@ -12,7 +12,7 @@ import { renderEditor, type EditorHandle } from "./editor.ts";
 import { confirmDialog } from "../dialog.ts";
 import { showFirstRunHint } from "../onboarding.ts";
 import { maybeOfferShortcut } from "../install.ts";
-import { ICONS } from "../icons.ts";
+import { ICONS, iconLabel } from "../icons.ts";
 
 /// Input is pushed the moment it changes, capped at one frame per
 /// MIN_FRAME_GAP_MS (250 Hz) so a fast stick sweep can't flood the link.
@@ -33,7 +33,7 @@ export function renderControllerScreen(
 ): void {
   container.innerHTML = `
     <div class="screen controller-screen">
-      <header class="topbar">
+      <header id="topbar" class="topbar">
         <h1 id="screen-heading" class="visually-hidden" tabindex="-1">Game controller</h1>
         <div id="status" class="status" data-state="connected">
           <span id="status-dot" aria-hidden="true"></span>
@@ -58,16 +58,17 @@ export function renderControllerScreen(
         </label>
         <div id="edit-toolbar" class="edit-toolbar" hidden></div>
         <div class="topbar-actions">
-          <button id="fullscreen-btn" class="icon-btn" type="button" aria-label="Enter fullscreen" title="Fullscreen">${ICONS.fullscreen}</button>
-          <button id="edit-btn" class="icon-btn" type="button" aria-label="Edit layout" title="Edit layout">${ICONS.edit}</button>
-          <button id="done-editing" class="primary" type="button" hidden>Done</button>
-          <button id="settings-btn" class="icon-btn" type="button" aria-label="Settings" title="Settings">${ICONS.settings}</button>
-          <button id="disconnect-btn" class="icon-btn" type="button" aria-label="Disconnect" title="Disconnect">${ICONS.power}</button>
+          <button id="fullscreen-btn" class="icon-btn" type="button">${iconLabel(ICONS.fullscreen, "Fullscreen")}</button>
+          <button id="edit-btn" class="icon-btn" type="button">${iconLabel(ICONS.edit, "Edit layout")}</button>
+          <button id="done-editing" class="icon-btn primary" type="button" hidden>${iconLabel(ICONS.check, "Done")}</button>
+          <button id="settings-btn" class="icon-btn" type="button" aria-haspopup="dialog">${iconLabel(ICONS.settings, "Settings")}</button>
+          <button id="disconnect-btn" class="icon-btn" type="button">${iconLabel(ICONS.power, "Disconnect")}</button>
+          <button id="hide-bar-btn" class="icon-btn hide-bar-btn" type="button" aria-controls="topbar">${iconLabel(ICONS.hide, "Hide menu")}</button>
         </div>
       </header>
-      <!-- Shown while the bar is tucked away: a grab handle at the top edge.
-           Tapping it (or pressing it with a keyboard) brings the bar back. -->
-      <button id="bar-handle" class="bar-handle" type="button" aria-label="Show menu" title="Show menu"><span></span></button>
+      <!-- Shown while the menu is tucked away for play: one clear, finger-
+           sized button that brings it back on the first tap. -->
+      <button id="bar-handle" class="bar-handle" type="button" aria-controls="topbar" aria-expanded="false">${iconLabel(ICONS.menu, "Menu")}</button>
       <main class="surface-wrap">
         <div id="controls-surface" class="controls-surface" role="group" aria-label="Game controller"></div>
         <div id="empty-layout" class="empty-layout" hidden>
@@ -186,6 +187,7 @@ export function renderControllerScreen(
   const screenEl = container.querySelector<HTMLElement>(".controller-screen")!;
   const topbar = container.querySelector<HTMLElement>(".topbar")!;
   const barHandle = container.querySelector<HTMLButtonElement>("#bar-handle")!;
+  const hideBarBtn = container.querySelector<HTMLButtonElement>("#hide-bar-btn")!;
   const BAR_LINGER_MS = 3200;
   let barTimer: number | null = null;
   let connState: ConnectionState = "connected";
@@ -195,34 +197,61 @@ export function renderControllerScreen(
     const active = document.activeElement;
     return !!active && active !== heading && topbar.contains(active);
   };
-  const barCanHide = () => settings.topBar === "auto" && !editing && connState === "connected" && !usingBar();
+  // Whether the bar floats and tucks away at all (focus aside).
+  const barAutoHides = () => settings.topBar === "auto" && !editing && connState === "connected";
+  const barCanHide = () => barAutoHides() && !usingBar();
   const hideBar = () => {
     if (barTimer !== null) window.clearTimeout(barTimer);
     barTimer = null;
     if (barCanHide()) screenEl.classList.add("bar-hidden");
+    barHandle.setAttribute("aria-expanded", String(!screenEl.classList.contains("bar-hidden")));
   };
   const showBar = (linger = true) => {
     screenEl.classList.remove("bar-hidden");
+    barHandle.setAttribute("aria-expanded", "true");
     if (barTimer !== null) window.clearTimeout(barTimer);
     barTimer = linger && barCanHide() ? window.setTimeout(hideBar, BAR_LINGER_MS) : null;
+  };
+  // Opened on purpose: stays open until it is closed or the pad is touched.
+  // A timer here took the menu away while people were still reading it.
+  const openBar = () => {
+    showBar(false);
+    hideBarBtn.hidden = !barAutoHides();
   };
   const syncBar = () => {
     // Floating only in play mode: the editor needs its toolbar in the flow.
     screenEl.classList.toggle("bar-auto", settings.topBar === "auto" && !editing);
+    hideBarBtn.hidden = !barAutoHides();
     if (barCanHide()) showBar();
     else showBar(false);
   };
   barHandle.addEventListener("click", () => {
     haptic("ui");
-    showBar();
+    openBar();
+    // Keyboard and screen-reader users land on the first menu item.
+    topbar.querySelector<HTMLElement>(".topbar-actions button:not([hidden])")?.focus({ preventScroll: true });
   });
-  topbar.addEventListener("pointerdown", () => showBar());
+  hideBarBtn.addEventListener("click", () => {
+    haptic("ui");
+    hideBarBtn.blur();
+    hideBar();
+    barHandle.focus({ preventScroll: true });
+  });
+  topbar.addEventListener("pointerdown", () => openBar());
   topbar.addEventListener("focusin", (e) => {
-    if (e.target !== heading) showBar(false);
+    if (e.target !== heading) openBar();
   });
-  topbar.addEventListener("focusout", () => window.setTimeout(() => showBar(), 0));
-  // Capture phase: the controls stop their own pointer events.
-  surfaceWrap.addEventListener("pointerdown", hideBar, { capture: true });
+  // Capture phase: the controls stop their own pointer events. Touching the
+  // pad means play has resumed, so it also takes focus out of the bar (focus
+  // returned to the Settings button on close would otherwise hold it open).
+  surfaceWrap.addEventListener(
+    "pointerdown",
+    () => {
+      if (usingBar()) (document.activeElement as HTMLElement).blur();
+      hideBar();
+    },
+    { capture: true },
+  );
 
   const showPlayMode = (focusHeading = false) => {
     releaseSurface();
@@ -237,9 +266,7 @@ export function renderControllerScreen(
     disconnectBtn.hidden = false;
     fullscreenBtn.hidden = !fullscreenSupported();
     profilePicker.hidden = listProfiles().length < 2;
-    editBtn.innerHTML = ICONS.edit;
-    editBtn.classList.add("icon-btn");
-    editBtn.setAttribute("aria-label", "Edit layout");
+    editBtn.innerHTML = iconLabel(ICONS.edit, "Edit layout");
     doneBtn.hidden = true;
     syncProfiles();
     container.querySelector<HTMLElement>("#empty-layout")!.hidden = layout.controls.length > 0;
@@ -263,9 +290,7 @@ export function renderControllerScreen(
     disconnectBtn.hidden = true;
     fullscreenBtn.hidden = true;
     profilePicker.hidden = true;
-    editBtn.textContent = "Discard";
-    editBtn.classList.remove("icon-btn");
-    editBtn.removeAttribute("aria-label");
+    editBtn.innerHTML = iconLabel(ICONS.hide, "Discard");
     doneBtn.hidden = false;
     container.querySelector<HTMLElement>("#empty-layout")!.hidden = true;
     heading.textContent = "Layout editor";
@@ -403,7 +428,7 @@ export function renderControllerScreen(
 
   const syncFullscreenBtn = () => {
     const on = isFullscreen();
-    fullscreenBtn.setAttribute("aria-label", on ? "Exit fullscreen" : "Enter fullscreen");
+    fullscreenBtn.innerHTML = iconLabel(ICONS.fullscreen, on ? "Exit fullscreen" : "Fullscreen");
     fullscreenBtn.classList.toggle("on", on);
   };
   document.addEventListener("fullscreenchange", syncFullscreenBtn);

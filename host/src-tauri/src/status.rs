@@ -57,6 +57,8 @@ pub struct Status {
     /// Windows Firewall is set to block all incoming connections, which
     /// overrides every allow rule, this app's included.
     pub firewall_blocks_all: bool,
+    /// A newer release is out (its version, without the "v"); see update.rs.
+    pub update_version: Option<String>,
 }
 
 #[derive(Clone, serde::Serialize)]

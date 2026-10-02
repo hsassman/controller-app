@@ -216,6 +216,19 @@
         background: #10201a;
         color: #b9f5cf;
       }
+      .update-card {
+        border: 1px solid #2f5b8f;
+        border-left: 4px solid #5aa2ff;
+        background: linear-gradient(180deg, #102035, #0e1a2b);
+      }
+      .update-card h2 {
+        color: #cfe4ff;
+      }
+      .update-card p,
+      #update-result {
+        color: #bcd6f5;
+        font-size: 0.84rem;
+      }
       .warn-card {
         border: 1px solid #7a6324;
         border-left: 4px solid var(--warn);
@@ -713,6 +726,17 @@
 
       <section id="startup-error" class="alert" role="alert" hidden></section>
 
+      <!-- A newer release is out (update.rs). One click downloads it and
+           installs it over this copy; the app restarts by itself. -->
+      <section id="update-card" class="alert update-card" hidden>
+        <h2>Update available: <span id="update-version"></span></h2>
+        <p>Installs over this version and restarts Phone Controller. Your settings stay as they are.</p>
+        <div class="actions">
+          <button id="update-now" class="btn primary" type="button">Update now</button>
+          <span id="update-result" aria-live="polite"></span>
+        </div>
+      </section>
+
       <!-- Windows Firewall has no rule for this app: the single most common
            reason scanning the QR code opens a page that never loads. -->
       <section id="firewall-card" class="alert warn-card" hidden>
@@ -954,6 +978,15 @@
             >
           </div>
           <button id="fix-firewall" class="btn" type="button">Fix firewall</button>
+        </div>
+        <div class="setting">
+          <div class="text">
+            <strong>Updates</strong>
+            <span id="check-update-result" class="result" aria-live="polite"
+              >Checks for a newer version by itself every few hours.</span
+            >
+          </div>
+          <button id="check-update" class="btn" type="button">Check for updates</button>
         </div>
         <div class="setting">
           <div class="text">
@@ -1217,7 +1250,33 @@
         updateHelp(s);
         showPlayer(s.player);
         setPrefs(s);
+        showUpdate(s.updateVersion);
       }
+
+      // ---- Updates (update.rs) ----
+      let updating = false;
+      function showUpdate(version) {
+        if (updating) return;
+        el("update-card").hidden = !version;
+        if (version) el("update-version").textContent = `v${version}`;
+      }
+      async function installUpdate(resultNode, button) {
+        updating = true;
+        button.disabled = true;
+        el("update-card").hidden = false;
+        resultNode.textContent = "Starting…";
+        try {
+          resultNode.textContent = await invoke("install_update");
+        } catch (err) {
+          resultNode.textContent = String(err);
+          button.disabled = false;
+          updating = false;
+        }
+      }
+      listen("update-available", (e) => showUpdate(e.payload));
+      listen("update-progress", (e) => {
+        if (updating) el("update-result").textContent = e.payload;
+      });
 
       const refresh = () => invoke("get_status").then(applyStatus).catch(() => {});
       refresh();
@@ -1283,6 +1342,26 @@
         node.classList.toggle("ok", ok);
         node.classList.toggle("bad", !ok);
       };
+      el("update-now").addEventListener("click", () => installUpdate(el("update-result"), el("update-now")));
+      el("check-update").addEventListener("click", async () => {
+        const btn = el("check-update");
+        btn.disabled = true;
+        result(el("check-update-result"), true, "Checking…");
+        try {
+          const version = await invoke("check_for_update");
+          if (version) {
+            result(el("check-update-result"), true, `Version ${version} is available — click Update now at the top.`);
+            showUpdate(version);
+            el("update-now").focus();
+          } else {
+            result(el("check-update-result"), true, "You have the latest version.");
+          }
+        } catch (err) {
+          result(el("check-update-result"), false, String(err));
+        } finally {
+          btn.disabled = false;
+        }
+      });
       el("firewall-fix-now").addEventListener("click", () => allowFirewall(el("firewall-fix-result")));
       el("no-phone-firewall").addEventListener("click", () => allowFirewall(el("no-phone-result")));
       listen("phone-seen", () => (el("no-phone-card").hidden = true));

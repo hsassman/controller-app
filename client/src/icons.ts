@@ -13,7 +13,20 @@ export const ICONS = {
     `<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>`,
   ),
   power: svg(`<path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/>`),
+  menu: svg(`<path d="M4 7h16M4 12h16M4 17h16"/>`),
+  hide: svg(`<path d="M6 15l6-6 6 6"/>`),
+  check: svg(`<path d="M5 12.5l4.5 4.5L19 7.5"/>`),
+  eye: svg(`<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>`),
   camera: svg(
     `<path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L17 6h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/>`,
   ),
 } as const;
+
+/// An icon followed by its text. The text is a real label (not a tooltip):
+/// it says what the button does at a glance, and it is the accessible name.
+export function iconLabel(icon: string, text: string): string {
+  const span = document.createElement("span");
+  span.className = "btn-label";
+  span.textContent = text;
+  return `${icon}${span.outerHTML}`;
+}
